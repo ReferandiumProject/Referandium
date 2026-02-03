@@ -26,7 +26,7 @@ export default function ReferendumCard({ referendum }: ReferendumCardProps) {
     setIsModalOpen(true)
   }
 
-  const handleVote = (vote: Vote) => {
+  const handleVote = async (vote: Vote) => {
     if (vote.type === 'yes') {
       setLocalYesVotes(prev => prev + 1)
     } else {
