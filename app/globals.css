@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import '@solana/wallet-adapter-react-ui/styles.css';
+@import './wallet-adapter.css';
+
+body {
+  background-color: #ffffff;
+  color: #1f2937;
+}

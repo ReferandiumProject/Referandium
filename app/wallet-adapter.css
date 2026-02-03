@@ -1,0 +1,44 @@
+/* Custom styles for Solana Wallet Adapter to match app theme */
+
+.wallet-adapter-button {
+  background-color: white !important;
+  color: #2563eb !important;
+  font-weight: 600 !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+  transition: background-color 0.2s !important;
+  padding: 0.5rem 1.5rem !important;
+}
+
+.wallet-adapter-button:not([disabled]):hover {
+  background-color: #f3f4f6 !important;
+}
+
+.wallet-adapter-button-trigger {
+  background-color: white !important;
+  color: #2563eb !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.wallet-adapter-modal {
+  background-color: white !important;
+  border-radius: 1rem !important;
+}
+
+.wallet-adapter-modal-title {
+  color: #1f2937 !important;
+  font-weight: 700 !important;
+}
+
+.wallet-adapter-modal-list .wallet-adapter-button {
+  background-color: #f9fafb !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.wallet-adapter-modal-list .wallet-adapter-button:hover {
+  background-color: #f3f4f6 !important;
+  border-color: #2563eb !important;
+}
