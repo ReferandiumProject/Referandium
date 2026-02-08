@@ -1,0 +1,85 @@
+{
+  "platform": "nextjs",
+  "code": {
+    "lang": "ts",
+    "scheme": "blackbox",
+    "reactRuntime": "classic"
+  },
+  "style": {
+    "scheme": "css-modules",
+    "defaultStyleCssFilePath": "plasmic/plasmic__default_style.module.css"
+  },
+  "images": {
+    "scheme": "public-files",
+    "publicDir": "../public",
+    "publicUrlPrefix": "/"
+  },
+  "tokens": {
+    "scheme": "theo",
+    "tokensFilePath": "plasmic-tokens.theo.json"
+  },
+  "srcDir": "components",
+  "defaultPlasmicDir": "./plasmic",
+  "projects": [
+    {
+      "projectId": "ehg3jSSsQvNW6bvQabRQLY",
+      "projectApiToken": "WHCxYpBI4wWnzW377TRZ2ll0n8exTvz1r146Dij3yoz3lQigyKHPccpJdWFuPQHq8TqRZi9MZpMsxHlBTcw",
+      "projectName": "Blank project",
+      "version": "latest",
+      "cssFilePath": "plasmic/blank_project/plasmic.module.css",
+      "components": [
+        {
+          "id": "e8sLLHz2kmWN",
+          "name": "Homepage",
+          "type": "managed",
+          "projectId": "ehg3jSSsQvNW6bvQabRQLY",
+          "renderModuleFilePath": "plasmic/blank_project/PlasmicHomepage.tsx",
+          "importSpec": {
+            "modulePath": "../app/page.tsx"
+          },
+          "cssFilePath": "plasmic/blank_project/PlasmicHomepage.module.css",
+          "scheme": "blackbox",
+          "componentType": "page",
+          "path": "/",
+          "rsc": {
+            "serverModulePath": "plasmic/blank_project/PlasmicHomepageServer.tsx",
+            "clientModulePath": "../app/page-client.tsx"
+          }
+        }
+      ],
+      "icons": [],
+      "images": [],
+      "indirect": false,
+      "globalContextsFilePath": "",
+      "splitsProviderFilePath": "",
+      "styleTokensProviderFilePath": "plasmic/blank_project/PlasmicStyleTokensProvider.tsx",
+      "dataTokensFilePath": "",
+      "projectModuleFilePath": "plasmic/blank_project/plasmic.tsx",
+      "codeComponents": [
+        {
+          "id": "yyJQqi4IErDI",
+          "name": "PlasmicHead",
+          "displayName": "hostless-plasmic-head",
+          "componentImportPath": "@plasmicapp/react-web"
+        },
+        {
+          "id": "cYAsFfYVKiWx",
+          "name": "Fetcher",
+          "displayName": "plasmic-data-source-fetcher",
+          "componentImportPath": "@plasmicapp/react-web/lib/data-sources"
+        }
+      ],
+      "customFunctions": []
+    }
+  ],
+  "globalVariants": {
+    "variantGroups": []
+  },
+  "wrapPagesWithGlobalContexts": true,
+  "preserveJsImportExtensions": false,
+  "nextjsConfig": {
+    "pagesDir": "../app"
+  },
+  "cliVersion": "0.1.356",
+  "$schema": "https://unpkg.com/@plasmicapp/cli@0.1.356/dist/plasmic.schema.json"
+}
