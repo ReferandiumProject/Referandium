@@ -1,5 +1,13 @@
-import { Twitter, Send, Mail, Github } from 'lucide-react';
+import { Mail, Github } from 'lucide-react';
 import Link from 'next/link';
+
+function XIcon({ size = 20, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
+    </svg>
+  );
+}
 
 export default function Footer() {
   return (
@@ -41,16 +49,13 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-bold text-white mb-4">Connect</h3>
             <div className="flex space-x-4 mb-6">
-              <a href="#" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-blue-600 transition group">
-                <Twitter size={20} className="text-gray-400 group-hover:text-white" />
+              <a href="https://x.com/referandium" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-blue-600 transition group">
+                <XIcon size={18} className="text-gray-400 group-hover:text-white" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-blue-500 transition group">
-                <Send size={20} className="text-gray-400 group-hover:text-white" />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-purple-600 transition group">
+              <a href="https://github.com/ReferandiumProject" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-purple-600 transition group">
                 <Github size={20} className="text-gray-400 group-hover:text-white" />
               </a>
-              <a href="mailto:contact@referandium.com" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-green-600 transition group">
+              <a href="mailto:hello@referandium.com" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-green-600 transition group">
                 <Mail size={20} className="text-gray-400 group-hover:text-white" />
               </a>
             </div>

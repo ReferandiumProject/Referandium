@@ -8,6 +8,7 @@ import { Users, TrendingUp, ExternalLink, CheckCircle, XCircle } from 'lucide-re
 import { Market, Vote } from '../types'
 import VotingModal from './VotingModal'
 import { supabase } from '@/lib/supabaseClient'
+import { formatQuestion } from '../utils/formatQuestion'
 
 const TREASURY_WALLET_PUBLIC_KEY = new PublicKey('PanbgtcTiZ2HasCT9CC94nUBwUx55uH8YDmZk6587da')
 
@@ -170,7 +171,7 @@ export default function MarketCard({ market }: MarketCardProps) {
         <div className="p-6 flex-1">
           <div className="flex items-start justify-between mb-4">
             <h3 className="text-xl font-bold text-gray-900 flex-1 pr-4 group-hover:text-blue-600 transition">
-              {market.question}
+              {formatQuestion(market.question)}
             </h3>
           </div>
 

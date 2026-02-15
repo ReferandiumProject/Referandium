@@ -10,6 +10,7 @@ export interface Market {
   end_date?: string
   image_url?: string
   outcome?: string | null
+  category?: string
 }
 
 export interface Referendum {

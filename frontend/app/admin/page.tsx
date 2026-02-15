@@ -22,13 +22,17 @@ export default function AdminPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  const CATEGORIES = ['Crypto', 'Politics', 'Sports', 'Pop Culture', 'Business'];
+
   // Form State
   const [formData, setFormData] = useState({
     question: '',
     description: '',
     image_url: '',
     end_date: '',
+    category: '',
   });
+  const [categoryError, setCategoryError] = useState(false);
 
   // Verileri Çek
   useEffect(() => {
@@ -63,7 +67,9 @@ export default function AdminPage() {
       description: market.description || '',
       image_url: market.image_url || '',
       end_date: market.end_date ? market.end_date.split('T')[0] : '',
+      category: market.category || '',
     });
+    setCategoryError(false);
   };
 
   // Formu temizle
@@ -71,7 +77,8 @@ export default function AdminPage() {
     setEditingId(null);
     setImageFile(null);
     setImagePreview(null);
-    setFormData({ question: '', description: '', image_url: '', end_date: '' });
+    setFormData({ question: '', description: '', image_url: '', end_date: '', category: '' });
+    setCategoryError(false);
   };
 
   // Dosya seçildiğinde
@@ -107,6 +114,12 @@ export default function AdminPage() {
       return;
     }
 
+    if (!formData.category) {
+      setCategoryError(true);
+      return;
+    }
+    setCategoryError(false);
+
     setIsSubmitting(true);
     try {
       // Resim yükleme (varsa)
@@ -124,6 +137,7 @@ export default function AdminPage() {
             description: formData.description,
             image_url: imageUrl,
             end_date: formData.end_date,
+            category: formData.category,
           })
           .eq('id', editingId);
 
@@ -137,6 +151,7 @@ export default function AdminPage() {
             description: formData.description,
             image_url: imageUrl,
             end_date: formData.end_date,
+            category: formData.category,
             yes_count: 0,
             no_count: 0,
             total_pool: 0,
@@ -289,6 +304,29 @@ export default function AdminPage() {
                 </div>
 
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Category <span className="text-red-500">*</span></label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {CATEGORIES.map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => { setFormData({ ...formData, category: cat }); setCategoryError(false); }}
+                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
+                          formData.category === cat
+                            ? 'bg-gray-900 text-white border-gray-900 shadow-md'
+                            : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                  {categoryError && (
+                    <p className="text-xs text-red-500 mt-1.5">Please select a category.</p>
+                  )}
+                </div>
+
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Image</label>
                   
                   {/* Önizleme */}
@@ -394,6 +432,9 @@ export default function AdminPage() {
                         <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
                           <span>📅 {new Date(market.end_date).toLocaleDateString()}</span>
                           <span>💰 {market.total_pool} SOL</span>
+                          {market.category && (
+                            <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">{market.category}</span>
+                          )}
                         </div>
                       </div>
 

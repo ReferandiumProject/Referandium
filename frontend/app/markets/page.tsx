@@ -22,6 +22,9 @@ export default function MarketsPage() {
   const [markets, setMarkets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+
+  const categories = ['All', 'Crypto', 'Politics', 'Sports', 'Pop Culture', 'Business'];
 
   // Verileri Çek
   useEffect(() => {
@@ -45,10 +48,12 @@ export default function MarketsPage() {
     }
   };
 
-  // Arama Filtresi
-  const filteredMarkets = markets.filter(market => 
-    market.question.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Arama + Kategori Filtresi
+  const filteredMarkets = markets.filter(market => {
+    const matchesSearch = market.question.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || market.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -95,6 +100,23 @@ export default function MarketsPage() {
           </div>
         </div>
 
+        {/* Kategori Filtreleme Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-8 scrollbar-hide">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+                selectedCategory === cat
+                  ? 'bg-gray-900 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
         {/* Yükleniyor veya Liste */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
@@ -109,8 +131,8 @@ export default function MarketsPage() {
           </div>
         ) : (
           <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
-            <h3 className="text-lg font-medium text-gray-900">No markets found</h3>
-            <p className="text-gray-500">Try adjusting your search terms.</p>
+            <h3 className="text-lg font-medium text-gray-900">No markets found{selectedCategory !== 'All' ? ` in "${selectedCategory}"` : ''}</h3>
+            <p className="text-gray-500 mt-1">{selectedCategory !== 'All' ? 'Try selecting a different category or adjust your search.' : 'Try adjusting your search terms.'}</p>
           </div>
         )}
       </div>
