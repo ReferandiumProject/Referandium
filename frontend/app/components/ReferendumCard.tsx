@@ -104,7 +104,7 @@ export default function ReferendumCard({ referendum }: ReferendumCardProps) {
           </div>
 
           <a
-            href={referendum.pumpFunLink}
+            href="https://pump.fun/coin/8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 rounded-lg transition-all shadow-md mb-4"

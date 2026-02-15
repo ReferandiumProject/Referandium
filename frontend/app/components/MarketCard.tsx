@@ -234,19 +234,17 @@ export default function MarketCard({ market }: MarketCardProps) {
             </div>
           </div>
 
-          {market.pump_fun_link && (
-            <a
-              href={market.pump_fun_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()} // Link içinde link çakışmasını engelle
-              className="flex items-center justify-center bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 rounded-lg transition-all shadow-md z-20 relative"
-            >
-              <span className="mr-2">💊</span>
-              Trade on Pump.fun
-              <ExternalLink size={16} className="ml-2" />
-            </a>
-          )}
+          <a
+            href="https://pump.fun/coin/8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center justify-center bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 rounded-lg transition-all shadow-md z-20 relative"
+          >
+            <span className="mr-2">💊</span>
+            Trade on Pump.fun
+            <ExternalLink size={16} className="ml-2" />
+          </a>
         </div>
       </div>
 
