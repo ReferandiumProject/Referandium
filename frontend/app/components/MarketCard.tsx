@@ -9,6 +9,7 @@ import { Market, Vote } from '../types'
 import VotingModal from './VotingModal'
 import { supabase } from '@/lib/supabaseClient'
 import { formatQuestion } from '../utils/formatQuestion'
+import { useLanguage } from '../context/LanguageContext'
 
 const TREASURY_WALLET_PUBLIC_KEY = new PublicKey('PanbgtcTiZ2HasCT9CC94nUBwUx55uH8YDmZk6587da')
 
@@ -20,6 +21,7 @@ export default function MarketCard({ market }: MarketCardProps) {
   const router = useRouter() // YENİ: Yönlendirme servisi
   const { publicKey, connected, sendTransaction } = useWallet()
   const { connection } = useConnection()
+  const { t } = useLanguage()
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [voteType, setVoteType] = useState<'yes' | 'no'>('yes')
@@ -75,7 +77,7 @@ export default function MarketCard({ market }: MarketCardProps) {
     if (!connected || !publicKey) {
       setNotification({
         type: 'error',
-        message: 'Please connect your wallet first!'
+        message: t('connectWalletFirst')
       })
       setTimeout(() => setNotification(null), 3000)
       return
@@ -86,7 +88,7 @@ export default function MarketCard({ market }: MarketCardProps) {
 
   const handleVote = async (vote: Vote) => {
     if (!connected || !publicKey) {
-      setNotification({ type: 'error', message: 'Wallet not connected!' })
+      setNotification({ type: 'error', message: t('walletNotConnected') })
       return
     }
 
@@ -129,13 +131,13 @@ export default function MarketCard({ market }: MarketCardProps) {
       
       setLocalPool(prev => prev + vote.amount)
       setHasVoted(true)
-      setNotification({ type: 'success', message: 'Vote Successful! 🎉' })
+      setNotification({ type: 'success', message: t('voteSuccessful') })
       setTimeout(() => setNotification(null), 3000)
       setIsModalOpen(false)
 
     } catch (error: any) {
       console.error('Error:', error)
-      setNotification({ type: 'error', message: 'Transaction failed.' })
+      setNotification({ type: 'error', message: t('transactionFailed') })
     } finally {
       setIsSubmitting(false)
     }
@@ -164,11 +166,11 @@ export default function MarketCard({ market }: MarketCardProps) {
           <div className={`absolute top-3 right-3 z-10 px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm ${
             market.outcome === 'YES' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
           }`}>
-            RESOLVED
+            {t('resolved')}
           </div>
         )}
         
-        <div className="p-6 flex-1">
+        <div className="p-6 flex-1 flex flex-col">
           <div className="flex items-start justify-between mb-4">
             <h3 className="text-xl font-bold text-gray-900 flex-1 pr-4 group-hover:text-blue-600 transition">
               {market.question}
@@ -186,8 +188,8 @@ export default function MarketCard({ market }: MarketCardProps) {
               <div className="bg-red-500 transition-all duration-500" style={{ width: `${noPercentage}%` }} />
             </div>
             <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>{localYesVotes} votes</span>
-              <span>{localNoVotes} votes</span>
+              <span>{localYesVotes} {t('votes')}</span>
+              <span>{localNoVotes} {t('votes')}</span>
             </div>
           </div>
 
@@ -198,11 +200,11 @@ export default function MarketCard({ market }: MarketCardProps) {
                 ? 'bg-green-50 border-green-200 text-green-700'
                 : 'bg-red-50 border-red-200 text-red-700'
             }`}>
-              {market.outcome} Won 🏆
+              {market.outcome} {t('won')}
             </div>
           ) : hasVoted ? (
             <div className="bg-green-50 border-2 border-green-200 text-green-700 font-bold py-4 rounded-lg text-center mb-6">
-              You Voted ✅
+              {t('youVoted')}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 mb-6">
@@ -210,42 +212,44 @@ export default function MarketCard({ market }: MarketCardProps) {
                 onClick={(e) => handleVoteClick('yes', e)}
                 className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition-colors shadow-md z-20 relative"
               >
-                YES
+                {t('yes')}
               </button>
               <button
                 onClick={(e) => handleVoteClick('no', e)}
                 className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg transition-colors shadow-md z-20 relative"
               >
-                NO
+                {t('no')}
               </button>
             </div>
           )}
 
-          {/* Alt Bilgiler */}
-          <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-            <div className="flex items-center text-sm text-gray-600">
-              <Users size={16} className="mr-2 text-blue-500" />
-              <span className="font-semibold">{localParticipants}</span>
-              <span className="ml-1">Participants</span>
+          {/* Alt Bilgiler — mt-auto ile kartın altına yapışır */}
+          <div className="mt-auto">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+              <div className="flex items-center text-sm text-gray-600">
+                <Users size={16} className="mr-2 text-blue-500" />
+                <span className="font-semibold">{localParticipants}</span>
+                <span className="ml-1">{t('participants')}</span>
+              </div>
+              <div className="flex items-center text-sm text-gray-600">
+                <TrendingUp size={16} className="mr-2 text-blue-500" />
+                <span className="font-semibold">{localPool.toFixed(2)}</span>
+                <span className="ml-1">SOL</span>
+              </div>
             </div>
-            <div className="flex items-center text-sm text-gray-600">
-              <TrendingUp size={16} className="mr-2 text-blue-500" />
-              <span className="font-semibold">{localPool.toFixed(2)}</span>
-              <span className="ml-1">SOL</span>
-            </div>
-          </div>
 
-          <a
-            href="https://pump.fun/coin/8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center justify-center bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 rounded-lg transition-all shadow-md z-20 relative"
-          >
-            <span className="mr-2">💊</span>
-            Trade on Pump.fun
-            <ExternalLink size={16} className="ml-2" />
-          </a>
+            <a
+              href="https://pump.fun/coin/8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center justify-center bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 rounded-lg transition-all shadow-md z-20 relative"
+            >
+              <span className="mr-2">💊</span>
+              {t('tradeOnPumpFun')}
+              <ExternalLink size={16} className="ml-2" />
+            </a>
+          </div>
         </div>
       </div>
 

@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { Search, Zap, Loader2, ArrowLeft } from 'lucide-react';
 import MarketCard from '../components/MarketCard';
 import Footer from '../components/Footer';
+import LanguageToggle from '../components/LanguageToggle';
+import { useLanguage } from '../context/LanguageContext';
+import { TranslationKey } from '../utils/translations';
 import dynamic from 'next/dynamic';
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then(mod => mod.WalletMultiButton),
@@ -18,7 +21,17 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+const categoryKeys: Record<string, TranslationKey> = {
+  'All': 'all',
+  'Crypto': 'crypto',
+  'Politics': 'politics',
+  'Sports': 'sports',
+  'Pop Culture': 'popCulture',
+  'Business': 'business',
+};
+
 export default function MarketsPage() {
+  const { t } = useLanguage();
   const [markets, setMarkets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -66,8 +79,9 @@ export default function MarketsPage() {
               <ArrowLeft className="text-gray-400 group-hover:text-blue-600 transition" size={20} />
               <span>Referandium</span>
             </Link>
-            <div className="flex items-center gap-4">
-               <Link href="/profile" className="text-sm font-medium text-gray-500 hover:text-blue-600">My Profile</Link>
+            <div className="flex items-center gap-3">
+               <LanguageToggle />
+               <Link href="/profile" className="text-sm font-medium text-gray-500 hover:text-blue-600">{t('myProfile')}</Link>
                <WalletMultiButton className="!bg-gray-900 !h-10 !px-4 !text-sm !rounded-lg" />
             </div>
           </div>
@@ -82,9 +96,9 @@ export default function MarketsPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
               <Zap className="text-yellow-500 fill-yellow-500" />
-              All Markets
+              {t('allMarkets')}
             </h1>
-            <p className="text-gray-500 mt-2">Explore and vote on trending events.</p>
+            <p className="text-gray-500 mt-2">{t('exploreMarkets')}</p>
           </div>
 
           {/* Arama Kutusu */}
@@ -92,7 +106,7 @@ export default function MarketsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input 
               type="text" 
-              placeholder="Search markets..." 
+              placeholder={t('searchMarkets')} 
               className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -112,7 +126,7 @@ export default function MarketsPage() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {cat}
+              {t(categoryKeys[cat])}
             </button>
           ))}
         </div>
@@ -121,7 +135,7 @@ export default function MarketsPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="animate-spin text-blue-600 mb-4" size={40} />
-            <p className="text-gray-500">Loading markets...</p>
+            <p className="text-gray-500">{t('loadingMarkets')}</p>
           </div>
         ) : filteredMarkets.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -131,8 +145,8 @@ export default function MarketsPage() {
           </div>
         ) : (
           <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
-            <h3 className="text-lg font-medium text-gray-900">No markets found{selectedCategory !== 'All' ? ` in "${selectedCategory}"` : ''}</h3>
-            <p className="text-gray-500 mt-1">{selectedCategory !== 'All' ? 'Try selecting a different category or adjust your search.' : 'Try adjusting your search terms.'}</p>
+            <h3 className="text-lg font-medium text-gray-900">{t('noMarketsFound')}{selectedCategory !== 'All' ? ` — ${t(categoryKeys[selectedCategory])}` : ''}</h3>
+            <p className="text-gray-500 mt-1">{selectedCategory !== 'All' ? t('tryDifferentCategory') : t('tryAdjustSearch')}</p>
           </div>
         )}
       </div>
