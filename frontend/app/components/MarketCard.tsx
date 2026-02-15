@@ -171,7 +171,7 @@ export default function MarketCard({ market }: MarketCardProps) {
         <div className="p-6 flex-1">
           <div className="flex items-start justify-between mb-4">
             <h3 className="text-xl font-bold text-gray-900 flex-1 pr-4 group-hover:text-blue-600 transition">
-              {formatQuestion(market.question)}
+              {market.question}
             </h3>
           </div>
 

@@ -12,7 +12,6 @@ import { ArrowLeft, CheckCircle, XCircle, Share2, MessageSquare, Send, Loader2, 
 // Bileşenler
 import VotingModal from '@/app/components/VotingModal';
 import { Vote } from '@/app/types';
-import { formatQuestion } from '@/app/utils/formatQuestion';
 
 // Supabase & Sabitler
 const supabase = createClient(
@@ -249,7 +248,7 @@ export default function MarketDetailClient() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end">
                 <div className="p-8 text-white w-full">
-                  <h1 className="text-3xl md:text-4xl font-bold mb-2 shadow-sm">{formatQuestion(market.question)}</h1>
+                  <h1 className="text-3xl md:text-4xl font-bold mb-2 shadow-sm">{market.question}</h1>
                   {market.description && (
                     <p className="text-gray-200 text-lg mt-2 mb-3 leading-relaxed line-clamp-2">{market.description}</p>
                   )}

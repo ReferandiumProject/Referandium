@@ -52,7 +52,7 @@ export default function Footer() {
               <a href="https://x.com/referandium" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-blue-600 transition group">
                 <XIcon size={18} className="text-gray-400 group-hover:text-white" />
               </a>
-              <a href="https://github.com/ReferandiumProject" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-purple-600 transition group">
+              <a href="https://github.com/ReferandiumProject/Referandium" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-purple-600 transition group">
                 <Github size={20} className="text-gray-400 group-hover:text-white" />
               </a>
               <a href="mailto:hello@referandium.com" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-green-600 transition group">
