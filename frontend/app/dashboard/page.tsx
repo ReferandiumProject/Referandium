@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { TrendingUp, Loader2 } from 'lucide-react'
 import MarketCard from '../components/MarketCard'
 import WalletButton from '../components/ui/WalletButton'
+import ThemeSwitch from '../components/ThemeSwitch'
 import { supabase } from '@/lib/supabaseClient'
 import { Market } from '../types'
 
@@ -45,7 +46,10 @@ export default function Dashboard() {
               <TrendingUp size={32} className="font-bold" />
               <h1 className="text-3xl font-bold">Referandium</h1>
             </Link>
-            <WalletButton />
+            <div className="flex items-center gap-3">
+              <ThemeSwitch />
+              <WalletButton />
+            </div>
           </div>
           <p className="text-blue-100 mt-2 text-sm">
             Policy Prescription Market - 1 Wallet = 1 Vote

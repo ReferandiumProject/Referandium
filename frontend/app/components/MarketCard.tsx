@@ -150,7 +150,7 @@ export default function MarketCard({ market }: MarketCardProps) {
       */}
       <div 
         onClick={handleCardClick}
-        className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 relative h-full flex flex-col cursor-pointer group"
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl dark:shadow-gray-900/30 transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700 relative h-full flex flex-col cursor-pointer group"
       >
         
         {notification && (
@@ -172,7 +172,7 @@ export default function MarketCard({ market }: MarketCardProps) {
         
         <div className="p-6 flex-1 flex flex-col">
           <div className="flex items-start justify-between mb-4">
-            <h3 className="text-xl font-bold text-gray-900 flex-1 pr-4 group-hover:text-blue-600 transition">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white flex-1 pr-4 group-hover:text-blue-600 transition">
               {market.question}
             </h3>
           </div>
@@ -183,11 +183,11 @@ export default function MarketCard({ market }: MarketCardProps) {
               <span className="text-green-600">YES {yesPercentage.toFixed(1)}%</span>
               <span className="text-red-600">NO {noPercentage.toFixed(1)}%</span>
             </div>
-            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden flex">
+            <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex">
               <div className="bg-green-500 transition-all duration-500" style={{ width: `${yesPercentage}%` }} />
               <div className="bg-red-500 transition-all duration-500" style={{ width: `${noPercentage}%` }} />
             </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
               <span>{localYesVotes} {t('votes')}</span>
               <span>{localNoVotes} {t('votes')}</span>
             </div>
@@ -197,13 +197,13 @@ export default function MarketCard({ market }: MarketCardProps) {
           {market.outcome ? (
             <div className={`border-2 font-bold py-4 rounded-lg text-center mb-6 ${
               market.outcome === 'YES'
-                ? 'bg-green-50 border-green-200 text-green-700'
-                : 'bg-red-50 border-red-200 text-red-700'
+                ? 'bg-green-100 border-green-200 text-green-800 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
+                : 'bg-red-100 border-red-200 text-red-800 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
             }`}>
               {market.outcome} {t('won')}
             </div>
           ) : hasVoted ? (
-            <div className="bg-green-50 border-2 border-green-200 text-green-700 font-bold py-4 rounded-lg text-center mb-6">
+            <div className="bg-green-50 dark:bg-green-900/30 border-2 border-green-200 dark:border-green-700 text-green-700 dark:text-green-400 font-bold py-4 rounded-lg text-center mb-6">
               {t('youVoted')}
             </div>
           ) : (
@@ -225,13 +225,13 @@ export default function MarketCard({ market }: MarketCardProps) {
 
           {/* Alt Bilgiler — mt-auto ile kartın altına yapışır */}
           <div className="mt-auto">
-            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-              <div className="flex items-center text-sm text-gray-600">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                 <Users size={16} className="mr-2 text-blue-500" />
                 <span className="font-semibold">{localParticipants}</span>
                 <span className="ml-1">{t('participants')}</span>
               </div>
-              <div className="flex items-center text-sm text-gray-600">
+              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                 <TrendingUp size={16} className="mr-2 text-blue-500" />
                 <span className="font-semibold">{localPool.toFixed(2)}</span>
                 <span className="ml-1">SOL</span>

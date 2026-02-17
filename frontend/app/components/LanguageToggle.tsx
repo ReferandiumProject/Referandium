@@ -31,14 +31,14 @@ export default function LanguageToggle() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className="px-3 py-1.5 rounded-full text-xs font-bold border border-gray-200 hover:bg-gray-100 transition flex items-center gap-1.5"
+        className="px-3 py-1.5 rounded-full text-xs font-bold border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200 transition flex items-center gap-1.5"
       >
         {current.flag} {current.code.toUpperCase()}
         <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-36 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 overflow-hidden">
           {languages.map((lang) => (
             <button
               key={lang.code}
@@ -48,8 +48,8 @@ export default function LanguageToggle() {
               }}
               className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-2 transition ${
                 language === lang.code
-                  ? 'bg-blue-50 text-blue-700 font-semibold'
-                  : 'text-gray-700 hover:bg-gray-50'
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
               <span>{lang.flag}</span>

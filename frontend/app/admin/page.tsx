@@ -6,6 +6,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import Link from 'next/link';
 import { ArrowLeft, Trash2, Plus, LayoutDashboard, Loader2, Save, Pencil, X, ImagePlus, Gavel } from 'lucide-react';
+import ThemeSwitch from '../components/ThemeSwitch';
 
 // Supabase Bağlantısı
 const supabase = createClient(
@@ -221,9 +222,9 @@ export default function AdminPage() {
   // 1. Yükleniyor Ekranı
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="animate-spin text-blue-600 mb-4" size={48} />
-        <p className="text-gray-500 font-medium">Loading Dashboard...</p>
+        <p className="text-gray-500 dark:text-gray-400 font-medium">Loading Dashboard...</p>
       </div>
     );
   }
@@ -231,14 +232,14 @@ export default function AdminPage() {
   // 2. Cüzdan Bağlı Değilse
   if (!connected) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 text-center">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Admin Access</h1>
-          <p className="text-gray-500 mb-6">You must connect your wallet to manage markets.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl max-w-md w-full">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Admin Access</h1>
+          <p className="text-gray-500 dark:text-gray-400 mb-6">You must connect your wallet to manage markets.</p>
           <div className="flex justify-center">
             <WalletMultiButton className="!bg-blue-600 !rounded-xl" />
           </div>
-          <Link href="/" className="mt-6 block text-sm text-gray-400 hover:text-gray-600">
+          <Link href="/" className="mt-6 block text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
             ← Back to Home
           </Link>
         </div>
@@ -248,29 +249,32 @@ export default function AdminPage() {
 
   // 3. Ana Dashboard
   return (
-    <div className="min-h-screen bg-gray-100 p-6 md:p-12">
+    <div className="min-h-screen p-6 md:p-12">
       <div className="max-w-6xl mx-auto">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
           <div className="flex items-center gap-3">
-            <Link href="/" className="p-2 bg-white rounded-lg hover:bg-gray-50 transition text-gray-600">
+            <Link href="/" className="p-2 bg-white dark:bg-gray-800 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition text-gray-600 dark:text-gray-300">
               <ArrowLeft size={20} />
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <LayoutDashboard className="text-blue-600" />
               Admin Dashboard
             </h1>
           </div>
-          <WalletMultiButton className="!bg-gray-900 !rounded-xl" />
+          <div className="flex items-center gap-3">
+            <ThemeSwitch />
+            <WalletMultiButton className="!bg-gray-900 !rounded-xl" />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* SOL TARAF: Yeni Piyasa Formu */}
           <div className="lg:col-span-1">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 sticky top-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 sticky top-6">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                 {editingId ? (
                   <><Pencil size={20} className="text-amber-600" /> Edit Market</>
                 ) : (
@@ -280,12 +284,12 @@ export default function AdminPage() {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Policy Statement</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Policy Statement</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g., I want Bitcoin to reach $100k by May"
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition outline-none"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition outline-none bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                     value={formData.question}
                     onChange={(e) => setFormData({ ...formData, question: e.target.value })}
                   />
@@ -293,18 +297,18 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                   <textarea
                     rows={3}
                     placeholder="Market details..."
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Category <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Category <span className="text-red-500">*</span></label>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {CATEGORIES.map((cat) => (
                       <button
@@ -313,8 +317,8 @@ export default function AdminPage() {
                         onClick={() => { setFormData({ ...formData, category: cat }); setCategoryError(false); }}
                         className={`px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
                           formData.category === cat
-                            ? 'bg-gray-900 text-white border-gray-900 shadow-md'
-                            : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                            ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white shadow-md'
+                            : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-gray-300'
                         }`}
                       >
                         {cat}
@@ -327,7 +331,7 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Image</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image</label>
                   
                   {/* Önizleme */}
                   {imagePreview && (
@@ -347,7 +351,7 @@ export default function AdminPage() {
                     </div>
                   )}
 
-                  <label className="flex items-center justify-center gap-2 w-full p-3 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition text-sm text-gray-500">
+                  <label className="flex items-center justify-center gap-2 w-full p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition text-sm text-gray-500 dark:text-gray-400">
                     <ImagePlus size={18} />
                     {imageFile ? imageFile.name : (editingId && formData.image_url ? 'Change image...' : 'Choose an image...')}
                     <input
@@ -363,11 +367,11 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
                   <input
                     type="date"
                     required
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-white"
                     value={formData.end_date}
                     onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                   />
@@ -393,7 +397,7 @@ export default function AdminPage() {
                   <button
                     type="button"
                     onClick={clearForm}
-                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-xl transition flex items-center justify-center gap-2"
+                    className="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium py-3 rounded-xl transition flex items-center justify-center gap-2"
                   >
                     <X size={18} /> Cancel Editing
                   </button>
@@ -404,22 +408,22 @@ export default function AdminPage() {
 
           {/* SAĞ TARAF: Piyasa Listesi */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-800">Active Markets</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white">Active Markets</h2>
                 <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">
                   {markets.length} Total
                 </span>
               </div>
 
               {markets.length === 0 ? (
-                <div className="p-10 text-center text-gray-400">
+                <div className="p-10 text-center text-gray-400 dark:text-gray-500">
                   No markets found. Create one from the left panel.
                 </div>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 dark:divide-gray-700">
                   {markets.map((market) => (
-                    <div key={market.id} className="p-4 hover:bg-gray-50 transition flex items-start gap-4">
+                    <div key={market.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition flex items-start gap-4">
                       <img 
                         src={market.image_url} 
                         alt="market" 
@@ -428,8 +432,8 @@ export default function AdminPage() {
                       />
                       
                       <div className="flex-1">
-                        <h3 className="font-bold text-gray-900">{market.question}</h3>
-                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                        <h3 className="font-bold text-gray-900 dark:text-white">{market.question}</h3>
+                        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
                           <span>📅 {new Date(market.end_date).toLocaleDateString()}</span>
                           <span>💰 {market.total_pool} SOL</span>
                           {market.category && (
@@ -440,14 +444,14 @@ export default function AdminPage() {
 
                       {market.outcome ? (
                         <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                          market.outcome === 'YES' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          market.outcome === 'YES' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                         }`}>
                           Won: {market.outcome}
                         </span>
                       ) : (
                         <button
                           onClick={() => handleSettle(market.id)}
-                          className="p-2 text-purple-500 hover:bg-purple-50 rounded-lg transition"
+                          className="p-2 text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition"
                           title="Settle Market"
                         >
                           <Gavel size={18} />
@@ -455,14 +459,14 @@ export default function AdminPage() {
                       )}
                       <button
                         onClick={() => handleEdit(market)}
-                        className={`p-2 rounded-lg transition ${editingId === market.id ? 'bg-amber-100 text-amber-700' : 'text-gray-400 hover:bg-gray-100 hover:text-amber-600'}`}
+                        className={`p-2 rounded-lg transition ${editingId === market.id ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-amber-600'}`}
                         title="Edit Market"
                       >
                         <Pencil size={18} />
                       </button>
                       <button
                         onClick={() => handleDelete(market.id)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition"
                         title="Delete Market"
                       >
                         <Trash2 size={20} />

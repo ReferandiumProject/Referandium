@@ -8,6 +8,7 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { SystemProgram, Transaction, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { ArrowLeft, CheckCircle, XCircle, Share2, MessageSquare, Send, Loader2, Trash2, Trophy } from 'lucide-react';
+import ThemeSwitch from '@/app/components/ThemeSwitch';
 
 // Bileşenler
 import VotingModal from '@/app/components/VotingModal';
@@ -218,7 +219,10 @@ export default function MarketDetailClient() {
             <ArrowLeft size={20} className="mr-2" />
             Piyasalara Dön
           </Link>
-          <WalletMultiButton className="!bg-blue-600 hover:!bg-blue-700 !rounded-xl" />
+          <div className="flex items-center gap-3">
+            <ThemeSwitch />
+            <WalletMultiButton className="!bg-blue-600 hover:!bg-blue-700 !rounded-xl" />
+          </div>
         </div>
 
         {/* Resolved Banner */}

@@ -9,5 +9,8 @@
     "install:frontend": "npm install --prefix frontend",
     "install:backend": "npm install --prefix backend",
     "install:all": "npm install --prefix frontend && npm install --prefix backend"
+  },
+  "dependencies": {
+    "next-themes": "^0.4.6"
   }
 }

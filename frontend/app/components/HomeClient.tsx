@@ -1,11 +1,14 @@
 'use client';
 
+import { useState, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Wallet, BarChart2, TrendingUp, ShieldCheck, Zap, Users } from 'lucide-react';
+import { ArrowRight, Wallet, BarChart2, TrendingUp, ShieldCheck, Zap, Users, VolumeX, Volume1, Volume2 } from 'lucide-react';
 import MarketCard from './MarketCard';
 import Footer from './Footer';
 import LanguageToggle from './LanguageToggle';
+import ThemeSwitch from './ThemeSwitch';
 import { useLanguage } from '../context/LanguageContext';
+import { useUser } from '../context/UserContext';
 
 interface HomeClientProps {
   markets: any[];
@@ -13,35 +16,80 @@ interface HomeClientProps {
 
 export default function HomeClient({ markets }: HomeClientProps) {
   const { t } = useLanguage();
+  const { user } = useUser();
+  const [isMuted, setIsMuted] = useState(true);
+  const [volume, setVolume] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setVolume(val);
+    if (videoRef.current) {
+      videoRef.current.volume = val;
+      videoRef.current.muted = val === 0;
+    }
+    setIsMuted(val === 0);
+  };
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      if (isMuted) {
+        const restored = volume > 0 ? volume : 0.5;
+        videoRef.current.muted = false;
+        videoRef.current.volume = restored;
+        setVolume(restored);
+        setIsMuted(false);
+      } else {
+        videoRef.current.muted = true;
+        setIsMuted(true);
+      }
+    }
+  };
+
+  const VolumeIcon = isMuted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] font-sans transition-colors">
       
       {/* 1. NAVBAR */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             {/* Logo */}
             <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">R</div>
-              <span className="font-bold text-xl text-gray-900 tracking-tight">Referandium</span>
+              <span className="font-bold text-xl text-gray-900 dark:text-white tracking-tight">Referandium</span>
             </div>
 
             {/* Menü Linkleri */}
             <div className="hidden md:flex space-x-8">
-              <Link href="/markets" className="text-gray-500 hover:text-blue-600 font-medium transition">{t('markets')}</Link>
-              <Link href="/admin" className="text-gray-500 hover:text-blue-600 font-medium transition">{t('admin')}</Link>
+              <Link href="/markets" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 font-medium transition">{t('markets')}</Link>
+              <Link href="/admin" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 font-medium transition">{t('admin')}</Link>
             </div>
 
             {/* Sağ Taraf */}
             <div className="flex items-center gap-3">
+              <ThemeSwitch />
               <LanguageToggle />
               <Link 
                 href="/profile" 
-                className="bg-gray-900 text-white px-5 py-2 rounded-full font-medium hover:bg-gray-800 transition flex items-center gap-2 text-sm shadow-lg shadow-gray-200"
+                className="bg-transparent text-gray-700 dark:text-gray-300 px-4 py-1.5 rounded-full font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition flex items-center gap-2 text-sm"
               >
-                <Users size={16} />
-                {t('myProfile')}
+                {user ? (
+                  <>
+                    <img
+                      src={user.avatar_url || ''}
+                      alt={user.username}
+                      className="w-6 h-6 rounded-full bg-gray-200"
+                    />
+                    <span className="hidden sm:inline">{user.username}</span>
+                  </>
+                ) : (
+                  <>
+                    <Users size={16} />
+                    {t('myProfile')}
+                  </>
+                )}
               </Link>
             </div>
           </div>
@@ -49,9 +97,9 @@ export default function HomeClient({ markets }: HomeClientProps) {
       </nav>
 
       {/* 2. HERO SECTION */}
-      <div className="relative overflow-hidden bg-white">
+      <div className="relative overflow-hidden bg-white dark:bg-gray-900">
         {/* Arka Plan Efektleri */}
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-50 via-indigo-50 to-white -z-10" />
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-50 via-indigo-50 to-white dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 -z-10" />
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob" />
         <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000" />
 
@@ -60,34 +108,53 @@ export default function HomeClient({ markets }: HomeClientProps) {
 
             {/* SOL SÜTUN: Video */}
             <div className="order-2 lg:order-1">
-              <div className="max-w-md mx-auto rounded-3xl overflow-hidden shadow-2xl shadow-blue-200/50 hover:shadow-blue-300/60 transition-shadow duration-500">
+              <div className="relative max-w-md mx-auto rounded-3xl overflow-hidden shadow-2xl shadow-blue-200/50 hover:shadow-blue-300/60 transition-shadow duration-500">
                 <video
+                  ref={videoRef}
                   autoPlay
                   loop
-                  controls
+                  muted
                   playsInline
                   className="w-full h-auto block"
                 >
                   <source src="/hero-video.mp4" type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
+                <div className="group absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full bg-black/50 backdrop-blur-sm px-1.5 py-1.5 transition-all duration-300">
+                  <button
+                    onClick={toggleMute}
+                    className="p-1 rounded-full text-white hover:text-white/80 transition flex-shrink-0"
+                    aria-label={isMuted ? 'Unmute' : 'Mute'}
+                  >
+                    <VolumeIcon size={18} />
+                  </button>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={isMuted ? 0 : volume}
+                    onChange={handleVolumeChange}
+                    className="w-0 group-hover:w-20 md:group-hover:w-24 opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer accent-white h-1 appearance-none bg-white/30 rounded-full [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                  />
+                </div>
               </div>
             </div>
 
             {/* SAĞ SÜTUN: İçerik */}
             <div className="order-1 lg:order-2 text-left">
-              <span className="inline-block bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full mb-6 uppercase tracking-wider">
+              <span className="inline-block bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-xs font-bold px-3 py-1 rounded-full mb-6 uppercase tracking-wider">
                 {t('liveBadge')}
               </span>
               
-              <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 tracking-tight mb-6 leading-tight">
+              <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-6 leading-tight">
                 {t('heroTitle1')} <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
                   {t('heroTitle2')}
                 </span>
               </h1>
               
-              <p className="text-xl text-gray-500 mb-10 leading-relaxed max-w-xl">
+              <p className="text-xl text-gray-500 dark:text-gray-400 mb-10 leading-relaxed max-w-xl">
                 {t('heroDescription')}
               </p>
               
@@ -100,25 +167,25 @@ export default function HomeClient({ markets }: HomeClientProps) {
                 </Link>
                 <a 
                   href="#how-it-works" 
-                  className="px-8 py-4 bg-white text-gray-700 font-bold rounded-xl border border-gray-200 hover:bg-gray-50 transition flex items-center justify-center"
+                  className="px-8 py-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-bold rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center justify-center"
                 >
                   {t('howItWorks')}
                 </a>
               </div>
 
               {/* İstatistikler */}
-              <div className="grid grid-cols-3 gap-6 mt-14 pt-8 border-t border-gray-200/60">
+              <div className="grid grid-cols-3 gap-6 mt-14 pt-8 border-t border-gray-200/60 dark:border-gray-700/60">
                 <div>
-                  <p className="text-3xl font-bold text-gray-900">1.2K+</p>
-                  <p className="text-sm text-gray-500 mt-1">{t('policyShapers')}</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">1.2K+</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('policyShapers')}</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-gray-900">$450K+</p>
-                  <p className="text-sm text-gray-500 mt-1">{t('signalVolume')}</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">$450K+</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('signalVolume')}</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-gray-900">98%</p>
-                  <p className="text-sm text-gray-500 mt-1">{t('consensusRate')}</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">98%</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('consensusRate')}</p>
                 </div>
               </div>
             </div>
@@ -128,36 +195,36 @@ export default function HomeClient({ markets }: HomeClientProps) {
       </div>
 
       {/* 3. HOW IT WORKS */}
-      <div id="how-it-works" className="py-20 bg-white">
+      <div id="how-it-works" className="py-20 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900">{t('howItWorksTitle')}</h2>
-            <p className="text-gray-500 mt-4">{t('howItWorksSubtitle')}</p>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('howItWorksTitle')}</h2>
+            <p className="text-gray-500 dark:text-gray-400 mt-4">{t('howItWorksSubtitle')}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-8 bg-gray-50 rounded-3xl border border-gray-100 hover:border-blue-200 transition group cursor-default">
-              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition text-blue-600">
+            <div className="p-8 bg-gray-50 dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-500 transition group cursor-default">
+              <div className="w-14 h-14 bg-white dark:bg-gray-700 rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition text-blue-600">
                 <Wallet size={28} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">{t('step1Title')}</h3>
-              <p className="text-gray-500 leading-relaxed">{t('step1Desc')}</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{t('step1Title')}</h3>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">{t('step1Desc')}</p>
             </div>
 
-            <div className="p-8 bg-gray-50 rounded-3xl border border-gray-100 hover:border-blue-200 transition group cursor-default">
-              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition text-purple-600">
+            <div className="p-8 bg-gray-50 dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-500 transition group cursor-default">
+              <div className="w-14 h-14 bg-white dark:bg-gray-700 rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition text-purple-600">
                 <TrendingUp size={28} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">{t('step2Title')}</h3>
-              <p className="text-gray-500 leading-relaxed">{t('step2Desc')}</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{t('step2Title')}</h3>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">{t('step2Desc')}</p>
             </div>
 
-            <div className="p-8 bg-gray-50 rounded-3xl border border-gray-100 hover:border-blue-200 transition group cursor-default">
-              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition text-green-600">
+            <div className="p-8 bg-gray-50 dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-500 transition group cursor-default">
+              <div className="w-14 h-14 bg-white dark:bg-gray-700 rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition text-green-600">
                 <ShieldCheck size={28} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">{t('step3Title')}</h3>
-              <p className="text-gray-500 leading-relaxed">{t('step3Desc')}</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{t('step3Title')}</h3>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">{t('step3Desc')}</p>
             </div>
           </div>
         </div>
@@ -167,11 +234,11 @@ export default function HomeClient({ markets }: HomeClientProps) {
       <div id="markets" className="max-w-7xl mx-auto px-4 py-20">
         <div className="flex justify-between items-end mb-10">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Zap className="text-yellow-500 fill-yellow-500" /> 
               {t('popularMarkets')}
             </h2>
-            <p className="text-gray-500 mt-2">{t('popularMarketsDesc')}</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">{t('popularMarketsDesc')}</p>
           </div>
           <Link href="/markets" className="text-blue-600 font-bold hover:underline hidden sm:block">
             {t('viewAllMarkets')}
@@ -185,10 +252,10 @@ export default function HomeClient({ markets }: HomeClientProps) {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
+          <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl border border-dashed border-gray-300 dark:border-gray-600">
             <BarChart2 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900">{t('noMarketsFound')}</h3>
-            <p className="text-gray-500">{t('noMarketsDesc')}</p>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('noMarketsFound')}</h3>
+            <p className="text-gray-500 dark:text-gray-400">{t('noMarketsDesc')}</p>
           </div>
         )}
         

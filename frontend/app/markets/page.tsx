@@ -7,7 +7,9 @@ import { Search, Zap, Loader2, ArrowLeft } from 'lucide-react';
 import MarketCard from '../components/MarketCard';
 import Footer from '../components/Footer';
 import LanguageToggle from '../components/LanguageToggle';
+import ThemeSwitch from '../components/ThemeSwitch';
 import { useLanguage } from '../context/LanguageContext';
+import { useUser } from '../context/UserContext';
 import { TranslationKey } from '../utils/translations';
 import dynamic from 'next/dynamic';
 const WalletMultiButton = dynamic(
@@ -32,6 +34,7 @@ const categoryKeys: Record<string, TranslationKey> = {
 
 export default function MarketsPage() {
   const { t } = useLanguage();
+  const { user } = useUser();
   const [markets, setMarkets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,19 +72,29 @@ export default function MarketsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] font-sans transition-colors">
       
       {/* NAVBAR */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <Link href="/" className="flex items-center gap-2 font-bold text-xl text-gray-900 group">
+            <Link href="/" className="flex items-center gap-2 font-bold text-xl text-gray-900 dark:text-white group">
               <ArrowLeft className="text-gray-400 group-hover:text-blue-600 transition" size={20} />
               <span>Referandium</span>
             </Link>
             <div className="flex items-center gap-3">
+               <ThemeSwitch />
                <LanguageToggle />
-               <Link href="/profile" className="text-sm font-medium text-gray-500 hover:text-blue-600">{t('myProfile')}</Link>
+               <Link href="/profile" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-4 py-1.5 rounded-full transition flex items-center gap-2">
+                 {user ? (
+                   <>
+                     <img src={user.avatar_url || ''} alt={user.username} className="w-6 h-6 rounded-full bg-gray-200" />
+                     <span className="hidden sm:inline">{user.username}</span>
+                   </>
+                 ) : (
+                   t('myProfile')
+                 )}
+               </Link>
                <WalletMultiButton className="!bg-gray-900 !h-10 !px-4 !text-sm !rounded-lg" />
             </div>
           </div>
@@ -94,11 +107,11 @@ export default function MarketsPage() {
         {/* Başlık ve Arama */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Zap className="text-yellow-500 fill-yellow-500" />
               {t('allMarkets')}
             </h1>
-            <p className="text-gray-500 mt-2">{t('exploreMarkets')}</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">{t('exploreMarkets')}</p>
           </div>
 
           {/* Arama Kutusu */}
@@ -107,7 +120,7 @@ export default function MarketsPage() {
             <input 
               type="text" 
               placeholder={t('searchMarkets')} 
-              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
+              className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -122,8 +135,8 @@ export default function MarketsPage() {
               onClick={() => setSelectedCategory(cat)}
               className={`px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
                 selectedCategory === cat
-                  ? 'bg-gray-900 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
             >
               {t(categoryKeys[cat])}
@@ -135,7 +148,7 @@ export default function MarketsPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="animate-spin text-blue-600 mb-4" size={40} />
-            <p className="text-gray-500">{t('loadingMarkets')}</p>
+            <p className="text-gray-500 dark:text-gray-400">{t('loadingMarkets')}</p>
           </div>
         ) : filteredMarkets.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -144,9 +157,9 @@ export default function MarketsPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
-            <h3 className="text-lg font-medium text-gray-900">{t('noMarketsFound')}{selectedCategory !== 'All' ? ` — ${t(categoryKeys[selectedCategory])}` : ''}</h3>
-            <p className="text-gray-500 mt-1">{selectedCategory !== 'All' ? t('tryDifferentCategory') : t('tryAdjustSearch')}</p>
+          <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl border border-dashed border-gray-300 dark:border-gray-600">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('noMarketsFound')}{selectedCategory !== 'All' ? ` — ${t(categoryKeys[selectedCategory])}` : ''}</h3>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">{selectedCategory !== 'All' ? t('tryDifferentCategory') : t('tryAdjustSearch')}</p>
           </div>
         )}
       </div>

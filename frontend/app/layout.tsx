@@ -1,8 +1,12 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import '@solana/wallet-adapter-react-ui/styles.css'
+import './wallet-adapter.css'
 import AppWalletProvider from './components/AppWalletProvider'
 import { LanguageProvider } from './context/LanguageContext'
+import { UserProvider } from './context/UserContext'
+import Providers from './providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -31,13 +35,17 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <LanguageProvider>
-          <AppWalletProvider>
-            {children}
-          </AppWalletProvider>
-        </LanguageProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.className} min-h-screen bg-white font-sans antialiased dark:bg-gray-900 dark:text-white text-gray-900 transition-colors`}>
+        <Providers>
+          <LanguageProvider>
+            <AppWalletProvider>
+              <UserProvider>
+                {children}
+              </UserProvider>
+            </AppWalletProvider>
+          </LanguageProvider>
+        </Providers>
       </body>
     </html>
   )
