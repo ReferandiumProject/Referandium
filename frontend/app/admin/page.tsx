@@ -27,12 +27,13 @@ export default function AdminPage() {
 
   // Form State
   const [formData, setFormData] = useState({
-    question: '',
+    title: '',
     description: '',
     image_url: '',
     end_date: '',
     category: '',
   });
+  const [options, setOptions] = useState([{ title: '', bid_price: '' }, { title: '', bid_price: '' }]);
   const [categoryError, setCategoryError] = useState(false);
 
   // Verileri Çek
@@ -45,7 +46,7 @@ export default function AdminPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from('markets')
-        .select('*')
+        .select('*, options:market_options(*)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -64,12 +65,18 @@ export default function AdminPage() {
     setImageFile(null);
     setImagePreview(market.image_url || null);
     setFormData({
-      question: market.question || '',
+      title: market.title || market.question || '',
       description: market.description || '',
       image_url: market.image_url || '',
       end_date: market.end_date ? market.end_date.split('T')[0] : '',
       category: market.category || '',
     });
+    // Load existing options if available
+    if (market.options && market.options.length > 0) {
+      setOptions(market.options.map((opt: any) => ({ title: opt.title || '', bid_price: opt.bid_price || '' })));
+    } else {
+      setOptions([{ title: '', bid_price: '' }, { title: '', bid_price: '' }]);
+    }
     setCategoryError(false);
   };
 
@@ -78,7 +85,8 @@ export default function AdminPage() {
     setEditingId(null);
     setImageFile(null);
     setImagePreview(null);
-    setFormData({ question: '', description: '', image_url: '', end_date: '', category: '' });
+    setFormData({ title: '', description: '', image_url: '', end_date: '', category: '' });
+    setOptions([{ title: '', bid_price: '' }, { title: '', bid_price: '' }]);
     setCategoryError(false);
   };
 
@@ -129,12 +137,20 @@ export default function AdminPage() {
         imageUrl = await uploadImage(imageFile);
       }
 
+      // Filter out empty options
+      const validOptions = options.filter(opt => opt.title.trim() !== '');
+      if (validOptions.length < 2) {
+        alert('Please add at least 2 options with titles.');
+        setIsSubmitting(false);
+        return;
+      }
+
       if (editingId) {
         // Update existing market
         const { error } = await supabase
           .from('markets')
           .update({
-            question: formData.question,
+            title: formData.title,
             description: formData.description,
             image_url: imageUrl,
             end_date: formData.end_date,
@@ -143,24 +159,44 @@ export default function AdminPage() {
           .eq('id', editingId);
 
         if (error) throw error;
+
+        // Replace options: delete old ones, insert new ones
+        await supabase.from('market_options').delete().eq('market_id', editingId);
+        const optionsData = validOptions.map(opt => ({
+          market_id: editingId,
+          title: opt.title.trim(),
+          bid_price: opt.bid_price.trim() || null,
+          yes_pool: 0,
+          no_pool: 0,
+        }));
+        const { error: optError } = await supabase.from('market_options').insert(optionsData);
+        if (optError) throw optError;
+
         alert('Market updated successfully! ✅');
       } else {
-        // Insert new market
-        const { error } = await supabase.from('markets').insert([
-          {
-            question: formData.question,
-            description: formData.description,
-            image_url: imageUrl,
-            end_date: formData.end_date,
-            category: formData.category,
-            yes_count: 0,
-            no_count: 0,
-            total_pool: 0,
-            created_by: publicKey?.toBase58(),
-          },
-        ]);
+        // Step 1: Insert market
+        const { data: market, error: marketError } = await supabase.from('markets').insert({
+          title: formData.title,
+          description: formData.description,
+          image_url: imageUrl,
+          end_date: formData.end_date,
+          category: formData.category,
+          created_by: publicKey?.toBase58(),
+        }).select().single();
 
-        if (error) throw error;
+        if (marketError) throw marketError;
+
+        // Step 2: Insert options
+        const optionsData = validOptions.map(opt => ({
+          market_id: market.id,
+          title: opt.title.trim(),
+          bid_price: opt.bid_price.trim() || null,
+          yes_pool: 0,
+          no_pool: 0,
+        }));
+        const { error: optError } = await supabase.from('market_options').insert(optionsData);
+        if (optError) throw optError;
+
         alert('Market created successfully! 🚀');
       }
 
@@ -202,7 +238,8 @@ export default function AdminPage() {
     if (!confirm('Are you sure you want to delete this market? This action cannot be undone.')) return;
 
     try {
-      // Önce oyları sil (Foreign Key hatasını önlemek için - gerçi SQL'de cascade açmıştık ama garanti olsun)
+      // Önce bağlı verileri sil (Foreign Key hatasını önlemek için)
+      await supabase.from('market_options').delete().eq('market_id', id);
       await supabase.from('votes').delete().eq('market_id', id);
       
       // Sonra marketi sil
@@ -284,16 +321,15 @@ export default function AdminPage() {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Policy Statement</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Market Title</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g., I want Bitcoin to reach $100k by May"
+                    placeholder="e.g., Who will be the next transfer target?"
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition outline-none bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                    value={formData.question}
-                    onChange={(e) => setFormData({ ...formData, question: e.target.value })}
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   />
-                  <p className="text-xs text-gray-400 mt-1.5">Use prescriptive language (I want, We should...) instead of questions.</p>
                 </div>
 
                 <div>
@@ -366,6 +402,56 @@ export default function AdminPage() {
                   )}
                 </div>
 
+                {/* Dynamic Options Section */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Options <span className="text-red-500">*</span> <span className="text-xs font-normal text-gray-400">(min 2)</span></label>
+                  <div className="space-y-2">
+                    {options.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-400 dark:text-gray-500 w-5 text-center shrink-0">{idx + 1}</span>
+                        <input
+                          type="text"
+                          placeholder="Option title"
+                          className="flex-1 p-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                          value={opt.title}
+                          onChange={(e) => {
+                            const updated = [...options];
+                            updated[idx] = { ...updated[idx], title: e.target.value };
+                            setOptions(updated);
+                          }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Bid price"
+                          className="w-24 p-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                          value={opt.bid_price}
+                          onChange={(e) => {
+                            const updated = [...options];
+                            updated[idx] = { ...updated[idx], bid_price: e.target.value };
+                            setOptions(updated);
+                          }}
+                        />
+                        {options.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => setOptions(options.filter((_, i) => i !== idx))}
+                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition shrink-0"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOptions([...options, { title: '', bid_price: '' }])}
+                    className="mt-2 w-full py-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:border-blue-400 hover:text-blue-500 dark:hover:border-blue-500 dark:hover:text-blue-400 transition flex items-center justify-center gap-1.5"
+                  >
+                    <Plus size={14} /> Add Option
+                  </button>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
                   <input
@@ -432,7 +518,7 @@ export default function AdminPage() {
                       />
                       
                       <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 dark:text-white">{market.question}</h3>
+                        <h3 className="font-bold text-gray-900 dark:text-white">{market.title || market.question}</h3>
                         <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
                           <span>📅 {new Date(market.end_date).toLocaleDateString()}</span>
                           <span>💰 {market.total_pool} SOL</span>

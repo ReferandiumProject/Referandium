@@ -1,266 +1,110 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation' // YENİ: Router eklendi
-import { useWallet, useConnection } from '@solana/wallet-adapter-react'
-import { SystemProgram, Transaction, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
-import { Users, TrendingUp, ExternalLink, CheckCircle, XCircle } from 'lucide-react'
-import { Market, Vote } from '../types'
-import VotingModal from './VotingModal'
-import { supabase } from '@/lib/supabaseClient'
-import { formatQuestion } from '../utils/formatQuestion'
-import { useLanguage } from '../context/LanguageContext'
-
-const TREASURY_WALLET_PUBLIC_KEY = new PublicKey('PanbgtcTiZ2HasCT9CC94nUBwUx55uH8YDmZk6587da')
+import { useRouter } from 'next/navigation'
+import { Users, TrendingUp } from 'lucide-react'
+import { Market } from '../types'
 
 interface MarketCardProps {
   market: Market
 }
 
-export default function MarketCard({ market }: MarketCardProps) {
-  const router = useRouter() // YENİ: Yönlendirme servisi
-  const { publicKey, connected, sendTransaction } = useWallet()
-  const { connection } = useConnection()
-  const { t } = useLanguage()
-  
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [voteType, setVoteType] = useState<'yes' | 'no'>('yes')
-  const [localYesVotes, setLocalYesVotes] = useState(market.yes_count)
-  const [localNoVotes, setLocalNoVotes] = useState(market.no_count)
-  const [localPool, setLocalPool] = useState(market.total_pool)
-  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [hasVoted, setHasVoted] = useState(false)
-
-  useEffect(() => {
-    async function checkIfVoted() {
-      if (!connected || !publicKey) {
-        setHasVoted(false)
-        return
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('votes')
-          .select('*')
-          .eq('market_id', market.id)
-          .eq('user_wallet', publicKey.toBase58())
-          .single()
-
-        if (data && !error) {
-          setHasVoted(true)
-        } else {
-          setHasVoted(false)
-        }
-      } catch (err) {
-        setHasVoted(false)
-      }
-    }
-
-    checkIfVoted()
-  }, [connected, publicKey, market.id])
-
-  const totalVotes = localYesVotes + localNoVotes
-  const localParticipants = totalVotes
-  
-  const yesPercentage = totalVotes > 0 ? (localYesVotes / totalVotes) * 100 : 50
-  const noPercentage = totalVotes > 0 ? (localNoVotes / totalVotes) * 100 : 50
-
-  // Karta tıklandığında çalışacak fonksiyon
-  const handleCardClick = () => {
-    router.push(`/market/${market.id}`)
-  }
-
-  const handleVoteClick = (type: 'yes' | 'no', e: React.MouseEvent) => {
-    e.stopPropagation() // Kartın tıklanmasını engelle (Sadece butona basılmış olsun)
-    
-    if (!connected || !publicKey) {
-      setNotification({
-        type: 'error',
-        message: t('connectWalletFirst')
-      })
-      setTimeout(() => setNotification(null), 3000)
-      return
-    }
-    setVoteType(type)
-    setIsModalOpen(true)
-  }
-
-  const handleVote = async (vote: Vote) => {
-    if (!connected || !publicKey) {
-      setNotification({ type: 'error', message: t('walletNotConnected') })
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      const walletAddress = publicKey.toBase58()
-
-      // ... (Mevcut oy verme mantığı aynen korundu) ...
-      // Kodun okunabilirliği için buradaki uzun mantık aynı kalıyor
-      
-      const lamports = Math.floor(vote.amount * LAMPORTS_PER_SOL)
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: TREASURY_WALLET_PUBLIC_KEY,
-          lamports: lamports,
-        })
-      )
-      const signature = await sendTransaction(transaction, connection)
-      await connection.confirmTransaction(signature, 'confirmed')
-
-      const { error: voteError } = await supabase.from('votes').insert({
-        market_id: market.id,
-        user_wallet: walletAddress,
-        vote_direction: vote.type,
-        amount_sol: vote.amount,
-        transaction_signature: signature
-      })
-      if (voteError) throw voteError
-
-      const updateData: any = { total_pool: market.total_pool + vote.amount }
-      if (vote.type === 'yes') updateData.yes_count = market.yes_count + 1
-      else updateData.no_count = market.no_count + 1
-
-      await supabase.from('markets').update(updateData).eq('id', market.id)
-
-      if (vote.type === 'yes') setLocalYesVotes(prev => prev + 1)
-      else setLocalNoVotes(prev => prev + 1)
-      
-      setLocalPool(prev => prev + vote.amount)
-      setHasVoted(true)
-      setNotification({ type: 'success', message: t('voteSuccessful') })
-      setTimeout(() => setNotification(null), 3000)
-      setIsModalOpen(false)
-
-    } catch (error: any) {
-      console.error('Error:', error)
-      setNotification({ type: 'error', message: t('transactionFailed') })
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+// ─── Simple View (Yes/No) ─────────────────────────────────────────────────────
+function SimpleView({ market }: { market: Market }) {
+  const opt     = market.options?.[0]
+  const yesPool = opt ? Number(opt.yes_pool || 0) : (market.yes_count || 0)
+  const noPool  = opt ? Number(opt.no_pool  || 0) : (market.no_count  || 0)
+  const total   = yesPool + noPool
+  const yesPct  = total > 0 ? Math.round((yesPool / total) * 100) : 50
+  const noPct   = 100 - yesPct
 
   return (
-    <>
-      {/* DÜZELTME: <Link> kaldırıldı. 
-         Yerine onClick event'i olan bir div eklendi.
-      */}
-      <div 
-        onClick={handleCardClick}
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl dark:shadow-gray-900/30 transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700 relative h-full flex flex-col cursor-pointer group"
+    <div className="grid grid-cols-2 gap-2">
+      <button
+        onClick={(e) => e.stopPropagation()}
+        className="flex justify-between items-center px-3 py-2 rounded-lg bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 font-bold hover:opacity-80 transition-opacity"
       >
-        
-        {notification && (
-          <div className={`absolute top-0 left-0 right-0 z-10 p-3 flex items-center justify-center gap-2 ${
-            notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-          } text-white font-semibold text-sm rounded-t-2xl`}>
-            {notification.type === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
-            {notification.message}
+        <span>Yes</span>
+        <span>{yesPct}%</span>
+      </button>
+      <button
+        onClick={(e) => e.stopPropagation()}
+        className="flex justify-between items-center px-3 py-2 rounded-lg bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 font-bold hover:opacity-80 transition-opacity"
+      >
+        <span>No</span>
+        <span>{noPct}%</span>
+      </button>
+    </div>
+  )
+}
+
+// ─── Main MarketCard ──────────────────────────────────────────────────────────
+export default function MarketCard({ market }: MarketCardProps) {
+  const router = useRouter()
+
+  const options        = market.options || []
+  const isSimpleMarket = options.length <= 1
+  const displayOptions = options.slice(0, 2)
+  const hasMore        = options.length > 2
+
+  const totalPool = options.reduce(
+    (sum, opt) => sum + Number(opt.yes_pool || 0) + Number(opt.no_pool || 0), 0
+  ) || Number(market.total_pool || 0)
+  const totalVotes = (market.yes_count || 0) + (market.no_count || 0)
+
+  return (
+    <div
+      onClick={() => router.push(`/market/${market.id}`)}
+      className="flex flex-col justify-between p-5 rounded-xl bg-white dark:bg-[#181A20] border border-gray-200 dark:border-gray-800 hover:border-blue-500/50 transition-colors h-full min-h-[220px] cursor-pointer group"
+    >
+      {/* ── Title ── */}
+      <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-2 mb-4 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+        {market.title || market.question}
+      </h3>
+
+      {/* ── Voting area ── */}
+      <div className="flex-1 flex flex-col justify-end">
+        {isSimpleMarket ? (
+          <SimpleView market={market} />
+        ) : (
+          <div className="space-y-2">
+            {displayOptions.map((opt) => {
+              const totalPool  = Number(opt.yes_pool || 0) + Number(opt.no_pool || 0)
+              const yesPercent = totalPool > 0 ? Math.round((Number(opt.yes_pool) / totalPool) * 100) : 50
+              
+              return (
+                <div key={opt.id} className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate pr-3 flex-1">
+                    {opt.title}
+                  </span>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    className="shrink-0 bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 font-bold px-3 py-2 rounded-lg hover:opacity-80 transition-opacity"
+                  >
+                    {yesPercent}%
+                  </button>
+                </div>
+              )
+            })}
+            {hasMore && (
+              <p className="text-sm text-gray-400 mt-2">
+                +{options.length - 2} more options (Click to view)
+              </p>
+            )}
           </div>
         )}
 
-        {market.outcome && (
-          <div className={`absolute top-3 right-3 z-10 px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm ${
-            market.outcome === 'YES' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-          }`}>
-            {t('resolved')}
-          </div>
-        )}
-        
-        <div className="p-6 flex-1 flex flex-col">
-          <div className="flex items-start justify-between mb-4">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white flex-1 pr-4 group-hover:text-blue-600 transition">
-              {market.question}
-            </h3>
-          </div>
-
-          {/* Progress Bars */}
-          <div className="mb-6">
-            <div className="flex justify-between text-sm font-semibold mb-2">
-              <span className="text-green-600">YES {yesPercentage.toFixed(1)}%</span>
-              <span className="text-red-600">NO {noPercentage.toFixed(1)}%</span>
-            </div>
-            <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex">
-              <div className="bg-green-500 transition-all duration-500" style={{ width: `${yesPercentage}%` }} />
-              <div className="bg-red-500 transition-all duration-500" style={{ width: `${noPercentage}%` }} />
-            </div>
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-              <span>{localYesVotes} {t('votes')}</span>
-              <span>{localNoVotes} {t('votes')}</span>
-            </div>
-          </div>
-
-          {/* Butonlar */}
-          {market.outcome ? (
-            <div className={`border-2 font-bold py-4 rounded-lg text-center mb-6 ${
-              market.outcome === 'YES'
-                ? 'bg-green-100 border-green-200 text-green-800 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
-                : 'bg-red-100 border-red-200 text-red-800 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
-            }`}>
-              {market.outcome} {t('won')}
-            </div>
-          ) : hasVoted ? (
-            <div className="bg-green-50 dark:bg-green-900/30 border-2 border-green-200 dark:border-green-700 text-green-700 dark:text-green-400 font-bold py-4 rounded-lg text-center mb-6">
-              {t('youVoted')}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <button
-                onClick={(e) => handleVoteClick('yes', e)}
-                className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition-colors shadow-md z-20 relative"
-              >
-                {t('yes')}
-              </button>
-              <button
-                onClick={(e) => handleVoteClick('no', e)}
-                className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg transition-colors shadow-md z-20 relative"
-              >
-                {t('no')}
-              </button>
-            </div>
-          )}
-
-          {/* Alt Bilgiler — mt-auto ile kartın altına yapışır */}
-          <div className="mt-auto">
-            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                <Users size={16} className="mr-2 text-blue-500" />
-                <span className="font-semibold">{localParticipants}</span>
-                <span className="ml-1">{t('participants')}</span>
-              </div>
-              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                <TrendingUp size={16} className="mr-2 text-blue-500" />
-                <span className="font-semibold">{localPool.toFixed(2)}</span>
-                <span className="ml-1">SOL</span>
-              </div>
-            </div>
-
-            <a
-              href="https://pump.fun/coin/8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center justify-center bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 rounded-lg transition-all shadow-md z-20 relative"
-            >
-              <span className="mr-2">💊</span>
-              {t('tradeOnPumpFun')}
-              <ExternalLink size={16} className="ml-2" />
-            </a>
-          </div>
+        {/* ── Footer ── */}
+        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800/80 pt-3 mt-3">
+          <span className="flex items-center gap-1">
+            <TrendingUp size={12} />
+            {totalPool.toFixed(1)} SOL
+          </span>
+          <span className="flex items-center gap-1">
+            <Users size={12} />
+            {totalVotes}
+          </span>
         </div>
       </div>
-
-      <VotingModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onVote={handleVote}
-        referendumTitle={market.question}
-        voteType={voteType}
-        isSubmitting={isSubmitting}
-      />
-    </>
+    </div>
   )
 }

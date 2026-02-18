@@ -1,6 +1,16 @@
+export interface MarketOption {
+  id: string
+  market_id: string
+  title: string
+  yes_pool: number
+  no_pool: number
+  bid_price?: string | null
+}
+
 export interface Market {
   id: string
-  question: string
+  title: string
+  question?: string
   description?: string
   pump_fun_link?: string
   yes_count: number
@@ -11,6 +21,7 @@ export interface Market {
   image_url?: string
   outcome?: string | null
   category?: string
+  options?: MarketOption[]
 }
 
 export interface Referendum {

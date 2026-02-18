@@ -13,7 +13,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { data: market } = await supabase
     .from('markets')
-    .select('question, description, image_url')
+    .select('title, question, description, image_url')
     .eq('id', params.id)
     .single();
 
@@ -29,7 +29,7 @@ export async function generateMetadata(
     };
   }
 
-  const title = `${market.question} | Referandium`;
+  const title = `${market.title || market.question || 'Market'} | Referandium`;
   const description = market.description || "Don't just predict the future, prescribe it. Join the decentralized policy prescription market on Solana.";
 
   const imageUrl = market.image_url;

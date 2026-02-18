@@ -52,7 +52,7 @@ export default function MarketsPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from('markets')
-        .select('*')
+        .select('*, options:market_options(*)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -66,7 +66,9 @@ export default function MarketsPage() {
 
   // Arama + Kategori Filtresi
   const filteredMarkets = markets.filter(market => {
-    const matchesSearch = market.question.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+      (market.title || market.question || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (market.description || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || market.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -151,7 +153,7 @@ export default function MarketsPage() {
             <p className="text-gray-500 dark:text-gray-400">{t('loadingMarkets')}</p>
           </div>
         ) : filteredMarkets.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredMarkets.map((market) => (
               <MarketCard key={market.id} market={market} />
             ))}

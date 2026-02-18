@@ -11,14 +11,28 @@ export default function AppWalletProvider({ children }: { children: React.ReactN
 
   // Suppress MetaMask/Ethereum errors globally (browser extension auto-detection)
   useEffect(() => {
-    const handler = (event: PromiseRejectionEvent) => {
-      const msg = (event?.reason?.message || '').toLowerCase();
-      if (msg.includes('metamask') || msg.includes('ethereum') || msg.includes('eth_')) {
-        event.preventDefault();
-      }
+    const isEthError = (str: string) => {
+      const lower = str.toLowerCase();
+      return lower.includes('metamask') || lower.includes('ethereum') || lower.includes('eth_') || lower.includes('eip-');
     };
-    window.addEventListener('unhandledrejection', handler);
-    return () => window.removeEventListener('unhandledrejection', handler);
+
+    const rejectionHandler = (event: PromiseRejectionEvent) => {
+      const reason = event?.reason;
+      const msg = reason?.message || reason?.toString?.() || '';
+      if (isEthError(msg)) event.preventDefault();
+    };
+
+    const errorHandler = (event: ErrorEvent) => {
+      const msg = event?.message || '';
+      if (isEthError(msg)) event.preventDefault();
+    };
+
+    window.addEventListener('unhandledrejection', rejectionHandler);
+    window.addEventListener('error', errorHandler);
+    return () => {
+      window.removeEventListener('unhandledrejection', rejectionHandler);
+      window.removeEventListener('error', errorHandler);
+    };
   }, []);
 
   const wallets = useMemo(

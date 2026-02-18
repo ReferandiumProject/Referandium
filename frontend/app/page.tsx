@@ -12,9 +12,9 @@ const supabase = createClient(
 async function getMarkets() {
   const { data, error } = await supabase
     .from('markets')
-    .select('*')
+    .select('*, options:market_options(*)')
     .order('created_at', { ascending: false })
-    .limit(3); // Sadece son 6 piyasayı getir
+    .limit(3);
 
   if (error) {
     console.error('Error loading markets:', error);

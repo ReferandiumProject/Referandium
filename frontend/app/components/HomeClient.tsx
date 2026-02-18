@@ -19,6 +19,7 @@ export default function HomeClient({ markets }: HomeClientProps) {
   const { user } = useUser();
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(0);
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,8 +174,44 @@ export default function HomeClient({ markets }: HomeClientProps) {
                 </a>
               </div>
 
+              {/* Blockquote */}
+              <blockquote className="mt-10 pl-4 border-l-4 border-blue-500 dark:border-purple-500">
+                <p className="text-base italic text-gray-500 dark:text-gray-400 leading-relaxed">
+                  &ldquo;The best way to predict the future is to make it.&rdquo;
+                </p>
+                <cite className="block mt-1.5 text-sm not-italic font-medium text-gray-400 dark:text-gray-500">
+                  — Peter Drucker
+                </cite>
+              </blockquote>
+
+              {/* Interactive Box */}
+              <div className="mt-5 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed flex flex-wrap items-center gap-1.5">
+                  <span>The best way to predict the future is to</span>
+                  {['Make', 'Create', 'Invent'].map((word) => (
+                    <button
+                      key={word}
+                      onClick={() => setSelectedWord(word)}
+                      className={`px-3 py-1 text-sm font-medium rounded-full border transition-all duration-200 ${
+                        selectedWord === word
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200/50 dark:shadow-blue-900/50 scale-105'
+                          : 'bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-500'
+                      }`}
+                    >
+                      {word}
+                    </button>
+                  ))}
+                  <span>it.</span>
+                </p>
+                {selectedWord && (
+                  <p className="mt-2.5 text-xs text-blue-600 dark:text-blue-400 font-medium animate-fade-in">
+                    You chose to <span className="font-bold">{selectedWord.toLowerCase()}</span> the future. That&apos;s the Referandium spirit. ✨
+                  </p>
+                )}
+              </div>
+
               {/* İstatistikler */}
-              <div className="grid grid-cols-3 gap-6 mt-14 pt-8 border-t border-gray-200/60 dark:border-gray-700/60">
+              <div className="grid grid-cols-3 gap-6 mt-10 pt-8 border-t border-gray-200/60 dark:border-gray-700/60">
                 <div>
                   <p className="text-3xl font-bold text-gray-900 dark:text-white">1.2K+</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('policyShapers')}</p>
@@ -246,7 +283,7 @@ export default function HomeClient({ markets }: HomeClientProps) {
         </div>
 
         {markets.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {markets.map((market: any) => (
               <MarketCard key={market.id} market={market} />
             ))}
