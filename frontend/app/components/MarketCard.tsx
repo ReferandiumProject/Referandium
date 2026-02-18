@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Users, TrendingUp } from 'lucide-react'
+import { Users, TrendingUp, Zap } from 'lucide-react'
 import { Market } from '../types'
 
 interface MarketCardProps {
@@ -21,14 +21,14 @@ function SimpleView({ market }: { market: Market }) {
     <div className="grid grid-cols-2 gap-2">
       <button
         onClick={(e) => e.stopPropagation()}
-        className="flex justify-between items-center px-3 py-2 rounded-lg bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 font-bold hover:opacity-80 transition-opacity"
+        className="flex justify-between items-center px-4 py-3 rounded-xl bg-[#00A859]/10 border border-[#00A859]/30 text-[#00A859] hover:bg-[#00A859] hover:text-white transition-colors font-bold text-[15px] cursor-pointer"
       >
         <span>Yes</span>
         <span>{yesPct}%</span>
       </button>
       <button
         onClick={(e) => e.stopPropagation()}
-        className="flex justify-between items-center px-3 py-2 rounded-lg bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 font-bold hover:opacity-80 transition-opacity"
+        className="flex justify-between items-center px-4 py-3 rounded-xl bg-[#E02424]/10 border border-[#E02424]/30 text-[#E02424] hover:bg-[#E02424] hover:text-white transition-colors font-bold text-[15px] cursor-pointer"
       >
         <span>No</span>
         <span>{noPct}%</span>
@@ -54,12 +54,17 @@ export default function MarketCard({ market }: MarketCardProps) {
   return (
     <div
       onClick={() => router.push(`/market/${market.id}`)}
-      className="flex flex-col justify-between p-5 rounded-xl bg-white dark:bg-[#181A20] border border-gray-200 dark:border-gray-800 hover:border-blue-500/50 transition-colors h-full min-h-[220px] cursor-pointer group"
+      className="bg-white dark:bg-[#1A1C24] border-2 border-gray-100 dark:border-gray-800 hover:border-blue-500/50 dark:hover:border-blue-500/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl rounded-2xl flex flex-col justify-between p-5 min-h-[240px] cursor-pointer group"
     >
-      {/* ── Title ── */}
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-2 mb-4 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-        {market.title || market.question}
-      </h3>
+      {/* ── Icon + Title ── */}
+      <div className="flex gap-3 items-start mb-4">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-lg flex-shrink-0 shadow-md">
+          <Zap size={20} />
+        </div>
+        <h3 className="text-[17px] font-bold text-gray-900 dark:text-white leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+          {market.title || market.question}
+        </h3>
+      </div>
 
       {/* ── Voting area ── */}
       <div className="flex-1 flex flex-col justify-end">
@@ -73,12 +78,12 @@ export default function MarketCard({ market }: MarketCardProps) {
               
               return (
                 <div key={opt.id} className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate pr-3 flex-1">
+                  <span className="font-semibold text-gray-800 dark:text-gray-200 text-[15px] truncate pr-3 flex-1">
                     {opt.title}
                   </span>
                   <button
                     onClick={(e) => e.stopPropagation()}
-                    className="shrink-0 bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 font-bold px-3 py-2 rounded-lg hover:opacity-80 transition-opacity"
+                    className="shrink-0 bg-blue-600 text-white font-bold text-[14px] px-3 py-1.5 rounded-lg shadow-sm border border-blue-700 hover:bg-blue-700 transition-colors"
                   >
                     {yesPercent}%
                   </button>
@@ -86,21 +91,24 @@ export default function MarketCard({ market }: MarketCardProps) {
               )
             })}
             {hasMore && (
-              <p className="text-sm text-gray-400 mt-2">
-                +{options.length - 2} more options (Click to view)
-              </p>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="text-sm font-semibold text-blue-500 hover:text-blue-600 dark:text-blue-400 mt-2 inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-lg w-full justify-center transition-colors"
+              >
+                +{options.length - 2} more options
+              </button>
             )}
           </div>
         )}
 
         {/* ── Footer ── */}
-        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800/80 pt-3 mt-3">
-          <span className="flex items-center gap-1">
-            <TrendingUp size={12} />
+        <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-100 dark:border-gray-800 flex justify-between items-center">
+          <span className="flex items-center gap-1 text-sm font-bold text-gray-500 dark:text-gray-400">
+            <TrendingUp size={13} />
             {totalPool.toFixed(1)} SOL
           </span>
-          <span className="flex items-center gap-1">
-            <Users size={12} />
+          <span className="flex items-center gap-1 text-sm font-bold text-gray-500 dark:text-gray-400">
+            <Users size={13} />
             {totalVotes}
           </span>
         </div>

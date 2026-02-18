@@ -25,6 +25,7 @@ export default function MarketDetailClient() {
   const [market, setMarket] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'yes' | 'no'>('yes');
+  const [selectedOption, setSelectedOption] = useState<any>(null);
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
@@ -50,11 +51,16 @@ export default function MarketDetailClient() {
     if (!id) return;
     const { data, error } = await supabase
       .from('markets')
-      .select('*')
+      .select('*, options:market_options(*)')
       .eq('id', id)
       .single();
     
-    if (data) setMarket(data);
+    if (data) {
+      setMarket(data);
+      if (data.options && data.options.length > 0) {
+        setSelectedOption(data.options[0]);
+      }
+    }
     setLoading(false);
   };
 
@@ -157,13 +163,19 @@ export default function MarketDetailClient() {
       const signature = await sendTransaction(transaction, connection);
       await connection.confirmTransaction(signature, 'confirmed');
 
-      const { error: voteError } = await supabase.from('votes').insert({
+      const voteData: any = {
         market_id: market.id,
         user_wallet: publicKey.toBase58(),
         vote_direction: selectedTab,
         amount_sol: voteAmount,
         transaction_signature: signature
-      });
+      };
+      
+      if (selectedOption) {
+        voteData.option_id = selectedOption.id;
+      }
+      
+      const { error: voteError } = await supabase.from('votes').insert(voteData);
       if (voteError) throw voteError;
 
       const updateData: any = { total_pool: market.total_pool + voteAmount };
@@ -237,6 +249,47 @@ export default function MarketDetailClient() {
                 </div>
               </div>
             </div>
+
+            {/* Market Options (if multi-option) */}
+            {market.options && market.options.length > 1 && (
+              <div className="bg-white dark:bg-[#181A20] rounded-2xl border border-gray-200 dark:border-gray-800">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Market Options</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Select an option to prescribe</p>
+                </div>
+                <div>
+                  {market.options.map((option: any) => {
+                    const isSelected = selectedOption?.id === option.id;
+                    const totalPool = Number(option.yes_pool || 0) + Number(option.no_pool || 0);
+                    const yesPercent = totalPool > 0 ? Math.round((Number(option.yes_pool) / totalPool) * 100) : 50;
+                    
+                    return (
+                      <div
+                        key={option.id}
+                        onClick={() => setSelectedOption(option)}
+                        className={`flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800 last:border-0 cursor-pointer transition-colors ${
+                          isSelected
+                            ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500'
+                            : 'hover:bg-gray-50 dark:hover:bg-[#1A1C24]'
+                        }`}
+                      >
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 dark:text-white">{option.title}</h3>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-bold text-gray-500 dark:text-gray-400">
+                            {yesPercent}% Yes
+                          </span>
+                          {isSelected && (
+                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Comments Section */}
             <div className="bg-white dark:bg-[#181A20] rounded-2xl border border-gray-200 dark:border-gray-800 mt-8 border-t pt-6">
@@ -333,7 +386,16 @@ export default function MarketDetailClient() {
                 </div>
               ) : (
                 <>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Place Your Bet</h3>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                    {selectedOption ? (
+                      <>
+                        <span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">Prescribing:</span>
+                        {selectedOption.title}
+                      </>
+                    ) : (
+                      'Prescribe Policy'
+                    )}
+                  </h3>
                   
                   {/* YES / NO Tabs */}
                   <div className="grid grid-cols-2 gap-2 mb-6">
@@ -390,12 +452,12 @@ export default function MarketDetailClient() {
                         <Loader2 size={20} className="animate-spin" /> Submitting...
                       </span>
                     ) : (
-                      `Submit ${selectedTab.toUpperCase()} Vote`
+                      `Signal ${selectedTab.toUpperCase()}`
                     )}
                   </button>
 
                   <p className="text-xs text-gray-400 text-center mt-4">
-                    {!connected && 'Connect wallet to vote'}
+                    {!connected && 'Connect wallet to signal'}
                   </p>
                 </>
               )}

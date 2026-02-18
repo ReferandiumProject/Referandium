@@ -104,7 +104,7 @@ export default function HomeClient({ markets }: HomeClientProps) {
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob" />
         <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000" />
 
-        <div className="max-w-7xl mx-auto px-4 py-20 sm:px-6 lg:px-8 lg:py-32">
+        <div className="max-w-7xl mx-auto px-4 pt-12 pb-20 sm:px-6 lg:px-8 lg:pt-16 lg:pb-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
             {/* SOL SÜTUN: Video */}
@@ -143,7 +143,7 @@ export default function HomeClient({ markets }: HomeClientProps) {
             </div>
 
             {/* SAĞ SÜTUN: İçerik */}
-            <div className="order-1 lg:order-2 text-left">
+            <div className="order-1 lg:order-2 text-left mt-0 pt-0">
               <span className="inline-block bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-xs font-bold px-3 py-1 rounded-full mb-6 uppercase tracking-wider">
                 {t('liveBadge')}
               </span>
