@@ -4,23 +4,19 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
-import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { SystemProgram, Transaction, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { ArrowLeft, CheckCircle, XCircle, MessageSquare, Send, Loader2, Trash2, TrendingUp } from 'lucide-react';
-import ThemeSwitch from '@/app/components/ThemeSwitch';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { ArrowLeft, CheckCircle, XCircle, MessageSquare, Send, Loader2, Trash2 } from 'lucide-react';
+import MarketChart from '@/app/components/MarketChart';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-const TREASURY_WALLET_PUBLIC_KEY = new PublicKey('PanbgtcTiZ2HasCT9CC94nUBwUx55uH8YDmZk6587da');
 const ADMIN_WALLET = 'PanbgtcTiZ2HasCT9CC94nUBwUx55uH8YDmZk6587da';
 
 export default function MarketDetailClient() {
   const { id } = useParams();
-  const { connection } = useConnection();
-  const { publicKey, sendTransaction, connected } = useWallet();
+  const { publicKey, connected } = useWallet();
 
   const [market, setMarket] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -29,16 +25,21 @@ export default function MarketDetailClient() {
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
+  const [lastVoteDirection, setLastVoteDirection] = useState<'yes' | 'no'>('yes');
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [commentText, setCommentText] = useState('');
   const [isPostingComment, setIsPostingComment] = useState(false);
+  const [chartRefreshKey, setChartRefreshKey] = useState(0);
 
   // Veri Çekme
   useEffect(() => {
     fetchMarketData();
     fetchComments();
   }, [id]);
+
+  // Detect market type
+  const isBinaryMarket = !market?.options || market.options.length === 0;
 
   // Kullanıcı oy vermiş mi kontrolü
   useEffect(() => {
@@ -136,12 +137,14 @@ export default function MarketDetailClient() {
   };
 
   const handleSubmitVote = async () => {
+    // Validation: Wallet must be connected
     if (!connected || !publicKey) {
-      setNotification({ type: 'error', message: 'Please connect your wallet first!' });
+      setNotification({ type: 'error', message: 'Please connect your Solana wallet first!' });
       setTimeout(() => setNotification(null), 3000);
       return;
     }
 
+    // Validation: Amount must be valid
     const voteAmount = parseFloat(amount);
     if (!voteAmount || voteAmount <= 0) {
       setNotification({ type: 'error', message: 'Please enter a valid amount!' });
@@ -151,50 +154,53 @@ export default function MarketDetailClient() {
 
     setIsSubmitting(true);
     try {
-      const lamports = Math.floor(voteAmount * LAMPORTS_PER_SOL);
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: TREASURY_WALLET_PUBLIC_KEY,
-          lamports: lamports,
-        })
-      );
-      
-      const signature = await sendTransaction(transaction, connection);
-      await connection.confirmTransaction(signature, 'confirmed');
-
+      // Off-chain voting: Store signal directly in database (no blockchain transaction)
       const voteData: any = {
         market_id: market.id,
         user_wallet: publicKey.toBase58(),
         vote_direction: selectedTab,
         amount_sol: voteAmount,
-        transaction_signature: signature
+        transaction_signature: null // Off-chain: no on-chain tx for now
       };
       
+      // Include option_id for multi-option markets
       if (selectedOption) {
         voteData.option_id = selectedOption.id;
       }
       
+      // Insert vote into Supabase
       const { error: voteError } = await supabase.from('votes').insert(voteData);
-      if (voteError) throw voteError;
+      
+      if (voteError) {
+        // Better error messages for common issues
+        if (voteError.message.includes('duplicate key') || voteError.message.includes('unique')) {
+          throw new Error('You have already voted on this market.');
+        } else if (voteError.message.includes('violates foreign key')) {
+          throw new Error('Invalid market or option ID.');
+        } else if (voteError.message.includes('permission denied') || voteError.message.includes('policy')) {
+          throw new Error('Database permission error. Please check RLS policies.');
+        } else {
+          throw new Error(voteError.message || 'Failed to submit vote.');
+        }
+      }
 
-      const updateData: any = { total_pool: market.total_pool + voteAmount };
-      if (selectedTab === 'yes') updateData.yes_count = market.yes_count + 1;
-      else updateData.no_count = market.no_count + 1;
-
-      await supabase.from('markets').update(updateData).eq('id', market.id);
-
-      setNotification({ type: 'success', message: 'Vote submitted successfully! 🎉' });
+      // Success: Database triggers will automatically update market stats
+      setLastVoteDirection(selectedTab);
+      setNotification({ type: 'success', message: 'Signal submitted successfully! 🎉' });
       setHasVoted(true);
       setAmount('');
-      fetchMarketData();
+      
+      // Refresh market data and chart to show updated stats
+      await fetchMarketData();
+      setChartRefreshKey(prev => prev + 1);
 
     } catch (error: any) {
-      console.error(error);
-      setNotification({ type: 'error', message: 'Transaction failed.' });
+      console.error('Vote submission error:', error);
+      const errorMessage = error.message || 'Failed to submit signal. Please try again.';
+      setNotification({ type: 'error', message: errorMessage });
     } finally {
       setIsSubmitting(false);
-      setTimeout(() => setNotification(null), 3000);
+      setTimeout(() => setNotification(null), 4000);
     }
   };
 
@@ -218,17 +224,11 @@ export default function MarketDetailClient() {
       )}
 
       <div className="max-w-7xl mx-auto">
-        {/* Top Bar */}
-        <div className="flex justify-between items-center mb-8">
-          <Link href="/" className="flex items-center text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition font-medium">
-            <ArrowLeft size={20} className="mr-2" />
-            Back to Markets
-          </Link>
-          <div className="flex items-center gap-3">
-            <ThemeSwitch />
-            <WalletMultiButton className="!bg-blue-600 hover:!bg-blue-700 !rounded-xl" />
-          </div>
-        </div>
+        {/* Back Link */}
+        <Link href="/markets" className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-6 transition">
+          <ArrowLeft size={16} />
+          Back to Markets
+        </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
@@ -241,17 +241,17 @@ export default function MarketDetailClient() {
                 {market.title || market.question}
               </h1>
               
-              {/* Chart Placeholder */}
-              <div className="h-[350px] w-full bg-gray-50 dark:bg-[#13141B] border border-gray-200 dark:border-gray-800 rounded-2xl flex items-center justify-center text-gray-400">
-                <div className="text-center">
-                  <TrendingUp size={48} className="mx-auto mb-3 opacity-40" />
-                  <p className="font-medium">Voting Trend Chart Placeholder</p>
-                </div>
-              </div>
+              {/* Chart */}
+              <MarketChart 
+                key={chartRefreshKey}
+                marketId={market.id}
+                isSimpleMarket={isBinaryMarket}
+                selectedOptionId={isBinaryMarket ? undefined : selectedOption?.id}
+              />
             </div>
 
-            {/* Market Options (if multi-option) */}
-            {market.options && market.options.length > 1 && (
+            {/* Market Options (Only show for Multiple Choice markets) */}
+            {!isBinaryMarket && market.options && market.options.length > 0 && (
               <div className="bg-white dark:bg-[#181A20] rounded-2xl border border-gray-200 dark:border-gray-800">
                 <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">Market Options</h2>
@@ -383,11 +383,31 @@ export default function MarketDetailClient() {
                   <CheckCircle size={48} className="mx-auto mb-4 text-green-600 dark:text-green-400" />
                   <h3 className="text-lg font-bold text-green-800 dark:text-green-400 mb-2">Vote Submitted!</h3>
                   <p className="text-sm text-green-600 dark:text-green-500">Thank you for participating.</p>
+                  
+                  {/* Share on X Button */}
+                  <a
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                      `I just prescribed ${lastVoteDirection.toUpperCase()} on "${market.title || market.question}" at Referandium! 💊 What's your take? 👇\n\n${typeof window !== 'undefined' ? window.location.href : ''}`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F1419] py-3 text-sm font-bold text-white transition-all hover:bg-[#272C30] hover:shadow-lg dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                  >
+                    <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                    Share your prescription
+                  </a>
                 </div>
               ) : (
                 <>
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-                    {selectedOption ? (
+                    {isBinaryMarket ? (
+                      <>
+                        <span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">Market:</span>
+                        {market.title || market.question}
+                      </>
+                    ) : selectedOption ? (
                       <>
                         <span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">Prescribing:</span>
                         {selectedOption.title}
@@ -472,6 +492,18 @@ export default function MarketDetailClient() {
                   <span className="text-gray-500 dark:text-gray-400">Total Votes</span>
                   <span className="font-semibold text-gray-900 dark:text-white">{totalVotes}</span>
                 </div>
+              </div>
+
+              {/* Pump.fun Trade Button */}
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
+                <a
+                  href="https://pump.fun/coin/8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex justify-center items-center gap-2 w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold transition-all duration-200 shadow-md hover:shadow-xl hover:-translate-y-0.5"
+                >
+                  💊 Trade Market on pump.fun
+                </a>
               </div>
             </div>
           </div>

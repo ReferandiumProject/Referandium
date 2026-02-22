@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import Link from 'next/link';
-import { ArrowLeft, Trash2, Plus, LayoutDashboard, Loader2, Save, Pencil, X, ImagePlus, Gavel } from 'lucide-react';
+import { Trash2, Plus, LayoutDashboard, Loader2, Save, Pencil, X, ImagePlus, Gavel } from 'lucide-react';
 import ThemeSwitch from '../components/ThemeSwitch';
 
 // Supabase Bağlantısı
@@ -33,6 +33,7 @@ export default function AdminPage() {
     end_date: '',
     category: '',
   });
+  const [marketType, setMarketType] = useState<'binary' | 'multiple'>('binary');
   const [options, setOptions] = useState([{ title: '', bid_price: '' }, { title: '', bid_price: '' }]);
   const [categoryError, setCategoryError] = useState(false);
 
@@ -71,10 +72,12 @@ export default function AdminPage() {
       end_date: market.end_date ? market.end_date.split('T')[0] : '',
       category: market.category || '',
     });
-    // Load existing options if available
+    // Detect market type based on options
     if (market.options && market.options.length > 0) {
+      setMarketType('multiple');
       setOptions(market.options.map((opt: any) => ({ title: opt.title || '', bid_price: opt.bid_price || '' })));
     } else {
+      setMarketType('binary');
       setOptions([{ title: '', bid_price: '' }, { title: '', bid_price: '' }]);
     }
     setCategoryError(false);
@@ -86,6 +89,7 @@ export default function AdminPage() {
     setImageFile(null);
     setImagePreview(null);
     setFormData({ title: '', description: '', image_url: '', end_date: '', category: '' });
+    setMarketType('binary');
     setOptions([{ title: '', bid_price: '' }, { title: '', bid_price: '' }]);
     setCategoryError(false);
   };
@@ -137,9 +141,9 @@ export default function AdminPage() {
         imageUrl = await uploadImage(imageFile);
       }
 
-      // Filter out empty options
+      // Filter out empty options (only for multiple choice markets)
       const validOptions = options.filter(opt => opt.title.trim() !== '');
-      if (validOptions.length < 2) {
+      if (marketType === 'multiple' && validOptions.length < 2) {
         alert('Please add at least 2 options with titles.');
         setIsSubmitting(false);
         return;
@@ -160,17 +164,21 @@ export default function AdminPage() {
 
         if (error) throw error;
 
-        // Replace options: delete old ones, insert new ones
+        // Delete old options first
         await supabase.from('market_options').delete().eq('market_id', editingId);
-        const optionsData = validOptions.map(opt => ({
-          market_id: editingId,
-          title: opt.title.trim(),
-          bid_price: opt.bid_price.trim() || null,
-          yes_pool: 0,
-          no_pool: 0,
-        }));
-        const { error: optError } = await supabase.from('market_options').insert(optionsData);
-        if (optError) throw optError;
+        
+        // Insert new options only for multiple choice markets
+        if (marketType === 'multiple') {
+          const optionsData = validOptions.map(opt => ({
+            market_id: editingId,
+            title: opt.title.trim(),
+            bid_price: opt.bid_price.trim() || null,
+            yes_pool: 0,
+            no_pool: 0,
+          }));
+          const { error: optError } = await supabase.from('market_options').insert(optionsData);
+          if (optError) throw optError;
+        }
 
         alert('Market updated successfully! ✅');
       } else {
@@ -186,16 +194,18 @@ export default function AdminPage() {
 
         if (marketError) throw marketError;
 
-        // Step 2: Insert options
-        const optionsData = validOptions.map(opt => ({
-          market_id: market.id,
-          title: opt.title.trim(),
-          bid_price: opt.bid_price.trim() || null,
-          yes_pool: 0,
-          no_pool: 0,
-        }));
-        const { error: optError } = await supabase.from('market_options').insert(optionsData);
-        if (optError) throw optError;
+        // Step 2: Insert options (only for multiple choice markets)
+        if (marketType === 'multiple') {
+          const optionsData = validOptions.map(opt => ({
+            market_id: market.id,
+            title: opt.title.trim(),
+            bid_price: opt.bid_price.trim() || null,
+            yes_pool: 0,
+            no_pool: 0,
+          }));
+          const { error: optError } = await supabase.from('market_options').insert(optionsData);
+          if (optError) throw optError;
+        }
 
         alert('Market created successfully! 🚀');
       }
@@ -276,9 +286,6 @@ export default function AdminPage() {
           <div className="flex justify-center">
             <WalletMultiButton className="!bg-blue-600 !rounded-xl" />
           </div>
-          <Link href="/" className="mt-6 block text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-            ← Back to Home
-          </Link>
         </div>
       </div>
     );
@@ -292,9 +299,6 @@ export default function AdminPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
           <div className="flex items-center gap-3">
-            <Link href="/" className="p-2 bg-white dark:bg-gray-800 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition text-gray-600 dark:text-gray-300">
-              <ArrowLeft size={20} />
-            </Link>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <LayoutDashboard className="text-blue-600" />
               Admin Dashboard
@@ -402,9 +406,50 @@ export default function AdminPage() {
                   )}
                 </div>
 
-                {/* Dynamic Options Section */}
+                {/* Market Type Selector */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Options <span className="text-red-500">*</span> <span className="text-xs font-normal text-gray-400">(min 2)</span></label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Market Type <span className="text-red-500">*</span></label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setMarketType('binary')}
+                      className={`flex-1 p-3 rounded-xl border-2 transition-all text-sm font-semibold ${
+                        marketType === 'binary'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-lg mb-1">🎯</div>
+                        <div>Binary (Yes/No)</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMarketType('multiple')}
+                      className={`flex-1 p-3 rounded-xl border-2 transition-all text-sm font-semibold ${
+                        marketType === 'multiple'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-lg mb-1">📊</div>
+                        <div>Multiple Choice</div>
+                      </div>
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {marketType === 'binary' 
+                      ? 'Simple Yes/No question. No options needed.' 
+                      : 'Users choose from multiple options, then vote Yes/No on each.'}
+                  </p>
+                </div>
+
+                {/* Dynamic Options Section (Only for Multiple Choice) */}
+                {marketType === 'multiple' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Options <span className="text-red-500">*</span> <span className="text-xs font-normal text-gray-400">(min 2)</span></label>
                   <div className="space-y-2">
                     {options.map((opt, idx) => (
                       <div key={idx} className="flex items-center gap-2">
@@ -450,7 +495,8 @@ export default function AdminPage() {
                   >
                     <Plus size={14} /> Add Option
                   </button>
-                </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>

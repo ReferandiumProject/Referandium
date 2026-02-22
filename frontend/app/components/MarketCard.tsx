@@ -10,9 +10,10 @@ interface MarketCardProps {
 
 // ─── Simple View (Yes/No) ─────────────────────────────────────────────────────
 function SimpleView({ market }: { market: Market }) {
-  const opt     = market.options?.[0]
-  const yesPool = opt ? Number(opt.yes_pool || 0) : (market.yes_count || 0)
-  const noPool  = opt ? Number(opt.no_pool  || 0) : (market.no_count  || 0)
+  // For Binary markets (no options), use market-level stats directly
+  const isBinary = !market.options || market.options.length === 0
+  const yesPool = isBinary ? Number(market.yes_pool || 0) : Number(market.options?.[0]?.yes_pool || 0)
+  const noPool  = isBinary ? Number(market.no_pool || 0) : Number(market.options?.[0]?.no_pool || 0)
   const total   = yesPool + noPool
   const yesPct  = total > 0 ? Math.round((yesPool / total) * 100) : 50
   const noPct   = 100 - yesPct
@@ -100,6 +101,17 @@ export default function MarketCard({ market }: MarketCardProps) {
             )}
           </div>
         )}
+
+        {/* ── Pump.fun Trade Button ── */}
+        <a
+          href="https://pump.fun/coin/8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="flex justify-center items-center gap-2 w-full py-3 mt-3 mb-1 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-sm transition-all duration-200 shadow-md hover:shadow-xl hover:-translate-y-0.5"
+        >
+          💊 Trade on pump.fun
+        </a>
 
         {/* ── Footer ── */}
         <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-100 dark:border-gray-800 flex justify-between items-center">

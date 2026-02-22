@@ -3,19 +3,11 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { Search, Zap, Loader2, ArrowLeft } from 'lucide-react';
+import { Search, Zap, Loader2 } from 'lucide-react';
 import MarketCard from '../components/MarketCard';
 import Footer from '../components/Footer';
-import LanguageToggle from '../components/LanguageToggle';
-import ThemeSwitch from '../components/ThemeSwitch';
 import { useLanguage } from '../context/LanguageContext';
-import { useUser } from '../context/UserContext';
 import { TranslationKey } from '../utils/translations';
-import dynamic from 'next/dynamic';
-const WalletMultiButton = dynamic(
-  () => import('@solana/wallet-adapter-react-ui').then(mod => mod.WalletMultiButton),
-  { ssr: false }
-);
 
 // Supabase Bağlantısı
 const supabase = createClient(
@@ -34,7 +26,6 @@ const categoryKeys: Record<string, TranslationKey> = {
 
 export default function MarketsPage() {
   const { t } = useLanguage();
-  const { user } = useUser();
   const [markets, setMarkets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,33 +67,6 @@ export default function MarketsPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] font-sans transition-colors">
       
-      {/* NAVBAR */}
-      <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <Link href="/" className="flex items-center gap-2 font-bold text-xl text-gray-900 dark:text-white group">
-              <ArrowLeft className="text-gray-400 group-hover:text-blue-600 transition" size={20} />
-              <span>Referandium</span>
-            </Link>
-            <div className="flex items-center gap-3">
-               <ThemeSwitch />
-               <LanguageToggle />
-               <Link href="/profile" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-4 py-1.5 rounded-full transition flex items-center gap-2">
-                 {user ? (
-                   <>
-                     <img src={user.avatar_url || ''} alt={user.username} className="w-6 h-6 rounded-full bg-gray-200" />
-                     <span className="hidden sm:inline">{user.username}</span>
-                   </>
-                 ) : (
-                   t('myProfile')
-                 )}
-               </Link>
-               <WalletMultiButton className="!bg-gray-900 !h-10 !px-4 !text-sm !rounded-lg" />
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* İÇERİK */}
       <div className="max-w-7xl mx-auto px-4 py-12">
         

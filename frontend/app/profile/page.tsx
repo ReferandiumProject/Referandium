@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { supabase } from '@/lib/supabaseClient';
-import { User, History, Wallet, ArrowRight, ArrowLeft, Zap, BarChart3, Coins, Copy, Check, Save, Loader2 } from 'lucide-react';
+import { User, History, Wallet, ArrowRight, BarChart3, Coins, Copy, Check, Save, Loader2 } from 'lucide-react';
 import ThemeSwitch from '../components/ThemeSwitch';
 import { useUser } from '../context/UserContext';
 
@@ -117,8 +117,13 @@ export default function ProfilePage() {
     }
   };
 
+  // Calculate comprehensive user statistics
   const totalSpent = votes.reduce((acc, vote) => acc + (vote.amount_sol || 0), 0);
   const totalVotes = votes.length;
+  const yesVotes = votes.filter(v => v.vote_direction === 'yes').length;
+  const noVotes = votes.filter(v => v.vote_direction === 'no').length;
+  const uniqueMarkets = new Set(votes.map(v => v.market_id)).size;
+  const avgVoteAmount = totalVotes > 0 ? (totalSpent / totalVotes) : 0;
 
   if (!mounted) return null;
 
@@ -133,15 +138,6 @@ export default function ProfilePage() {
             </div>
             My Profile
           </h1>
-
-          <div className="hidden sm:flex items-center gap-2">
-            <Link href="/" className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white text-sm font-medium rounded-lg transition">
-              <ArrowLeft size={15} /> Home
-            </Link>
-            <Link href="/markets" className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white text-sm font-medium rounded-lg transition">
-              <Zap size={15} /> Markets
-            </Link>
-          </div>
 
           <div className="flex items-center gap-3">
             <ThemeSwitch />

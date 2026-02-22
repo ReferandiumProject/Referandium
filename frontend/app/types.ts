@@ -15,6 +15,8 @@ export interface Market {
   pump_fun_link?: string
   yes_count: number
   no_count: number
+  yes_pool?: number
+  no_pool?: number
   total_pool: number
   created_at?: string
   end_date?: string
