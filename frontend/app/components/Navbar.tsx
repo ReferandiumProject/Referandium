@@ -22,9 +22,12 @@ export default function Navbar() {
           </Link>
 
           {/* Center Links */}
-          <div className="hidden md:flex space-x-8">
+          <div className="hidden md:flex space-x-8 items-center">
             <Link href="/markets" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition">
               {t('markets')}
+            </Link>
+            <Link href="/gookies" className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-orange-500 dark:hover:text-orange-400 font-medium transition">
+              <span>🍪</span> Gookies
             </Link>
             <Link href="/admin" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition">
               {t('admin')}

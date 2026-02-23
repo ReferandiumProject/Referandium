@@ -16,6 +16,9 @@ const supabase = createClient(
 
 export default function AdminPage() {
   const { connected, publicKey } = useWallet();
+  const [activeTab, setActiveTab] = useState<'markets' | 'gookies'>('markets');
+  
+  // Market States
   const [markets, setMarkets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,7 +28,7 @@ export default function AdminPage() {
 
   const CATEGORIES = ['Crypto', 'Politics', 'Sports', 'Pop Culture', 'Business'];
 
-  // Form State
+  // Market Form State
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -37,10 +40,42 @@ export default function AdminPage() {
   const [options, setOptions] = useState([{ title: '', bid_price: '' }, { title: '', bid_price: '' }]);
   const [categoryError, setCategoryError] = useState(false);
 
-  // Verileri Çek
+  // Gookies States
+  const [gookies, setGookies] = useState<any[]>([]);
+  const [gookieFormData, setGookieFormData] = useState({
+    title: '',
+    description: '',
+    image_url: '',
+    end_date: '',
+    starting_bid: '0.01',
+  });
+  const [editingGookieId, setEditingGookieId] = useState<string | null>(null);
+
+  // Fetch Data
   useEffect(() => {
-    fetchMarkets();
-  }, []);
+    if (activeTab === 'markets') {
+      fetchMarkets();
+    } else {
+      fetchGookies();
+    }
+  }, [activeTab]);
+
+  const fetchGookies = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('gookies')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setGookies(data || []);
+    } catch (error) {
+      console.error('Error fetching gookies:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchMarkets = async () => {
     try {
@@ -92,6 +127,92 @@ export default function AdminPage() {
     setMarketType('binary');
     setOptions([{ title: '', bid_price: '' }, { title: '', bid_price: '' }]);
     setCategoryError(false);
+  };
+
+  // Gookie Form Functions
+  const handleEditGookie = (gookie: any) => {
+    setEditingGookieId(gookie.id);
+    setImageFile(null);
+    setImagePreview(gookie.image_url || null);
+    setGookieFormData({
+      title: gookie.title || '',
+      description: gookie.description || '',
+      image_url: gookie.image_url || '',
+      end_date: gookie.end_date ? gookie.end_date.split('T')[0] : '',
+      starting_bid: gookie.starting_bid?.toString() || '0.01',
+    });
+  };
+
+  const clearGookieForm = () => {
+    setEditingGookieId(null);
+    setImageFile(null);
+    setImagePreview(null);
+    setGookieFormData({ title: '', description: '', image_url: '', end_date: '', starting_bid: '0.01' });
+  };
+
+  const handleSubmitGookie = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!connected || !publicKey) {
+      alert("Please connect your wallet first!");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      let imageUrlToSave = gookieFormData.image_url;
+
+      if (imageFile) {
+        imageUrlToSave = await uploadImage(imageFile);
+      }
+
+      const gookieData = {
+        title: gookieFormData.title,
+        description: gookieFormData.description,
+        image_url: imageUrlToSave,
+        starting_bid: parseFloat(gookieFormData.starting_bid),
+        end_time: new Date(gookieFormData.end_date).toISOString(),
+        creator_wallet: publicKey.toBase58(),
+        status: 'active'
+      };
+
+      if (editingGookieId) {
+        const { error } = await supabase
+          .from('gookies')
+          .update(gookieData)
+          .eq('id', editingGookieId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('gookies')
+          .insert(gookieData);
+        if (error) throw error;
+      }
+
+      alert(`Gookie auction successfully ${editingGookieId ? 'updated' : 'created'}!`);
+      clearGookieForm();
+      fetchGookies();
+
+    } catch (error: any) {
+      console.error('Error submitting gookie:', error);
+      alert('Error: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteGookie = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this Gookie auction?')) return;
+    try {
+      setLoading(true);
+      const { error } = await supabase.from('gookies').delete().eq('id', id);
+      if (error) throw error;
+      fetchGookies();
+    } catch (error) {
+      console.error('Error deleting gookie:', error);
+      alert('Error deleting gookie');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Dosya seçildiğinde
@@ -310,7 +431,33 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Tab Navigation */}
+        <div className="flex gap-4 mb-8 border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setActiveTab('markets')}
+            className={`pb-4 px-2 text-lg font-bold transition-colors ${
+              activeTab === 'markets' 
+                ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+          >
+            Markets
+          </button>
+          <button
+            onClick={() => setActiveTab('gookies')}
+            className={`pb-4 px-2 text-lg font-bold transition-colors flex items-center gap-2 ${
+              activeTab === 'gookies' 
+                ? 'border-b-2 border-orange-500 text-orange-600 dark:text-orange-400' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+          >
+            <span>🍪</span> Gookies
+          </button>
+        </div>
+
+        {activeTab === 'markets' ? (
+          /* MARKETS TAB */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* SOL TARAF: Yeni Piyasa Formu */}
           <div className="lg:col-span-1">
@@ -611,6 +758,196 @@ export default function AdminPage() {
           </div>
 
         </div>
+        ) : (
+          /* GOOKIES TAB */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* LEFT: Create Gookie Form */}
+            <div className="lg:col-span-1">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 sticky top-6">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                  {editingGookieId ? (
+                    <><Pencil size={20} className="text-amber-600" /> Edit Gookie</>
+                  ) : (
+                    <><Plus size={20} className="text-orange-600" /> Create Gookie Auction</>
+                  )}
+                </h2>
+                
+                <form onSubmit={handleSubmitGookie} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g., Rare Gookie #001"
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      value={gookieFormData.title}
+                      onChange={(e) => setGookieFormData({ ...gookieFormData, title: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Auction details..."
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      value={gookieFormData.description}
+                      onChange={(e) => setGookieFormData({ ...gookieFormData, description: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image</label>
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 dark:file:bg-orange-900/30 dark:file:text-orange-400"
+                      />
+                      {imagePreview && (
+                        <div className="relative">
+                          <img src={imagePreview} alt="Preview" className="w-full h-32 object-cover rounded-xl border border-gray-200 dark:border-gray-600" />
+                          <button
+                            type="button"
+                            onClick={() => { setImageFile(null); setImagePreview(null); }}
+                            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      )}
+                      <input
+                        type="url"
+                        placeholder="Or paste image URL"
+                        className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                        value={gookieFormData.image_url}
+                        onChange={(e) => setGookieFormData({ ...gookieFormData, image_url: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Starting Bid (SOL)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      required
+                      placeholder="0.01"
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      value={gookieFormData.starting_bid}
+                      onChange={(e) => setGookieFormData({ ...gookieFormData, starting_bid: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                    <input
+                      type="date"
+                      required
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white dark:bg-gray-700 dark:text-white"
+                      value={gookieFormData.end_date}
+                      onChange={(e) => setGookieFormData({ ...gookieFormData, end_date: e.target.value })}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`w-full ${editingGookieId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-orange-600 hover:bg-orange-700'} text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-50`}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="animate-spin" size={20} /> {editingGookieId ? 'Updating...' : 'Creating...'}
+                      </>
+                    ) : (
+                      <>
+                        <Save size={20} /> {editingGookieId ? 'Update Gookie' : 'Create Auction'}
+                      </>
+                    )}
+                  </button>
+
+                  {editingGookieId && (
+                    <button
+                      type="button"
+                      onClick={clearGookieForm}
+                      className="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium py-3 rounded-xl transition flex items-center justify-center gap-2"
+                    >
+                      <X size={18} /> Cancel Editing
+                    </button>
+                  )}
+                </form>
+              </div>
+            </div>
+
+            {/* RIGHT: Gookies List */}
+            <div className="lg:col-span-2">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                    <span>🍪</span> Gookie Auctions
+                  </h2>
+                  <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold">
+                    {gookies.length} Total
+                  </span>
+                </div>
+
+                {gookies.length === 0 ? (
+                  <div className="p-10 text-center text-gray-400 dark:text-gray-500">
+                    No auctions found. Create one from the left panel.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {gookies.map((gookie) => (
+                      <div key={gookie.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition flex items-start gap-4">
+                        <img 
+                          src={gookie.image_url} 
+                          alt="gookie" 
+                          className="w-16 h-16 rounded-lg object-cover bg-gray-200 border border-gray-200"
+                          onError={(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/100'}
+                        />
+                        
+                        <div className="flex-1">
+                          <h3 className="font-bold text-gray-900 dark:text-white">{gookie.title}</h3>
+                          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            <span>📅 {new Date(gookie.end_time).toLocaleDateString()}</span>
+                            <span>💰 {gookie.current_highest_bid > 0 ? gookie.current_highest_bid : gookie.starting_bid} SOL</span>
+                            <span className={`px-2 py-0.5 rounded-full font-medium ${
+                              gookie.status === 'active' 
+                                ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' 
+                                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                            }`}>
+                              {gookie.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleEditGookie(gookie)}
+                          className={`p-2 rounded-lg transition ${editingGookieId === gookie.id ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-amber-600'}`}
+                          title="Edit Gookie"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteGookie(gookie.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition"
+                          title="Delete Gookie"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        )}
+
       </div>
     </div>
   );
