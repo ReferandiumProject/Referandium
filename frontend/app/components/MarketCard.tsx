@@ -10,13 +10,13 @@ interface MarketCardProps {
 
 // ─── Simple View (Yes/No) ─────────────────────────────────────────────────────
 function SimpleView({ market }: { market: Market }) {
-  // For Binary markets (no options), use market-level stats directly
+  // For Binary markets (no options), use market-level vote counts
   const isBinary = !market.options || market.options.length === 0
-  const yesPool = isBinary ? Number(market.yes_pool || 0) : Number(market.options?.[0]?.yes_pool || 0)
-  const noPool  = isBinary ? Number(market.no_pool || 0) : Number(market.options?.[0]?.no_pool || 0)
-  const total   = yesPool + noPool
-  const yesPct  = total > 0 ? Math.round((yesPool / total) * 100) : 50
-  const noPct   = 100 - yesPct
+  const yesCount = isBinary ? (market.yes_count || 0) : (market.options?.[0]?.yes_count || 0)
+  const noCount  = isBinary ? (market.no_count || 0) : (market.options?.[0]?.no_count || 0)
+  const totalVotes = yesCount + noCount
+  const yesPct  = totalVotes > 0 ? Math.round((yesCount / totalVotes) * 100) : 0
+  const noPct   = totalVotes > 0 ? Math.round((noCount / totalVotes) * 100) : 0
 
   return (
     <div className="grid grid-cols-2 gap-2">
@@ -74,8 +74,12 @@ export default function MarketCard({ market }: MarketCardProps) {
         ) : (
           <div className="space-y-2">
             {displayOptions.map((opt) => {
-              const totalPool  = Number(opt.yes_pool || 0) + Number(opt.no_pool || 0)
-              const yesPercent = totalPool > 0 ? Math.round((Number(opt.yes_pool) / totalPool) * 100) : 50
+              // Calculate total votes for this option
+              const optionYesCount = opt.yes_count || 0
+              const optionNoCount = opt.no_count || 0
+              const optionTotalVotes = optionYesCount + optionNoCount
+              // Calculate percentage based on vote count (not pool amount)
+              const yesPercent = optionTotalVotes > 0 ? Math.round((optionYesCount / optionTotalVotes) * 100) : 0
               
               return (
                 <div key={opt.id} className="flex justify-between items-center">

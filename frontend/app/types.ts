@@ -4,6 +4,8 @@ export interface MarketOption {
   title: string
   yes_pool: number
   no_pool: number
+  yes_count: number
+  no_count: number
   bid_price?: string | null
 }
 

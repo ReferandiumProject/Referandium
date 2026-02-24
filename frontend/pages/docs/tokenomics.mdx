@@ -1,0 +1,335 @@
+# Tokenomics
+
+## Overview
+
+Referandium operates on a **pure SOL economy** with a unique **refundable rental model** for Gookies. Unlike traditional NFT marketplaces or prediction markets, our system prioritizes **capital efficiency** and **sustainable revenue generation** through platform fees, not ownership sales.
+
+> 💰 **Core Principle**: Users don't buy assets—they rent management rights and get refunded.
+
+> ⚠️ **Development Status**: This tokenomics model describes the target system currently in active development. Smart contracts and commission distribution mechanisms are being built and tested on Solana testnet.
+
+---
+
+## SOL Flow Architecture
+
+### How SOL Moves Through the System
+
+#### 1. **Prescription Market Signals**
+```
+User → Signals YES/NO with SOL → Locked in market pool → Released at resolution
+```
+
+- Users signal future outcomes by locking SOL in markets
+- SOL remains in escrow until market closes
+- No platform fee on signaling (currently)
+- Pure consensus mechanism
+
+#### 2. **Gookie Rental System**
+```
+User → Bids SOL in auction → Escrowed in treasury → Market closes → Refund (minus fee)
+```
+
+**Example Flow:**
+1. User bids **10 SOL** for "Champions League 2026" Gookie
+2. SOL transferred to treasury wallet on-chain
+3. User manages market, attracts **200 SOL trading volume**
+4. Market closes successfully
+5. Platform takes **10% rental fee (1 SOL)**
+6. User earns **4% volume commission (8 SOL)**
+7. User receives: **9 SOL refund + 8 SOL commission = 17 SOL total**
+8. **Net profit: 7 SOL (70% ROI!)**
+
+> 🍪 **Gookie Economics**: This is a **rental**, not a sale. Your capital comes back—plus commission earnings!
+
+---
+
+## Revenue Model
+
+### Platform Fee Structure
+
+Referandium generates revenue through **two revenue streams**: rental fees and platform volume fees.
+
+#### Rental Fees
+
+| Fee Type | Rate | Applies To | When Charged |
+|----------|------|------------|--------------|
+| **Gookie Rental Fee** | 10% | Auction winners | At market close |
+| **Early Exit Penalty** | 25% | Renters who abandon | On early termination |
+| **Volume Incentive** | -2% discount | High-volume renters | Per successful close |
+
+#### Market Volume Fee Breakdown
+
+**Every signal (YES/NO vote) in a market generates a small platform fee. This fee is split between the platform and the Gookie renter (market manager).**
+
+| Stakeholder | Commission Rate | Description |
+|-------------|-----------------|-------------|
+| **Platform** | 2-3% | Platform operations, development, treasury |
+| **Gookie Renter** | 3-5% | Market manager commission (your profit!) |
+| **Total Market Fee** | 5-8% | Combined fee on trading volume |
+
+> 💰 **Key Insight**: As a Gookie renter, **you earn 3-5% of ALL trading volume** in your market. The more you promote, the more you earn!
+
+### Fee Breakdown Example
+
+**Scenario: User rents Gookie for 5 SOL**
+
+| Item | Amount (SOL) |
+|------|--------------|
+| Initial Bid | 5.00 |
+| Escrowed | 5.00 |
+| Platform Fee (10%) | -0.50 |
+| **Refund to User** | **4.50** |
+| **Platform Revenue** | **0.50** |
+
+> ⚠️ **Important**: Fees are only charged on **successful market completion**. If the market fails to launch or is canceled by admin, users receive a **100% refund**.
+
+---
+
+## Gookie Rental Economics
+
+### Why Rentals Work
+
+Traditional NFT auctions suffer from:
+- ❌ High capital requirements (permanent purchase)
+- ❌ Illiquid secondary markets
+- ❌ Zero utility after purchase
+
+Referandium's rental model solves this:
+- ✅ **Lower barrier to entry**: Rent for 1 SOL, get 0.9 SOL back
+- ✅ **Active utility period**: Manage and promote your market
+- ✅ **Predictable costs**: Fixed 10% fee, no surprises
+- ✅ **Capital efficiency**: Your SOL isn't permanently locked
+
+### Renter Incentives
+
+**What renters gain:**
+- Market management rights for themed questions
+- Branding opportunity (e.g., "Powered by @YourTwitter")
+- **3-5% commission on all market volume** 💰
+- Prestige and leaderboard ranking
+- Community engagement and followers
+
+**What renters pay:**
+- 10% platform fee on rental amount (refunded if market succeeds)
+- Opportunity cost during lock period
+- Time investment in market promotion
+
+> 💡 **Strategic Play**: Successful renters often **profit more from volume commission** than the rental fee costs. A market with 500 SOL volume earns you 15-25 SOL in commission alone!
+
+**ROI Examples:**
+
+| Rental Bid | Market Volume | Renter Commission (4%) | Rental Refund | Total Return | Net Profit | ROI |
+|------------|---------------|------------------------|---------------|--------------|------------|-----|
+| 5 SOL | 50 SOL | 2 SOL | 4.5 SOL | 6.5 SOL | 1.5 SOL | +30% |
+| 10 SOL | 200 SOL | 8 SOL | 9 SOL | 17 SOL | 7 SOL | +70% |
+| 20 SOL | 1000 SOL | 40 SOL | 18 SOL | 58 SOL | 38 SOL | +190% |
+
+---
+
+## Treasury Management
+
+### Treasury Wallet Functions
+
+The treasury wallet (`5vJggeRkrFSZBJw6rZvWNzuRbKTe4g44pQEwaBcyZVBP`) holds:
+
+1. **Escrowed Gookie rental deposits**
+2. **Platform fee accumulation**
+3. **Market signal pools** (future implementation)
+
+### Treasury Allocation
+
+Platform fees are distributed as follows:
+
+```
+Fee Revenue Distribution:
+├─ 50% Development & Operations
+├─ 25% Community Rewards Pool
+├─ 15% Marketing & Growth
+└─ 10% Emergency Reserve
+```
+
+**Transparency:**
+- All treasury transactions are on-chain and auditable
+- Monthly reports published to community
+- Multi-sig security (planned for Q2 2026)
+
+---
+
+## Economic Incentives
+
+### For Gookie Renters
+
+**Volume-based Discounts:**
+- Rent 1-3 Gookies: 10% fee
+- Rent 4-9 Gookies: 8% fee
+- Rent 10+ Gookies: 6% fee
+
+**Leaderboard Rewards:**
+- Top renters by volume earn special badges
+- Exclusive access to rare Gookie auctions
+- Featured placement on homepage
+
+### For Signal Providers
+
+**Early Signaling Advantage:**
+- First 100 signals in a market get 2x visibility
+- Early consensus formers earn reputation points
+- Historical accuracy tracking (future governance weight)
+
+**Volume Milestones:**
+- Signal 10+ SOL total: Bronze tier
+- Signal 50+ SOL total: Silver tier
+- Signal 200+ SOL total: Gold tier (future governance access)
+
+---
+
+## Refund Mechanics
+
+### Standard Refund Flow
+
+```
+Market Close → Fee Calculation → Automatic Refund → Wallet Credit (< 5 seconds)
+```
+
+**Refund Triggers:**
+1. Market reaches end date
+2. All signals are resolved
+3. Admin verifies outcome (if required)
+4. Smart contract executes refund
+
+### Refund Scenarios
+
+| Scenario | User Deposit | Fee | Refund | Timeline |
+|----------|--------------|-----|--------|----------|
+| **Successful Market** | 10 SOL | 10% (1 SOL) | 9 SOL | Instant |
+| **Early Exit (by user)** | 10 SOL | 25% (2.5 SOL) | 7.5 SOL | Instant |
+| **Admin Cancellation** | 10 SOL | 0% (0 SOL) | 10 SOL | Instant |
+| **Market Failure** | 10 SOL | 0% (0 SOL) | 10 SOL | Within 24h |
+
+> 🔒 **Safety Net**: If a market is canceled due to platform error, users receive **110% refund** (10% bonus as apology).
+
+---
+
+## Fee Burning (Future)
+
+### Deflationary Mechanism (Planned for Q3 2026)
+
+Once a governance token is launched:
+- 50% of platform fees will be used to **buy back and burn** tokens
+- Creates deflationary pressure
+- Rewards long-term holders
+- Aligns platform growth with token value
+
+**Example:**
+```
+Monthly Fee Revenue: 100 SOL
+→ 50 SOL used to buy governance tokens
+→ Tokens burned permanently
+→ Supply decreases, value increases
+```
+
+---
+
+## Roadmap
+
+### Phase 1: Current (Development - Pure SOL)
+- 🚧 Gookie rental auctions (in development)
+- 🚧 Prescription market signals (testnet)
+- 🚧 10% rental fee + volume commission model
+- 🚧 Automatic refund + commission distribution system
+
+### Phase 2: Enhanced Incentives (Q2 2026)
+- Volume-based fee discounts
+- Leaderboard rewards
+- Multi-sig treasury security
+- Advanced analytics dashboard
+
+### Phase 3: Governance Token (Q3 2026)
+- Launch $PRES governance token
+- Fee burning mechanism
+- Staking for voting power
+- Token-gated premium features
+
+### Phase 4: Cross-chain Expansion (Q4 2026)
+- Bridge to other L1s (Ethereum, Arbitrum)
+- Multi-token support (USDC, USDT)
+- Institutional Gookie rentals
+- DAO governance transition
+
+---
+
+## Risk Mitigation
+
+### User Protections
+
+**Against Rug Pulls:**
+- ✅ All rental deposits will be escrowed on-chain (smart contracts in development)
+- ✅ Automated refund contracts (no admin discretion)
+- ✅ Public treasury address for auditing
+
+**Against Market Manipulation:**
+- ✅ Maximum signal caps per wallet
+- ✅ Sybil resistance through SOL lock requirements
+- ✅ Admin oversight for resolution disputes
+
+**Against Platform Failure:**
+- ✅ Emergency withdraw function (if platform goes offline)
+- ✅ 10% reserve fund for unexpected refunds
+- ✅ Insurance partnership (planned)
+
+---
+
+## FAQ
+
+### Why 10% fee?
+
+We benchmarked against traditional platforms:
+- **Polymarket**: 2% + spread manipulation
+- **Kalshi**: 7% + withdrawal fees
+- **Traditional casinos**: 5-10% house edge
+
+Our 10% rental fee + commission model is superior because:
+- You get 90% back as refund (it's a rental, not a loss)
+- You earn 3-5% commission on market volume (profit potential!)
+- No hidden fees or spreads
+- 100% transparent on-chain (once deployed)
+
+### Can fees change?
+
+Yes, but only through **community governance** (once token launches). Current fee structure is locked for Phase 1.
+
+### What if I lose my private key?
+
+Refunds are sent to the wallet that placed the bid. **Always secure your seed phrase.** We cannot recover lost wallets.
+
+---
+
+> **The future isn't sold. It's rented—and it pays dividends.**  
+> *Smart economics on Solana 🍪*
+
+---
+
+## Volume Commission Examples
+
+### Scenario 1: Small Market
+- Rental bid: 3 SOL
+- Market volume: 30 SOL
+- Renter commission (4%): 1.2 SOL
+- Rental refund (90%): 2.7 SOL
+- **Total return: 3.9 SOL (30% profit)**
+
+### Scenario 2: Medium Market
+- Rental bid: 10 SOL
+- Market volume: 300 SOL
+- Renter commission (4%): 12 SOL
+- Rental refund (90%): 9 SOL
+- **Total return: 21 SOL (110% profit)**
+
+### Scenario 3: Viral Market
+- Rental bid: 50 SOL
+- Market volume: 5,000 SOL
+- Renter commission (4%): 200 SOL
+- Rental refund (90%): 45 SOL
+- **Total return: 245 SOL (390% profit)**
+
+> 🚀 **The incentive is clear**: Rent a Gookie, shill your market, earn commission. The better your marketing, the higher your profit.

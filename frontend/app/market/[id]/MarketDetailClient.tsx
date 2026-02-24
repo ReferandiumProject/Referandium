@@ -15,7 +15,8 @@ const supabase = createClient(
 const ADMIN_WALLET = 'PanbgtcTiZ2HasCT9CC94nUBwUx55uH8YDmZk6587da';
 
 export default function MarketDetailClient() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params?.id as string;
   const { publicKey, connected } = useWallet();
 
   const [market, setMarket] = useState<any>(null);
@@ -24,7 +25,7 @@ export default function MarketDetailClient() {
   const [selectedOption, setSelectedOption] = useState<any>(null);
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasVoted, setHasVoted] = useState(false);
+  const [votedOptionIds, setVotedOptionIds] = useState<string[]>([]);
   const [lastVoteDirection, setLastVoteDirection] = useState<'yes' | 'no'>('yes');
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [comments, setComments] = useState<any[]>([]);
@@ -128,12 +129,16 @@ export default function MarketDetailClient() {
   const checkIfVoted = async () => {
     const { data } = await supabase
       .from('votes')
-      .select('*')
+      .select('option_id')
       .eq('market_id', id)
-      .eq('user_wallet', publicKey?.toBase58())
-      .single();
+      .eq('user_wallet', publicKey?.toBase58());
     
-    if (data) setHasVoted(true);
+    if (data && data.length > 0) {
+      const optionIds = data
+        .filter(vote => vote.option_id !== null)
+        .map(vote => vote.option_id);
+      setVotedOptionIds(optionIds);
+    }
   };
 
   const handleSubmitVote = async () => {
@@ -187,7 +192,12 @@ export default function MarketDetailClient() {
       // Success: Database triggers will automatically update market stats
       setLastVoteDirection(selectedTab);
       setNotification({ type: 'success', message: 'Signal submitted successfully! 🎉' });
-      setHasVoted(true);
+      
+      // Add voted option to the list (for multi-option markets)
+      if (selectedOption) {
+        setVotedOptionIds(prev => [...prev, selectedOption.id]);
+      }
+      
       setAmount('');
       
       // Refresh market data and chart to show updated stats
@@ -211,6 +221,9 @@ export default function MarketDetailClient() {
   const totalVotes = (market.yes_count || 0) + (market.no_count || 0);
   const yesPercent = totalVotes === 0 ? 0 : Math.round((market.yes_count / totalVotes) * 100);
   const noPercent = totalVotes === 0 ? 0 : Math.round((market.no_count / totalVotes) * 100);
+  
+  // Check if current selected option has been voted on
+  const hasVotedCurrentOption = selectedOption ? votedOptionIds.includes(selectedOption.id) : false;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] py-8 px-4 relative">
@@ -260,27 +273,45 @@ export default function MarketDetailClient() {
                 <div>
                   {market.options.map((option: any) => {
                     const isSelected = selectedOption?.id === option.id;
-                    const totalPool = Number(option.yes_pool || 0) + Number(option.no_pool || 0);
-                    const yesPercent = totalPool > 0 ? Math.round((Number(option.yes_pool) / totalPool) * 100) : 50;
+                    const hasVotedThisOption = votedOptionIds.includes(option.id);
+                    // Calculate percentage based on vote count (not pool)
+                    const optionYesCount = option.yes_count || 0;
+                    const optionNoCount = option.no_count || 0;
+                    const optionTotalVotes = optionYesCount + optionNoCount;
+                    const yesPercent = optionTotalVotes > 0 ? Math.round((optionYesCount / optionTotalVotes) * 100) : 0;
                     
                     return (
                       <div
                         key={option.id}
-                        onClick={() => setSelectedOption(option)}
-                        className={`flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800 last:border-0 cursor-pointer transition-colors ${
-                          isSelected
+                        onClick={() => {
+                          setSelectedOption(option);
+                          setNotification(null);
+                        }}
+                        className={`flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800 last:border-0 transition-colors cursor-pointer ${
+                          hasVotedThisOption
+                            ? 'opacity-50 bg-gray-100 dark:bg-gray-800/50'
+                            : isSelected
                             ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500'
                             : 'hover:bg-gray-50 dark:hover:bg-[#1A1C24]'
                         }`}
                       >
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 dark:text-white">{option.title}</h3>
+                          <h3 className={`font-semibold ${
+                            hasVotedThisOption 
+                              ? 'text-gray-500 dark:text-gray-500' 
+                              : 'text-gray-900 dark:text-white'
+                          }`}>{option.title}</h3>
+                          {hasVotedThisOption && (
+                            <span className="text-xs text-green-600 dark:text-green-400 font-medium mt-1 inline-block">
+                              ✓ Voted
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-sm font-bold text-gray-500 dark:text-gray-400">
                             {yesPercent}% Yes
                           </span>
-                          {isSelected && (
+                          {isSelected && !hasVotedThisOption && (
                             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                           )}
                         </div>
@@ -377,12 +408,17 @@ export default function MarketDetailClient() {
 
           {/* RIGHT COLUMN (1/3) - Trading Panel */}
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-[#181A20] border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm sticky top-24">
-              {hasVoted ? (
+            <div 
+              key={selectedOption?.id || 'no-selection'}
+              className="bg-white dark:bg-[#181A20] border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm sticky top-24"
+            >
+              {/* Check if user has voted on the currently selected option (not all options) */}
+              {hasVotedCurrentOption ? (
                 <div className="text-center p-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
                   <CheckCircle size={48} className="mx-auto mb-4 text-green-600 dark:text-green-400" />
-                  <h3 className="text-lg font-bold text-green-800 dark:text-green-400 mb-2">Vote Submitted!</h3>
-                  <p className="text-sm text-green-600 dark:text-green-500">Thank you for participating.</p>
+                  <h3 className="text-lg font-bold text-green-800 dark:text-green-400 mb-2">Already Voted!</h3>
+                  <p className="text-sm text-green-600 dark:text-green-500">You've already voted on this option.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Select a different option to vote again.</p>
                   
                   {/* Share on X Button */}
                   <a
@@ -460,7 +496,7 @@ export default function MarketDetailClient() {
                   {/* Submit Button */}
                   <button
                     onClick={handleSubmitVote}
-                    disabled={!connected || isSubmitting || !amount}
+                    disabled={!connected || isSubmitting || !amount || (selectedOption && votedOptionIds.includes(selectedOption.id))}
                     className={`w-full py-4 rounded-xl font-bold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                       selectedTab === 'yes'
                         ? 'bg-green-500 hover:bg-green-600 text-white'

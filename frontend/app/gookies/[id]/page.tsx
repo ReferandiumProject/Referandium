@@ -17,8 +17,16 @@ const supabase = createClient(
 // Treasury wallet for escrow (placeholder)
 const TREASURY_WALLET = new PublicKey('5vJggeRkrFSZBJw6rZvWNzuRbKTe4g44pQEwaBcyZVBP');
 
+// Minimum bid increment
+const MIN_BID_INCREMENT = 0.05;
+
+// Anti-sniper: extend auction by 5 minutes if bid placed within last 5 minutes
+const ANTI_SNIPER_WINDOW = 5 * 60 * 1000; // 5 minutes in milliseconds
+const EXTENSION_DURATION = 5 * 60 * 1000; // Extend by 5 minutes
+
 export default function GookieDetailPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params?.id as string;
   const { publicKey, connected, sendTransaction } = useWallet();
   const { connection } = useConnection();
 
@@ -87,7 +95,12 @@ export default function GookieDetailPage() {
       if (hours > 0 || days > 0) timeString += `${hours}h `;
       timeString += `${minutes}m ${seconds}s`;
       
-      setTimeLeft(timeString);
+      // Add visual indicator if in anti-sniper window (last 5 minutes)
+      if (distance < ANTI_SNIPER_WINDOW && distance > 0) {
+        setTimeLeft(`${timeString} 🔥`);
+      } else {
+        setTimeLeft(timeString);
+      }
     };
 
     calculateTimeLeft();
@@ -143,14 +156,15 @@ export default function GookieDetailPage() {
     }
 
     const amount = parseFloat(bidAmount);
+    // Calculate minimum required bid with 0.05 SOL increment
     const minRequiredBid = gookie.current_highest_bid > 0 
-      ? parseFloat(gookie.current_highest_bid) 
+      ? parseFloat(gookie.current_highest_bid) + MIN_BID_INCREMENT
       : parseFloat(gookie.starting_bid);
 
-    if (isNaN(amount) || amount <= minRequiredBid) {
+    if (isNaN(amount) || amount < minRequiredBid) {
       setNotification({ 
         type: 'error', 
-        message: `Your bid must be greater than ${minRequiredBid} SOL` 
+        message: `Bid must be at least ${minRequiredBid.toFixed(2)} SOL (minimum ${MIN_BID_INCREMENT} SOL increment)` 
       });
       return;
     }
@@ -201,7 +215,31 @@ export default function GookieDetailPage() {
         throw new Error('Transaction failed to confirm');
       }
 
-      // 2. Only insert bid to Supabase AFTER successful transaction
+      // 2. Anti-Sniper Check: Check if we need to extend auction time
+      const now = new Date().getTime();
+      const auctionEndTime = new Date(gookie.end_time).getTime();
+      const timeRemaining = auctionEndTime - now;
+      
+      let newEndTime = null;
+      let auctionExtended = false;
+
+      if (timeRemaining < ANTI_SNIPER_WINDOW && timeRemaining > 0) {
+        // Bid placed within last 5 minutes - extend auction
+        newEndTime = new Date(now + EXTENSION_DURATION).toISOString();
+        auctionExtended = true;
+
+        // Update gookies table with new end_time
+        const { error: updateError } = await supabase
+          .from('gookies')
+          .update({ end_time: newEndTime })
+          .eq('id', id);
+
+        if (updateError) {
+          console.error('Error extending auction:', updateError);
+        }
+      }
+
+      // 3. Insert bid to Supabase AFTER successful transaction
       const { error: bidError } = await supabase
         .from('gookie_bids')
         .insert({
@@ -212,7 +250,16 @@ export default function GookieDetailPage() {
 
       if (bidError) throw bidError;
 
-      setNotification({ type: 'success', message: 'Bid placed successfully! 🎉' });
+      // Show appropriate success message
+      if (auctionExtended) {
+        setNotification({ 
+          type: 'success', 
+          message: '🔥 Sniper prevented! Auction extended by 5 minutes. Bid placed successfully!' 
+        });
+      } else {
+        setNotification({ type: 'success', message: 'Bid placed successfully! 🎉' });
+      }
+      
       setBidAmount('');
       
       // Refresh Data
@@ -255,6 +302,9 @@ export default function GookieDetailPage() {
   }
 
   const currentBid = gookie.current_highest_bid > 0 ? parseFloat(gookie.current_highest_bid) : parseFloat(gookie.starting_bid);
+  const minimumBid = gookie.current_highest_bid > 0 
+    ? parseFloat(gookie.current_highest_bid) + MIN_BID_INCREMENT 
+    : parseFloat(gookie.starting_bid);
 
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-[#0B0C10] pb-24">
@@ -475,26 +525,41 @@ export default function GookieDetailPage() {
                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
                           Your Bid Amount (SOL)
                         </label>
+                        
+                        {/* Minimum Bid Info */}
+                        <div className="mb-3 p-3 bg-orange-50 dark:bg-orange-900/10 rounded-xl border border-orange-200 dark:border-orange-900/30">
+                          <p className="text-sm font-semibold text-orange-700 dark:text-orange-400">
+                            Minimum bid: <span className="font-bold">{minimumBid.toFixed(2)} SOL</span>
+                            <span className="text-xs ml-2 opacity-75">({MIN_BID_INCREMENT} SOL increment)</span>
+                          </p>
+                        </div>
+
                         <div className="relative">
                           <input
                             type="number"
                             value={bidAmount}
                             onChange={(e) => setBidAmount(e.target.value)}
-                            placeholder={`Min. ${(currentBid + 0.01).toFixed(2)}`}
+                            placeholder={minimumBid.toFixed(2)}
                             step="0.01"
-                            min={currentBid + 0.01}
+                            min={minimumBid}
                             className="w-full pl-6 pr-16 py-4 bg-gray-50 dark:bg-[#0B0C10] border border-gray-200 dark:border-gray-800 rounded-2xl text-gray-900 dark:text-white font-bold text-xl focus:ring-2 focus:ring-orange-500 outline-none transition-shadow"
                           />
                           <div className="absolute inset-y-0 right-6 flex items-center pointer-events-none text-gray-500 font-bold">
                             SOL
                           </div>
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                          Must be greater than {currentBid} SOL
-                        </p>
                       </div>
 
-                      {/* Insufficient Balance Warning */}
+                      {/* Validation Warnings */}
+                      {bidAmount && parseFloat(bidAmount) < minimumBid && (
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-center gap-2">
+                          <AlertCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />
+                          <span className="text-sm font-medium text-red-700 dark:text-red-400">
+                            Bid must be at least {minimumBid.toFixed(2)} SOL
+                          </span>
+                        </div>
+                      )}
+                      
                       {bidAmount && walletBalance !== null && parseFloat(bidAmount) > walletBalance && (
                         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-center gap-2">
                           <AlertCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />
@@ -509,6 +574,7 @@ export default function GookieDetailPage() {
                         disabled={
                           isSubmitting || 
                           !bidAmount || 
+                          parseFloat(bidAmount || '0') < minimumBid ||
                           (walletBalance !== null && parseFloat(bidAmount || '0') > walletBalance)
                         }
                         className="w-full py-4 rounded-2xl font-bold text-lg text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 transition-all duration-300 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"

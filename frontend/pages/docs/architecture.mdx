@@ -1,0 +1,245 @@
+# Architecture
+
+## System Overview
+
+Referandium is built on a modern, scalable architecture leveraging the Solana blockchain and Web3 technologies.
+
+## Technology Stack
+
+### Frontend Layer
+```
+┌─────────────────────────────────────┐
+│         Next.js 14 App Router       │
+│  ┌──────────┐  ┌──────────────────┐ │
+│  │ React 18 │  │ Tailwind CSS     │ │
+│  └──────────┘  └──────────────────┘ │
+│  ┌──────────────────────────────────┤
+│  │ Solana Wallet Adapter            │
+│  └──────────────────────────────────┘
+└─────────────────────────────────────┘
+```
+
+**Key Components:**
+- **Next.js 14**: Server-side rendering and routing
+- **React 18**: Component-based UI architecture
+- **Tailwind CSS**: Utility-first styling framework
+- **TypeScript**: Type-safe development
+
+### Blockchain Layer
+```
+┌─────────────────────────────────────┐
+│         Solana Blockchain           │
+│  ┌──────────────────────────────────┤
+│  │ @solana/web3.js                  │
+│  │ @solana/wallet-adapter           │
+│  └──────────────────────────────────┘
+│         Mainnet-Beta                │
+└─────────────────────────────────────┘
+```
+
+**Integration:**
+- **Wallet Connection**: Multi-wallet support (Phantom, Solflare, etc.)
+- **Transaction Signing**: Client-side transaction creation
+- **SOL Transfers**: Real-time on-chain payments
+
+### Database Layer
+```
+┌─────────────────────────────────────┐
+│         Supabase (PostgreSQL)       │
+│  ┌──────────────────────────────────┤
+│  │ Markets & Votes                  │
+│  │ Gookies & Bids                   │
+│  │ Users & Profiles                 │
+│  │ Comments & Activity              │
+│  └──────────────────────────────────┘
+└─────────────────────────────────────┘
+```
+
+**Features:**
+- Row-Level Security (RLS) policies
+- Real-time subscriptions
+- Automatic vote aggregation triggers
+- Indexed queries for performance
+
+## Data Models
+
+### Markets System
+
+```typescript
+interface Market {
+  id: string
+  question: string
+  description: string
+  category: string
+  market_type: 'binary' | 'multiple_choice'
+  end_date: Date
+  yes_pool: number
+  no_pool: number
+  total_volume: number
+  status: 'active' | 'closed' | 'resolved'
+}
+
+interface Vote {
+  id: string
+  market_id: string
+  user_wallet: string
+  vote_direction: 'yes' | 'no'
+  amount_sol: number
+  created_at: Date
+}
+```
+
+### Gookies Auction System
+
+```typescript
+interface Gookie {
+  id: string
+  title: string
+  description: string
+  image_url: string
+  starting_bid: number
+  current_highest_bid: number
+  highest_bidder_wallet: string | null
+  end_time: Date
+  status: 'active' | 'closed'
+}
+
+interface GookieBid {
+  id: string
+  gookie_id: string
+  user_wallet: string
+  bid_amount: number
+  created_at: Date
+}
+```
+
+## Request Flow
+
+### Market Voting Flow
+```
+User Action
+    ↓
+1. Connect Wallet (Solana Wallet Adapter)
+    ↓
+2. Select Market & Vote Direction
+    ↓
+3. Enter SOL Amount
+    ↓
+4. Submit Vote (Insert to Supabase)
+    ↓
+5. Database Trigger Updates Market Stats
+    ↓
+6. UI Updates with New Percentages
+```
+
+### Gookies Bidding Flow
+```
+User Action
+    ↓
+1. Connect Wallet
+    ↓
+2. View Gookie Details
+    ↓
+3. Enter Bid Amount
+    ↓
+4. Validate Wallet Balance
+    ↓
+5. Create SOL Transfer Transaction
+    ↓
+6. Sign & Send to Blockchain
+    ↓
+7. Wait for Confirmation
+    ↓
+8. Insert Bid Record to Supabase
+    ↓
+9. Update Highest Bid if Applicable
+    ↓
+10. Real-time UI Update
+```
+
+## Security Architecture
+
+### Wallet Security
+- **Client-Side Signing**: Private keys never leave user's wallet
+- **Transaction Verification**: All transactions verified on Solana network
+- **No Custody**: Platform never holds user funds
+
+### Database Security
+- **Row-Level Security**: User data protected with Supabase RLS
+- **Read-Only Public Access**: Markets and auctions publicly readable
+- **Authenticated Writes**: Votes and bids require wallet signature
+- **SQL Injection Prevention**: Parameterized queries via Supabase client
+
+### API Security
+- **CORS Configuration**: Restricted origins
+- **Rate Limiting**: Protection against spam (planned)
+- **Input Validation**: All user inputs sanitized
+
+## Performance Optimizations
+
+### Frontend
+- **Server-Side Rendering**: Fast initial page loads
+- **Image Optimization**: Next.js automatic image optimization
+- **Code Splitting**: Lazy loading for unused code
+- **Caching**: Strategic use of React Query for data caching
+
+### Database
+- **Indexed Queries**: All foreign keys and frequently queried fields indexed
+- **Materialized Views**: Pre-computed statistics (planned)
+- **Connection Pooling**: Efficient database connection management
+
+### Blockchain
+- **Transaction Batching**: Group multiple operations when possible
+- **Optimized RPC Calls**: Minimize on-chain queries
+- **Local State Management**: Cache wallet balance and transaction status
+
+## Deployment Architecture
+
+```
+┌─────────────────────────────────────┐
+│         Vercel Edge Network         │
+│  ┌──────────────────────────────────┤
+│  │ Next.js Application              │
+│  │ Static Assets (CDN)              │
+│  └──────────────────────────────────┘
+└─────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────┐
+│         Supabase Cloud              │
+│  PostgreSQL Database + Realtime     │
+└─────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────┐
+│         Solana Mainnet-Beta         │
+│  RPC Nodes + Blockchain State       │
+└─────────────────────────────────────┘
+```
+
+## Monitoring & Analytics
+
+### Application Monitoring
+- **Error Tracking**: Real-time error logging
+- **Performance Metrics**: Page load times and Core Web Vitals
+- **User Analytics**: Anonymized usage patterns
+
+### Blockchain Monitoring
+- **Transaction Status**: Real-time tx confirmation tracking
+- **Network Health**: Monitor Solana RPC availability
+- **Gas Optimization**: Track and optimize SOL transaction costs
+
+## Future Enhancements
+
+### Scalability
+- [ ] Redis caching layer
+- [ ] GraphQL API for complex queries
+- [ ] Microservices architecture for high-traffic features
+
+### Features
+- [ ] WebSocket real-time updates
+- [ ] Advanced charting with historical data
+- [ ] Mobile app (React Native)
+- [ ] Multi-language support
+
+---
+
+*Architecture is continuously evolving to meet platform needs.*

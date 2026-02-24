@@ -29,6 +29,9 @@ export default function Navbar() {
             <Link href="/gookies" className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-orange-500 dark:hover:text-orange-400 font-medium transition">
               <span>🍪</span> Gookies
             </Link>
+            <Link href="/docs" className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition">
+              <span>📖</span> Docs
+            </Link>
             <Link href="/admin" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition">
               {t('admin')}
             </Link>

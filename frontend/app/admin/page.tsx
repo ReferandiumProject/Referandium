@@ -138,7 +138,7 @@ export default function AdminPage() {
       title: gookie.title || '',
       description: gookie.description || '',
       image_url: gookie.image_url || '',
-      end_date: gookie.end_date ? gookie.end_date.split('T')[0] : '',
+      end_date: gookie.end_date ? new Date(gookie.end_date).toISOString().slice(0, 16) : '',
       starting_bid: gookie.starting_bid?.toString() || '0.01',
     });
   };
@@ -843,14 +843,17 @@ export default function AdminPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date & Time</label>
                     <input
-                      type="date"
+                      type="datetime-local"
                       required
                       className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white dark:bg-gray-700 dark:text-white"
                       value={gookieFormData.end_date}
                       onChange={(e) => setGookieFormData({ ...gookieFormData, end_date: e.target.value })}
                     />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Select the exact date and time when the auction should end
+                    </p>
                   </div>
 
                   <button
