@@ -52,7 +52,7 @@ export default function Dashboard() {
             </div>
           </div>
           <p className="text-blue-100 mt-2 text-sm">
-            Policy Prescription Market - 1 Wallet = 1 Vote
+            Policy Prescription Market - 1 Wallet = 1 Signal
           </p>
         </div>
       </header>
@@ -60,7 +60,7 @@ export default function Dashboard() {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Active Markets</h2>
-          <p className="text-gray-600">Vote on policy outcomes and join the community hedge fund</p>
+          <p className="text-gray-600">Signal policy prescriptions and participate in yield sharing</p>
         </div>
 
         {loading ? (

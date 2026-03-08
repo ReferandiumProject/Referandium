@@ -5,65 +5,105 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { ArrowLeft, CheckCircle, XCircle, MessageSquare, Send, Loader2, Trash2 } from 'lucide-react';
-import MarketChart from '@/app/components/MarketChart';
+import { ArrowLeft, CheckCircle, XCircle, MessageSquare, Send, Loader2, Trash2, TrendingUp, Clock } from 'lucide-react';
+import { Market, MarketOption, Signal, Comment } from '@/app/types';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 const ADMIN_WALLET = 'PanbgtcTiZ2HasCT9CC94nUBwUx55uH8YDmZk6587da';
+const MIN_SIGNAL_AMOUNT = 0.05; // Minimum 0.05 SOL per signal
 
 export default function MarketDetailClient() {
   const params = useParams();
   const id = params?.id as string;
   const { publicKey, connected } = useWallet();
 
-  const [market, setMarket] = useState<any>(null);
+  const [market, setMarket] = useState<Market | null>(null);
+  const [options, setOptions] = useState<MarketOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'yes' | 'no'>('yes');
-  const [selectedOption, setSelectedOption] = useState<any>(null);
+  const [selectedOption, setSelectedOption] = useState<MarketOption | null>(null);
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [votedOptionIds, setVotedOptionIds] = useState<string[]>([]);
-  const [lastVoteDirection, setLastVoteDirection] = useState<'yes' | 'no'>('yes');
+  const [hasSignaled, setHasSignaled] = useState(false);
+  const [userSignal, setUserSignal] = useState<Signal | null>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState('');
   const [isPostingComment, setIsPostingComment] = useState(false);
-  const [chartRefreshKey, setChartRefreshKey] = useState(0);
+  const [signals, setSignals] = useState<Signal[]>([]);
 
-  // Veri Çekme
+  // Fetch market data on mount
   useEffect(() => {
     fetchMarketData();
     fetchComments();
+    fetchSignals();
   }, [id]);
 
-  // Detect market type
-  const isBinaryMarket = !market?.options || market.options.length === 0;
-
-  // Kullanıcı oy vermiş mi kontrolü
+  // Check if user has signaled when wallet connects
   useEffect(() => {
     if (connected && publicKey && market) {
-      checkIfVoted();
+      checkIfUserSignaled();
     }
   }, [connected, publicKey, market]);
 
+  // Detect market type
+  const isBinaryMarket = market?.market_type === 'binary';
+
   const fetchMarketData = async () => {
     if (!id) return;
-    const { data, error } = await supabase
-      .from('markets')
-      .select('*, options:market_options(*)')
-      .eq('id', id)
-      .single();
-    
-    if (data) {
-      setMarket(data);
-      if (data.options && data.options.length > 0) {
-        setSelectedOption(data.options[0]);
+    try {
+      const { data, error } = await supabase
+        .from('markets')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setMarket(data as Market);
       }
+
+      // Fetch options separately
+      const { data: optionsData } = await supabase
+        .from('market_options')
+        .select('*')
+        .eq('market_id', id)
+        .order('created_at', { ascending: true });
+
+      if (optionsData) {
+        setOptions(optionsData as MarketOption[]);
+        if (optionsData.length > 0) {
+          setSelectedOption(optionsData[0]);
+        }
+      }
+
+      // Refresh signals after fetching market data
+      await fetchSignals();
+    } catch (error) {
+      console.error('Error fetching market:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const fetchSignals = async () => {
+    if (!id) return;
+    try {
+      const { data, error } = await supabase
+        .from('signals')
+        .select('*')
+        .eq('market_id', id);
+      
+      if (data) {
+        setSignals(data as Signal[]);
+      }
+    } catch (error) {
+      console.error('Error fetching signals:', error);
+    }
   };
 
   const fetchComments = async () => {
@@ -126,22 +166,32 @@ export default function MarketDetailClient() {
     }
   };
 
-  const checkIfVoted = async () => {
-    const { data } = await supabase
-      .from('votes')
-      .select('option_id')
-      .eq('market_id', id)
-      .eq('user_wallet', publicKey?.toBase58());
+  const checkIfUserSignaled = async () => {
+    if (!publicKey) return;
     
-    if (data && data.length > 0) {
-      const optionIds = data
-        .filter(vote => vote.option_id !== null)
-        .map(vote => vote.option_id);
-      setVotedOptionIds(optionIds);
+    try {
+      const { data, error } = await supabase
+        .from('signals')
+        .select('*')
+        .eq('market_id', id)
+        .eq('user_wallet', publicKey.toBase58())
+        .single();
+      
+      if (data) {
+        setHasSignaled(true);
+        setUserSignal(data as Signal);
+      } else {
+        setHasSignaled(false);
+        setUserSignal(null);
+      }
+    } catch (error) {
+      // No signal found (which is fine)
+      setHasSignaled(false);
+      setUserSignal(null);
     }
   };
 
-  const handleSubmitVote = async () => {
+  const handleSubmitSignal = async () => {
     // Validation: Wallet must be connected
     if (!connected || !publicKey) {
       setNotification({ type: 'error', message: 'Please connect your Solana wallet first!' });
@@ -149,63 +199,67 @@ export default function MarketDetailClient() {
       return;
     }
 
-    // Validation: Amount must be valid
-    const voteAmount = parseFloat(amount);
-    if (!voteAmount || voteAmount <= 0) {
-      setNotification({ type: 'error', message: 'Please enter a valid amount!' });
+    // Check if user already signaled
+    if (hasSignaled) {
+      setNotification({ type: 'error', message: 'You have already signaled on this market' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    // Validation: Amount must be valid and >= 0.05 SOL
+    const signalAmount = parseFloat(amount);
+    if (!signalAmount || signalAmount < MIN_SIGNAL_AMOUNT) {
+      setNotification({ type: 'error', message: `Minimum signal amount is ${MIN_SIGNAL_AMOUNT} SOL` });
       setTimeout(() => setNotification(null), 3000);
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Off-chain voting: Store signal directly in database (no blockchain transaction)
-      const voteData: any = {
-        market_id: market.id,
+      // Prepare signal data
+      const signalData: any = {
+        market_id: market!.id,
         user_wallet: publicKey.toBase58(),
-        vote_direction: selectedTab,
-        amount_sol: voteAmount,
-        transaction_signature: null // Off-chain: no on-chain tx for now
+        signal_direction: selectedTab,
+        sol_amount: signalAmount,
+        deposit_tx_signature: null // Off-chain: no on-chain tx for now
       };
       
       // Include option_id for multi-option markets
-      if (selectedOption) {
-        voteData.option_id = selectedOption.id;
+      if (!isBinaryMarket && selectedOption) {
+        signalData.option_id = selectedOption.id;
       }
       
-      // Insert vote into Supabase
-      const { error: voteError } = await supabase.from('votes').insert(voteData);
+      // Insert signal into Supabase
+      const { error: signalError } = await supabase.from('signals').insert(signalData);
       
-      if (voteError) {
-        // Better error messages for common issues
-        if (voteError.message.includes('duplicate key') || voteError.message.includes('unique')) {
-          throw new Error('You have already voted on this market.');
-        } else if (voteError.message.includes('violates foreign key')) {
-          throw new Error('Invalid market or option ID.');
-        } else if (voteError.message.includes('permission denied') || voteError.message.includes('policy')) {
-          throw new Error('Database permission error. Please check RLS policies.');
+      if (signalError) {
+        // Handle unique constraint violation (error code 23505)
+        if (signalError.code === '23505' || signalError.message.includes('duplicate') || signalError.message.includes('unique')) {
+          throw new Error('You have already signaled on this market');
+        } else if (signalError.message.includes('violates foreign key')) {
+          throw new Error('Invalid market or option');
+        } else if (signalError.message.includes('permission denied') || signalError.message.includes('policy')) {
+          throw new Error('Permission denied. Please check authentication.');
         } else {
-          throw new Error(voteError.message || 'Failed to submit vote.');
+          throw new Error(signalError.message || 'Failed to submit signal');
         }
       }
 
       // Success: Database triggers will automatically update market stats
-      setLastVoteDirection(selectedTab);
-      setNotification({ type: 'success', message: 'Signal submitted successfully! 🎉' });
-      
-      // Add voted option to the list (for multi-option markets)
-      if (selectedOption) {
-        setVotedOptionIds(prev => [...prev, selectedOption.id]);
-      }
-      
+      setHasSignaled(true);
+      setNotification({ type: 'success', message: `Signal ${selectedTab.toUpperCase()} submitted successfully! 🎉` });
       setAmount('');
       
-      // Refresh market data and chart to show updated stats
-      await fetchMarketData();
-      setChartRefreshKey(prev => prev + 1);
+      // Refresh data
+      await Promise.all([
+        fetchMarketData(),
+        fetchSignals(),
+        checkIfUserSignaled()
+      ]);
 
     } catch (error: any) {
-      console.error('Vote submission error:', error);
+      console.error('Signal submission error:', error);
       const errorMessage = error.message || 'Failed to submit signal. Please try again.';
       setNotification({ type: 'error', message: errorMessage });
     } finally {
@@ -214,16 +268,19 @@ export default function MarketDetailClient() {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Yükleniyor...</div>;
-  if (!market) return <div className="min-h-screen flex items-center justify-center">Piyasa bulunamadı.</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading market...</div>;
+  if (!market) return <div className="min-h-screen flex items-center justify-center text-gray-500">Market not found</div>;
 
-  // Hesaplamalar
-  const totalVotes = (market.yes_count || 0) + (market.no_count || 0);
-  const yesPercent = totalVotes === 0 ? 0 : Math.round((market.yes_count / totalVotes) * 100);
-  const noPercent = totalVotes === 0 ? 0 : Math.round((market.no_count / totalVotes) * 100);
+  // Calculate signal percentages for binary markets
+  const totalSignals = Number(market.total_signals) || 0;
+  const yesSignals = signals.filter(s => s.signal_direction === 'yes').length;
+  const noSignals = signals.filter(s => s.signal_direction === 'no').length;
+  const yesPercent = totalSignals === 0 ? 0 : Math.round((yesSignals / totalSignals) * 100);
+  const noPercent = totalSignals === 0 ? 0 : Math.round((noSignals / totalSignals) * 100);
   
-  // Check if current selected option has been voted on
-  const hasVotedCurrentOption = selectedOption ? votedOptionIds.includes(selectedOption.id) : false;
+  // Check market status
+  const isClosed = market.status === 'closed';
+  const isDraft = market.status === 'draft';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] py-8 px-4 relative">
@@ -250,68 +307,85 @@ export default function MarketDetailClient() {
             
             {/* Title */}
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-                {market.title || market.question}
-              </h1>
-              
-              {/* Chart */}
-              <MarketChart 
-                key={chartRefreshKey}
-                marketId={market.id}
-                isSimpleMarket={isBinaryMarket}
-                selectedOptionId={isBinaryMarket ? undefined : selectedOption?.id}
-              />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                  {market.title}
+                </h1>
+                {market.description && (
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">{market.description}</p>
+                )}
+                
+                {/* Market Status Badge */}
+                <div className="flex items-center gap-3 mb-6">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    isClosed ? 'bg-gray-500 text-white' : 
+                    isDraft ? 'bg-yellow-500 text-white' :
+                    'bg-green-500 text-white'
+                  }`}>
+                    {market.status.toUpperCase()}
+                  </span>
+                  {market.gookie_wallet && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Manager: {market.gookie_wallet.slice(0, 4)}...{market.gookie_wallet.slice(-4)}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Market Options (Only show for Multiple Choice markets) */}
-            {!isBinaryMarket && market.options && market.options.length > 0 && (
+            {!isBinaryMarket && options && options.length > 0 && (
               <div className="bg-white dark:bg-[#181A20] rounded-2xl border border-gray-200 dark:border-gray-800">
                 <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">Market Options</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Select an option to prescribe</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Select an option to signal</p>
                 </div>
                 <div>
-                  {market.options.map((option: any) => {
+                  {options.map((option: MarketOption) => {
                     const isSelected = selectedOption?.id === option.id;
-                    const hasVotedThisOption = votedOptionIds.includes(option.id);
-                    // Calculate percentage based on vote count (not pool)
-                    const optionYesCount = option.yes_count || 0;
-                    const optionNoCount = option.no_count || 0;
-                    const optionTotalVotes = optionYesCount + optionNoCount;
-                    const yesPercent = optionTotalVotes > 0 ? Math.round((optionYesCount / optionTotalVotes) * 100) : 0;
+                    // Calculate percentage based on signal count (wallet count, not SOL amount)
+                    const optionYesSignals = option.yes_signals || 0;
+                    const optionNoSignals = option.no_signals || 0;
+                    const optionTotalSignals = optionYesSignals + optionNoSignals;
+                    const optionYesPercent = optionTotalSignals > 0 ? Math.round((optionYesSignals / optionTotalSignals) * 100) : 0;
                     
                     return (
                       <div
                         key={option.id}
                         onClick={() => {
-                          setSelectedOption(option);
-                          setNotification(null);
+                          if (!hasSignaled) {
+                            setSelectedOption(option);
+                            setNotification(null);
+                          }
                         }}
-                        className={`flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800 last:border-0 transition-colors cursor-pointer ${
-                          hasVotedThisOption
+                        className={`flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800 last:border-0 transition-colors ${
+                          hasSignaled
                             ? 'opacity-50 bg-gray-100 dark:bg-gray-800/50'
-                            : isSelected
-                            ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500'
-                            : 'hover:bg-gray-50 dark:hover:bg-[#1A1C24]'
+                            : `cursor-pointer ${isSelected
+                              ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500'
+                              : 'hover:bg-gray-50 dark:hover:bg-[#1A1C24]'}`
                         }`}
                       >
                         <div className="flex-1">
                           <h3 className={`font-semibold ${
-                            hasVotedThisOption 
+                            hasSignaled 
                               ? 'text-gray-500 dark:text-gray-500' 
                               : 'text-gray-900 dark:text-white'
                           }`}>{option.title}</h3>
-                          {hasVotedThisOption && (
-                            <span className="text-xs text-green-600 dark:text-green-400 font-medium mt-1 inline-block">
-                              ✓ Voted
-                            </span>
+                          {option.description && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{option.description}</p>
                           )}
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-bold text-gray-500 dark:text-gray-400">
-                            {yesPercent}% Yes
-                          </span>
-                          {isSelected && !hasVotedThisOption && (
+                          <div className="text-right">
+                            <span className="text-sm font-bold text-gray-900 dark:text-white">
+                              {optionYesPercent}% YES
+                            </span>
+                            <p className="text-xs text-gray-500">
+                              {optionTotalSignals} signals
+                            </p>
+                          </div>
+                          {isSelected && !hasSignaled && (
                             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                           )}
                         </div>
@@ -412,18 +486,22 @@ export default function MarketDetailClient() {
               key={selectedOption?.id || 'no-selection'}
               className="bg-white dark:bg-[#181A20] border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm sticky top-24"
             >
-              {/* Check if user has voted on the currently selected option (not all options) */}
-              {hasVotedCurrentOption ? (
+              {/* Check if user has already signaled */}
+              {hasSignaled ? (
                 <div className="text-center p-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
                   <CheckCircle size={48} className="mx-auto mb-4 text-green-600 dark:text-green-400" />
-                  <h3 className="text-lg font-bold text-green-800 dark:text-green-400 mb-2">Already Voted!</h3>
-                  <p className="text-sm text-green-600 dark:text-green-500">You've already voted on this option.</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Select a different option to vote again.</p>
+                  <h3 className="text-lg font-bold text-green-800 dark:text-green-400 mb-2">Signal Submitted!</h3>
+                  <p className="text-sm text-green-600 dark:text-green-500 mb-2">
+                    You signaled <strong>{userSignal?.signal_direction.toUpperCase()}</strong> with <strong>{userSignal?.sol_amount} SOL</strong>
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    1 wallet = 1 signal per market. You'll receive your SOL + yield share when the market closes.
+                  </p>
                   
                   {/* Share on X Button */}
                   <a
                     href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                      `I just prescribed ${lastVoteDirection.toUpperCase()} on "${market.title || market.question}" at Referandium! 💊 What's your take? 👇\n\n${typeof window !== 'undefined' ? window.location.href : ''}`
+                      `I just signaled ${userSignal?.signal_direction.toUpperCase()} on "${market.title}" on @Referandium! 💊\n\n${typeof window !== 'undefined' ? window.location.href : ''}`
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -432,24 +510,30 @@ export default function MarketDetailClient() {
                     <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true">
                       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                     </svg>
-                    Share your prescription
+                    Share your signal
                   </a>
+                </div>
+              ) : isClosed ? (
+                <div className="text-center p-6 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl">
+                  <XCircle size={48} className="mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-bold text-gray-700 dark:text-gray-300 mb-2">Market Closed</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">This market is no longer accepting signals.</p>
                 </div>
               ) : (
                 <>
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
                     {isBinaryMarket ? (
                       <>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">Market:</span>
-                        {market.title || market.question}
+                        <span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">Signal on:</span>
+                        {market.title}
                       </>
                     ) : selectedOption ? (
                       <>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">Prescribing:</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">Signaling on:</span>
                         {selectedOption.title}
                       </>
                     ) : (
-                      'Prescribe Policy'
+                      'Submit Signal'
                     )}
                   </h3>
                   
@@ -459,48 +543,53 @@ export default function MarketDetailClient() {
                       onClick={() => setSelectedTab('yes')}
                       className={`px-4 py-3 rounded-xl font-bold text-sm transition-colors ${
                         selectedTab === 'yes'
-                          ? 'bg-green-500 text-white'
+                          ? 'bg-green-500 text-white shadow-lg'
                           : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
                     >
-                      YES {yesPercent}%
+                      <div>YES</div>
+                      <div className="text-xs opacity-80">{yesPercent}% ({yesSignals} wallets)</div>
                     </button>
                     <button
                       onClick={() => setSelectedTab('no')}
                       className={`px-4 py-3 rounded-xl font-bold text-sm transition-colors ${
                         selectedTab === 'no'
-                          ? 'bg-red-500 text-white'
+                          ? 'bg-red-500 text-white shadow-lg'
                           : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
                     >
-                      NO {noPercent}%
+                      <div>NO</div>
+                      <div className="text-xs opacity-80">{noPercent}% ({noSignals} wallets)</div>
                     </button>
                   </div>
 
                   {/* Amount Input */}
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Amount (SOL)
+                      Amount (SOL) <span className="text-xs text-gray-500">min {MIN_SIGNAL_AMOUNT}</span>
                     </label>
                     <input
                       type="number"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      placeholder="0.00"
+                      placeholder={MIN_SIGNAL_AMOUNT.toString()}
                       step="0.01"
-                      min="0"
+                      min={MIN_SIGNAL_AMOUNT}
                       className="w-full px-4 py-3 bg-gray-100 dark:bg-[#0B0C10] border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white font-semibold text-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      💡 Your SOL amount affects your yield share, not your vote weight. 1 wallet = 1 vote.
+                    </p>
                   </div>
 
                   {/* Submit Button */}
                   <button
-                    onClick={handleSubmitVote}
-                    disabled={!connected || isSubmitting || !amount || (selectedOption && votedOptionIds.includes(selectedOption.id))}
+                    onClick={handleSubmitSignal}
+                    disabled={!connected || isSubmitting || !amount || hasSignaled || isClosed}
                     className={`w-full py-4 rounded-xl font-bold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                       selectedTab === 'yes'
-                        ? 'bg-green-500 hover:bg-green-600 text-white'
-                        : 'bg-red-500 hover:bg-red-600 text-white'
+                        ? 'bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl'
+                        : 'bg-red-500 hover:bg-red-600 text-white shadow-lg hover:shadow-xl'
                     }`}
                   >
                     {isSubmitting ? (
@@ -513,34 +602,39 @@ export default function MarketDetailClient() {
                   </button>
 
                   <p className="text-xs text-gray-400 text-center mt-4">
-                    {!connected && 'Connect wallet to signal'}
+                    {!connected ? 'Connect wallet to signal' : hasSignaled ? 'Already signaled' : isClosed ? 'Market closed' : 'Off-chain signaling (no SOL transfer yet)'}
                   </p>
                 </>
               )}
 
               {/* Market Stats */}
-              <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 space-y-2">
+              <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500 dark:text-gray-400">Total Volume</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{market.total_pool?.toFixed(2)} SOL</span>
+                  <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                    <TrendingUp size={14} /> Total SOL Locked
+                  </span>
+                  <span className="font-bold text-gray-900 dark:text-white">{Number(market.total_sol_locked).toFixed(2)} SOL</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500 dark:text-gray-400">Total Votes</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{totalVotes}</span>
+                  <span className="text-gray-500 dark:text-gray-400">Total Signals</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{totalSignals} wallets</span>
+                </div>
+                {Number(market.total_yield_earned) > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Yield Earned</span>
+                    <span className="font-bold text-green-600 dark:text-green-400">{Number(market.total_yield_earned).toFixed(4)} SOL</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                    <Clock size={14} /> Ends
+                  </span>
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {new Date(market.end_time).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
 
-              {/* Pump.fun Trade Button */}
-              <div className="border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
-                <a
-                  href="https://pump.fun/coin/8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex justify-center items-center gap-2 w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold transition-all duration-200 shadow-md hover:shadow-xl hover:-translate-y-0.5"
-                >
-                  💊 Trade Market on pump.fun
-                </a>
-              </div>
             </div>
           </div>
 

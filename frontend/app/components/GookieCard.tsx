@@ -2,21 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Clock, Image as ImageIcon } from 'lucide-react';
+import { Clock, Trophy, Image as ImageIcon } from 'lucide-react';
+import { Gookie } from '../types';
 
-export default function GookieCard({ gookie }: { gookie: any }) {
+export default function GookieCard({ gookie }: { gookie: Gookie }) {
   const [timeLeft, setTimeLeft] = useState('');
   const [isEnded, setIsEnded] = useState(false);
 
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
-      const end = new Date(gookie.end_time).getTime();
+      const end = new Date(gookie.auction_end_time).getTime();
       const distance = end - now;
 
-      if (distance < 0 || gookie.status === 'closed') {
+      if (distance < 0 || gookie.status !== 'auction') {
         setIsEnded(true);
-        setTimeLeft('Auction Ended');
+        setTimeLeft('Ended');
         return;
       }
 
@@ -36,9 +37,21 @@ export default function GookieCard({ gookie }: { gookie: any }) {
     calculateTimeLeft();
     const timer = setInterval(calculateTimeLeft, 1000);
     return () => clearInterval(timer);
-  }, [gookie.end_time, gookie.status]);
+  }, [gookie.auction_end_time, gookie.status]);
 
-  const currentBid = gookie.current_highest_bid > 0 ? gookie.current_highest_bid : gookie.starting_bid;
+  const currentBid = gookie.winning_bid_rfrm > 0 ? gookie.winning_bid_rfrm : gookie.starting_bid_rfrm;
+
+  const getStatusColor = () => {
+    const colors = {
+      auction: 'bg-orange-500/80 border-orange-400 text-white shadow-lg shadow-orange-500/20',
+      won: 'bg-blue-500/80 border-blue-400 text-white',
+      market_active: 'bg-green-500/80 border-green-400 text-white',
+      market_closed: 'bg-gray-900/60 border-gray-700 text-white',
+      penalized: 'bg-red-500/80 border-red-400 text-white',
+      completed: 'bg-purple-500/80 border-purple-400 text-white',
+    }
+    return colors[gookie.status] || colors.market_closed
+  }
 
   return (
     <Link href={`/gookies/${gookie.id}`} className="block group h-full">
@@ -60,12 +73,8 @@ export default function GookieCard({ gookie }: { gookie: any }) {
           
           {/* Status Badge */}
           <div className="absolute top-3 right-3">
-            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold backdrop-blur-md border ${
-              isEnded 
-                ? 'bg-gray-900/60 border-gray-700 text-white' 
-                : 'bg-orange-500/80 border-orange-400 text-white shadow-lg shadow-orange-500/20'
-            }`}>
-              {isEnded ? 'CLOSED' : 'LIVE'}
+            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold backdrop-blur-md border ${getStatusColor()}`}>
+              {gookie.status === 'auction' ? 'LIVE' : gookie.status.toUpperCase().replace('_', ' ')}
             </span>
           </div>
         </div>
@@ -79,20 +88,33 @@ export default function GookieCard({ gookie }: { gookie: any }) {
           <div className="mt-auto pt-3 flex items-end justify-between border-t border-gray-100 dark:border-gray-800">
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-0.5">
-                {gookie.current_highest_bid > 0 ? 'Highest Bid' : 'Starting Bid'}
+                {gookie.winning_bid_rfrm > 0 ? 'Winning Bid' : 'Starting Bid'}
               </p>
               <p className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-1">
-                {currentBid} <span className="text-xs text-gray-500">SOL</span>
+                {currentBid} <span className="text-xs text-gray-500">RFRM</span>
               </p>
             </div>
             
             <div className="text-right">
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1 flex items-center justify-end gap-1">
-                <Clock size={12} /> {isEnded ? 'Ended' : 'Ends in'}
-              </p>
-              <p className={`text-sm font-bold tabular-nums ${isEnded ? 'text-gray-500' : 'text-orange-500'}`}>
-                {timeLeft}
-              </p>
+              {isEnded && gookie.winner_wallet ? (
+                <>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1 flex items-center justify-end gap-1">
+                    <Trophy size={12} /> Winner
+                  </p>
+                  <p className="text-xs font-mono font-bold text-gray-900 dark:text-white">
+                    {gookie.winner_wallet.slice(0, 4)}...{gookie.winner_wallet.slice(-4)}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1 flex items-center justify-end gap-1">
+                    <Clock size={12} /> {isEnded ? 'Ended' : 'Ends in'}
+                  </p>
+                  <p className={`text-sm font-bold tabular-nums ${isEnded ? 'text-gray-500' : 'text-orange-500'}`}>
+                    {timeLeft}
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>

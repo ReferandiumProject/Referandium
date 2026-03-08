@@ -1,45 +1,49 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { ArrowLeft, Clock, AlertCircle, Loader2, Trophy, ArrowRight, Wallet, ShieldCheck, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Clock, AlertCircle, Loader2, Trophy, ArrowRight, Wallet, ShieldCheck, CheckCircle, Plus, Trash2, Sparkles, Calendar } from 'lucide-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { SystemProgram, Transaction, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Gookie, GookieBid } from '@/app/types';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// Treasury wallet for escrow (placeholder)
-const TREASURY_WALLET = new PublicKey('5vJggeRkrFSZBJw6rZvWNzuRbKTe4g44pQEwaBcyZVBP');
+// Minimum bid increment in RFRM tokens
+const MIN_BID_INCREMENT_RFRM = 10;
 
-// Minimum bid increment
-const MIN_BID_INCREMENT = 0.05;
-
-// Anti-sniper: extend auction by 5 minutes if bid placed within last 5 minutes
-const ANTI_SNIPER_WINDOW = 5 * 60 * 1000; // 5 minutes in milliseconds
-const EXTENSION_DURATION = 5 * 60 * 1000; // Extend by 5 minutes
+// Anti-sniper: extend auction by 1 minute if bid placed within last 1 minute
+const ANTI_SNIPER_WINDOW = 1 * 60 * 1000; // 1 minute in milliseconds
+const EXTENSION_DURATION = 1 * 60 * 1000; // Extend by 1 minute
 
 export default function GookieDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params?.id as string;
   const { publicKey, connected, sendTransaction } = useWallet();
   const { connection } = useConnection();
 
-  const [gookie, setGookie] = useState<any>(null);
-  const [bids, setBids] = useState<any[]>([]);
+  const [gookie, setGookie] = useState<Gookie | null>(null);
+  const [bids, setBids] = useState<GookieBid[]>([]);
   const [loading, setLoading] = useState(true);
   const [bidAmount, setBidAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
   const [isEnded, setIsEnded] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
-  const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const [loadingBalance, setLoadingBalance] = useState(false);
+
+  // Market Setup States
+  const [marketTitle, setMarketTitle] = useState('');
+  const [marketDescription, setMarketDescription] = useState('');
+  const [marketType, setMarketType] = useState<'binary' | 'multiple'>('multiple');
+  const [marketOptions, setMarketOptions] = useState<string[]>(['', '']);
+  const [marketEndDate, setMarketEndDate] = useState('');
+  const [isDeployingMarket, setIsDeployingMarket] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -48,38 +52,24 @@ export default function GookieDetailPage() {
     }
   }, [id]);
 
+  // Set minimum market end date (cannot be before auction ends)
   useEffect(() => {
-    if (connected && publicKey) {
-      fetchWalletBalance();
-    } else {
-      setWalletBalance(null);
+    if (gookie) {
+      const minDate = new Date(gookie.auction_end_time);
+      minDate.setDate(minDate.getDate() + 1); // At least 1 day after auction
+      setMarketEndDate(minDate.toISOString().split('T')[0]);
     }
-  }, [connected, publicKey]);
-
-  const fetchWalletBalance = async () => {
-    if (!publicKey || !connection) return;
-    
-    setLoadingBalance(true);
-    try {
-      const balance = await connection.getBalance(publicKey);
-      setWalletBalance(balance / LAMPORTS_PER_SOL);
-    } catch (error) {
-      console.error('Error fetching balance:', error);
-      setWalletBalance(null);
-    } finally {
-      setLoadingBalance(false);
-    }
-  };
+  }, [gookie]);
 
   useEffect(() => {
     if (!gookie) return;
 
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
-      const end = new Date(gookie.end_time).getTime();
+      const end = new Date(gookie.auction_end_time).getTime();
       const distance = end - now;
 
-      if (distance < 0 || gookie.status === 'closed') {
+      if (distance < 0) {
         setIsEnded(true);
         setTimeLeft('Auction Ended');
         return;
@@ -95,7 +85,7 @@ export default function GookieDetailPage() {
       if (hours > 0 || days > 0) timeString += `${hours}h `;
       timeString += `${minutes}m ${seconds}s`;
       
-      // Add visual indicator if in anti-sniper window (last 5 minutes)
+      // Add visual indicator if in anti-sniper window (last 1 minute)
       if (distance < ANTI_SNIPER_WINDOW && distance > 0) {
         setTimeLeft(`${timeString} 🔥`);
       } else {
@@ -117,15 +107,15 @@ export default function GookieDetailPage() {
         .single();
         
       if (error) throw error;
-      setGookie(data);
+      setGookie(data as Gookie);
       
-      // Auto-close logic check (if time passed but status is active)
-      if (data.status === 'active' && new Date(data.end_time).getTime() < new Date().getTime()) {
+      // Auto-update status if auction ended but still showing 'auction'
+      if (data.status === 'auction' && new Date(data.auction_end_time).getTime() < new Date().getTime()) {
         await supabase
           .from('gookies')
-          .update({ status: 'closed' })
+          .update({ status: 'won' })
           .eq('id', id);
-        setGookie({ ...data, status: 'closed' });
+        setGookie({ ...data, status: 'won' } as Gookie);
       }
     } catch (error) {
       console.error('Error fetching gookie:', error);
@@ -140,46 +130,152 @@ export default function GookieDetailPage() {
         .from('gookie_bids')
         .select('*')
         .eq('gookie_id', id)
-        .order('bid_amount', { ascending: false });
+        .order('bid_amount_rfrm', { ascending: false });
         
       if (error) throw error;
-      setBids(data || []);
+      setBids((data || []) as GookieBid[]);
     } catch (error) {
       console.error('Error fetching bids:', error);
     }
   };
 
-  const handlePlaceBid = async () => {
-    if (!connected || !publicKey || !sendTransaction) {
+  // Market Setup Helper Functions
+  const addOption = () => {
+    if (marketOptions.length < 6) {
+      setMarketOptions([...marketOptions, '']);
+    }
+  };
+
+  const removeOption = (index: number) => {
+    if (marketOptions.length > 2) {
+      setMarketOptions(marketOptions.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateOption = (index: number, value: string) => {
+    const newOptions = [...marketOptions];
+    newOptions[index] = value;
+    setMarketOptions(newOptions);
+  };
+
+  const handleDeployMarket = async () => {
+    if (!connected || !publicKey) {
       setNotification({ type: 'error', message: 'Please connect your wallet first!' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    // Validation
+    if (!marketTitle.trim()) {
+      setNotification({ type: 'error', message: 'Please enter a market title!' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    if (!marketEndDate) {
+      setNotification({ type: 'error', message: 'Please select market end date!' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    if (marketType === 'multiple') {
+      const validOptions = marketOptions.filter(opt => opt.trim());
+      if (validOptions.length < 2) {
+        setNotification({ type: 'error', message: 'Multiple market requires at least 2 options!' });
+        setTimeout(() => setNotification(null), 3000);
+        return;
+      }
+    }
+
+    setIsDeployingMarket(true);
+    setNotification(null);
+
+    try {
+      // 1. Create the market
+      const { data: marketData, error: marketError } = await supabase
+        .from('markets')
+        .insert({
+          title: marketTitle,
+          description: marketDescription || null,
+          category: 'Gookie',
+          market_type: marketType,
+          gookie_id: id,
+          gookie_wallet: publicKey.toBase58(),
+          end_time: new Date(marketEndDate).toISOString(),
+          status: 'active' // Market starts active immediately
+        })
+        .select()
+        .single();
+
+      if (marketError) throw marketError;
+
+      const marketId = marketData.id;
+
+      // 2. Create market options if multiple type
+      if (marketType === 'multiple') {
+        const validOptions = marketOptions.filter(opt => opt.trim());
+        const optionsToInsert = validOptions.map(optTitle => ({
+          market_id: marketId,
+          title: optTitle
+        }));
+
+        const { error: optionsError } = await supabase
+          .from('market_options')
+          .insert(optionsToInsert);
+
+        if (optionsError) throw optionsError;
+      }
+
+      // 3. Update gookie status to market_active
+      const { error: gookieUpdateError } = await supabase
+        .from('gookies')
+        .update({ status: 'market_active' })
+        .eq('id', id);
+
+      if (gookieUpdateError) throw gookieUpdateError;
+
+      // Success!
+      setNotification({ type: 'success', message: '🚀 Market published successfully!' });
+      
+      // Redirect to the new market after 1.5 seconds
+      setTimeout(() => {
+        router.push(`/market/${marketId}`);
+      }, 1500);
+
+    } catch (error: any) {
+      console.error('Market deployment error:', error);
+      setNotification({ type: 'error', message: error.message || 'Failed to deploy market.' });
+      setTimeout(() => setNotification(null), 4000);
+    } finally {
+      setIsDeployingMarket(false);
+    }
+  };
+
+  const handlePlaceBid = async () => {
+    if (!connected || !publicKey) {
+      setNotification({ type: 'error', message: 'Please connect your wallet first!' });
+      setTimeout(() => setNotification(null), 3000);
       return;
     }
 
     const amount = parseFloat(bidAmount);
-    // Calculate minimum required bid with 0.05 SOL increment
-    const minRequiredBid = gookie.current_highest_bid > 0 
-      ? parseFloat(gookie.current_highest_bid) + MIN_BID_INCREMENT
-      : parseFloat(gookie.starting_bid);
+    // Calculate minimum required bid with 10 RFRM increment
+    const minRequiredBid = gookie!.winning_bid_rfrm > 0 
+      ? gookie!.winning_bid_rfrm + MIN_BID_INCREMENT_RFRM
+      : gookie!.starting_bid_rfrm;
 
     if (isNaN(amount) || amount < minRequiredBid) {
       setNotification({ 
         type: 'error', 
-        message: `Bid must be at least ${minRequiredBid.toFixed(2)} SOL (minimum ${MIN_BID_INCREMENT} SOL increment)` 
+        message: `Bid must be at least ${minRequiredBid} RFRM (minimum ${MIN_BID_INCREMENT_RFRM} RFRM increment)` 
       });
-      return;
-    }
-
-    // Check wallet balance
-    if (walletBalance !== null && amount > walletBalance) {
-      setNotification({ 
-        type: 'error', 
-        message: `Insufficient balance. You have ${walletBalance.toFixed(4)} SOL` 
-      });
+      setTimeout(() => setNotification(null), 3000);
       return;
     }
 
     if (isEnded) {
       setNotification({ type: 'error', message: 'This auction has ended.' });
+      setTimeout(() => setNotification(null), 3000);
       return;
     }
 
@@ -187,51 +283,26 @@ export default function GookieDetailPage() {
     setNotification(null);
 
     try {
-      // 1. Create and send SOL transfer transaction to treasury
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: TREASURY_WALLET,
-          lamports: Math.floor(amount * LAMPORTS_PER_SOL),
-        })
-      );
+      // TODO: Implement RFRM SPL token transfer (placeholder for now)
+      // const signature = await transferRFRMTokens(publicKey, TREASURY_WALLET, amount);
+      const placeholderSignature = `rfrm_bid_${Date.now()}_placeholder`;
 
-      // Get latest blockhash
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = publicKey;
-
-      // Send transaction and get signature
-      const signature = await sendTransaction(transaction, connection);
-      
-      // Wait for confirmation
-      const confirmation = await connection.confirmTransaction({
-        signature,
-        blockhash,
-        lastValidBlockHeight,
-      });
-
-      if (confirmation.value.err) {
-        throw new Error('Transaction failed to confirm');
-      }
-
-      // 2. Anti-Sniper Check: Check if we need to extend auction time
+      // Anti-Sniper Check: Check if we need to extend auction time
       const now = new Date().getTime();
-      const auctionEndTime = new Date(gookie.end_time).getTime();
+      const auctionEndTime = new Date(gookie!.auction_end_time).getTime();
       const timeRemaining = auctionEndTime - now;
       
-      let newEndTime = null;
       let auctionExtended = false;
 
       if (timeRemaining < ANTI_SNIPER_WINDOW && timeRemaining > 0) {
-        // Bid placed within last 5 minutes - extend auction
-        newEndTime = new Date(now + EXTENSION_DURATION).toISOString();
+        // Bid placed within last 1 minute - extend auction
+        const newEndTime = new Date(now + EXTENSION_DURATION).toISOString();
         auctionExtended = true;
 
-        // Update gookies table with new end_time
+        // Update gookies table with new auction_end_time
         const { error: updateError } = await supabase
           .from('gookies')
-          .update({ end_time: newEndTime })
+          .update({ auction_end_time: newEndTime })
           .eq('id', id);
 
         if (updateError) {
@@ -239,13 +310,14 @@ export default function GookieDetailPage() {
         }
       }
 
-      // 3. Insert bid to Supabase AFTER successful transaction
+      // Insert bid to Supabase
       const { error: bidError } = await supabase
         .from('gookie_bids')
         .insert({
           gookie_id: id,
-          user_wallet: publicKey.toBase58(),
-          bid_amount: amount
+          bidder_wallet: publicKey.toBase58(),
+          bid_amount_rfrm: amount,
+          transaction_signature: placeholderSignature
         });
 
       if (bidError) throw bidError;
@@ -254,7 +326,7 @@ export default function GookieDetailPage() {
       if (auctionExtended) {
         setNotification({ 
           type: 'success', 
-          message: '🔥 Sniper prevented! Auction extended by 5 minutes. Bid placed successfully!' 
+          message: '🔥 Sniper prevented! Auction extended by 1 minute. Bid placed successfully!' 
         });
       } else {
         setNotification({ type: 'success', message: 'Bid placed successfully! 🎉' });
@@ -265,21 +337,13 @@ export default function GookieDetailPage() {
       // Refresh Data
       await fetchGookieDetails();
       await fetchBids();
-      await fetchWalletBalance(); // Refresh balance after transaction
 
     } catch (error: any) {
       console.error('Bidding error:', error);
-      
-      // Handle different error types
-      if (error.message?.includes('User rejected')) {
-        setNotification({ type: 'error', message: 'Transaction cancelled by user.' });
-      } else if (error.message?.includes('insufficient')) {
-        setNotification({ type: 'error', message: 'Insufficient SOL for transaction and fees.' });
-      } else {
-        setNotification({ type: 'error', message: error.message || 'Failed to place bid.' });
-      }
+      setNotification({ type: 'error', message: error.message || 'Failed to place bid.' });
     } finally {
       setIsSubmitting(false);
+      setTimeout(() => setNotification(null), 4000);
     }
   };
 
@@ -301,10 +365,15 @@ export default function GookieDetailPage() {
     );
   }
 
-  const currentBid = gookie.current_highest_bid > 0 ? parseFloat(gookie.current_highest_bid) : parseFloat(gookie.starting_bid);
-  const minimumBid = gookie.current_highest_bid > 0 
-    ? parseFloat(gookie.current_highest_bid) + MIN_BID_INCREMENT 
-    : parseFloat(gookie.starting_bid);
+  const currentBid = gookie.winning_bid_rfrm > 0 ? gookie.winning_bid_rfrm : gookie.starting_bid_rfrm;
+  const minimumBid = gookie.winning_bid_rfrm > 0 
+    ? gookie.winning_bid_rfrm + MIN_BID_INCREMENT_RFRM 
+    : gookie.starting_bid_rfrm;
+
+  // Derived states for conditional rendering
+  const isAuctionEnded = isEnded;
+  const isWinner = connected && publicKey && gookie.winner_wallet === publicKey.toBase58();
+  const hasMarketActive = gookie.status === 'market_active' || gookie.status === 'market_closed' || gookie.status === 'completed';
 
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-[#0B0C10] pb-24">
@@ -338,11 +407,13 @@ export default function GookieDetailPage() {
                 {/* Status Badge */}
                 <div className="absolute top-6 right-6">
                   <span className={`px-4 py-2 rounded-2xl text-sm font-bold backdrop-blur-md border ${
-                    isEnded 
-                      ? 'bg-gray-900/80 border-gray-700 text-white' 
-                      : 'bg-orange-500/90 border-orange-400 text-white shadow-xl shadow-orange-500/30'
+                    gookie.status === 'auction'
+                      ? 'bg-orange-500/90 border-orange-400 text-white shadow-xl shadow-orange-500/30'
+                      : gookie.status === 'market_active'
+                      ? 'bg-green-500/90 border-green-400 text-white'
+                      : 'bg-gray-900/80 border-gray-700 text-white'
                   }`}>
-                    {isEnded ? 'AUCTION CLOSED' : 'LIVE AUCTION'}
+                    {gookie.status.toUpperCase().replace('_', ' ')}
                   </span>
                 </div>
               </div>
@@ -400,16 +471,16 @@ export default function GookieDetailPage() {
                         </div>
                         <div>
                           <p className="font-mono text-sm text-gray-900 dark:text-white font-medium">
-                            {bid.user_wallet.slice(0, 4)}...{bid.user_wallet.slice(-4)}
+                            {bid.bidder_wallet.slice(0, 4)}...{bid.bidder_wallet.slice(-4)}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(bid.created_at).toLocaleString()}
+                            {bid.created_at ? new Date(bid.created_at).toLocaleString() : ''}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className={`font-bold text-lg ${index === 0 ? 'text-orange-500' : 'text-gray-900 dark:text-white'}`}>
-                          {bid.bid_amount} SOL
+                          {bid.bid_amount_rfrm} RFRM
                         </p>
                       </div>
                     </div>
@@ -438,16 +509,16 @@ export default function GookieDetailPage() {
               {/* Current Status */}
               <div className="mb-8">
                 <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-2 uppercase tracking-wider">
-                  {gookie.current_highest_bid > 0 ? 'Current Highest Bid' : 'Starting Bid'}
+                  {gookie.winning_bid_rfrm > 0 ? 'Current Highest Bid' : 'Starting Bid'}
                 </p>
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-extrabold text-gray-900 dark:text-white">
                     {currentBid}
                   </span>
-                  <span className="text-xl font-bold text-gray-500 dark:text-gray-400">SOL</span>
+                  <span className="text-xl font-bold text-gray-500 dark:text-gray-400">RFRM</span>
                 </div>
                 
-                {gookie.highest_bidder_wallet && (
+                {gookie.winner_wallet && (
                   <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/30 flex items-center gap-3">
                     <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
                       <Trophy size={14} />
@@ -455,7 +526,7 @@ export default function GookieDetailPage() {
                     <div>
                       <p className="text-xs text-blue-600 dark:text-blue-400 font-bold uppercase">Highest Bidder</p>
                       <p className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-                        {gookie.highest_bidder_wallet.slice(0, 4)}...{gookie.highest_bidder_wallet.slice(-4)}
+                        {gookie.winner_wallet.slice(0, 4)}...{gookie.winner_wallet.slice(-4)}
                       </p>
                     </div>
                   </div>
@@ -464,31 +535,175 @@ export default function GookieDetailPage() {
 
               <hr className="border-gray-100 dark:border-gray-800 mb-8" />
 
-              {/* Bidding Form */}
-              {isEnded ? (
-                <div className="text-center p-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700">
-                  <Trophy size={40} className="mx-auto mb-3 text-gray-400" />
-                  <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Auction Closed</h4>
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">
-                    {gookie.highest_bidder_wallet 
-                      ? `Won by ${gookie.highest_bidder_wallet.slice(0,4)}...${gookie.highest_bidder_wallet.slice(-4)}`
-                      : 'Ended with no bids.'}
-                  </p>
+              {/* Notification */}
+              {notification && (
+                <div className={`p-4 rounded-xl flex items-start gap-3 mb-6 ${
+                  notification.type === 'success' 
+                    ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400' 
+                    : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
+                } border`}>
+                  {notification.type === 'success' ? <CheckCircle size={20} className="shrink-0" /> : <AlertCircle size={20} className="shrink-0" />}
+                  <span className="text-sm font-medium">{notification.message}</span>
                 </div>
+              )}
+
+              {/* Conditional Rendering: Auction Active / Ended / Winner Setup */}
+              {isAuctionEnded ? (
+                isWinner && !hasMarketActive ? (
+                  <div className="space-y-6">
+                    {/* Winner Congratulations Header */}
+                    <div className="text-center p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl border-2 border-yellow-200 dark:border-yellow-800">
+                      <Trophy size={48} className="mx-auto mb-2 text-yellow-500" />
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">🎉 Congratulations, Winner!</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">You won the auction! Set up your market below.</p>
+                    </div>
+
+                    {/* Market Type Selection */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                        Market Type *
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setMarketType('binary')}
+                          className={`px-4 py-3 rounded-xl font-bold text-sm transition-colors ${
+                            marketType === 'binary'
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          Binary (Yes/No)
+                        </button>
+                        <button
+                          onClick={() => setMarketType('multiple')}
+                          className={`px-4 py-3 rounded-xl font-bold text-sm transition-colors ${
+                            marketType === 'multiple'
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          Multiple Options
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Market Title */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                        Market Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={marketTitle}
+                        onChange={(e) => setMarketTitle(e.target.value)}
+                        placeholder="e.g., Who will win the championship?"
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0B0C10] border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-orange-500 outline-none"
+                      />
+                    </div>
+
+                    {/* Market Description */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                        Description (Optional)
+                      </label>
+                      <textarea
+                        value={marketDescription}
+                        onChange={(e) => setMarketDescription(e.target.value)}
+                        placeholder="Provide context for your market..."
+                        rows={3}
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0B0C10] border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-orange-500 outline-none resize-none"
+                      />
+                    </div>
+
+                    {/* Market End Date */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                        <Calendar size={16} /> Market End Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={marketEndDate}
+                        onChange={(e) => setMarketEndDate(e.target.value)}
+                        min={marketEndDate}
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0B0C10] border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-orange-500 outline-none"
+                      />
+                    </div>
+
+                    {/* Market Options (only for multiple type) */}
+                    {marketType === 'multiple' && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                        Market Options (2-6) *
+                      </label>
+                      <div className="space-y-2">
+                        {marketOptions.map((option, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={option}
+                              onChange={(e) => updateOption(index, e.target.value)}
+                              placeholder={`Option ${index + 1}`}
+                              className="flex-1 px-4 py-3 bg-gray-50 dark:bg-[#0B0C10] border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-orange-500 outline-none"
+                            />
+                            {marketOptions.length > 2 && (
+                              <button
+                                onClick={() => removeOption(index)}
+                                className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {marketOptions.length < 6 && (
+                        <button
+                          onClick={addOption}
+                          className="mt-3 w-full py-3 bg-gray-50 dark:bg-[#0B0C10] border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-400 hover:border-orange-500 hover:text-orange-500 dark:hover:border-orange-500 dark:hover:text-orange-400 transition font-medium flex items-center justify-center gap-2"
+                        >
+                          <Plus size={18} /> Add Option
+                        </button>
+                      )}
+                    </div>
+                    )}
+
+                    {/* Deploy Button */}
+                    <button
+                      onClick={handleDeployMarket}
+                      disabled={isDeployingMarket || !marketTitle.trim() || !marketEndDate || (marketType === 'multiple' && marketOptions.filter(o => o.trim()).length < 2)}
+                      className="w-full py-4 rounded-2xl font-bold text-lg text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 transition-all duration-300 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                    >
+                      {isDeployingMarket ? (
+                        <>
+                          <Loader2 size={24} className="animate-spin" /> Publishing...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={20} /> Publish Market
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center p-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <Trophy size={40} className="mx-auto mb-3 text-gray-400" />
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                      Auction Closed
+                    </h4>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">
+                      {gookie.winner_wallet 
+                        ? `Winner: ${gookie.winner_wallet.slice(0,4)}...${gookie.winner_wallet.slice(-4)}`
+                        : 'Ended with no bids.'}
+                    </p>
+                    {hasMarketActive && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        Market is {gookie.status === 'market_active' ? 'active' : gookie.status.replace('_', ' ')}
+                      </p>
+                    )}
+                  </div>
+                )
               ) : (
                 <div className="space-y-4">
-                  {/* Notification */}
-                  {notification && (
-                    <div className={`p-4 rounded-xl flex items-start gap-3 ${
-                      notification.type === 'success' 
-                        ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400' 
-                        : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
-                    } border`}>
-                      {notification.type === 'success' ? <CheckCircle size={20} className="shrink-0" /> : <AlertCircle size={20} className="shrink-0" />}
-                      <span className="text-sm font-medium">{notification.message}</span>
-                    </div>
-                  )}
-
                   {!connected ? (
                     <div className="text-center space-y-4">
                       <p className="text-sm text-gray-500 dark:text-gray-400">Connect your wallet to place a bid</p>
@@ -498,39 +713,16 @@ export default function GookieDetailPage() {
                     </div>
                   ) : (
                     <>
-                      {/* Wallet Balance Display */}
-                      {walletBalance !== null && (
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-900/30">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Wallet size={18} className="text-blue-600 dark:text-blue-400" />
-                              <span className="text-sm font-medium text-blue-900 dark:text-blue-300">
-                                Wallet Balance
-                              </span>
-                            </div>
-                            <div className="text-right">
-                              {loadingBalance ? (
-                                <Loader2 size={16} className="animate-spin text-blue-600" />
-                              ) : (
-                                <p className="font-bold text-lg text-blue-600 dark:text-blue-400">
-                                  {walletBalance.toFixed(4)} SOL
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
                       <div>
                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                          Your Bid Amount (SOL)
+                          Your Bid Amount (RFRM)
                         </label>
                         
                         {/* Minimum Bid Info */}
                         <div className="mb-3 p-3 bg-orange-50 dark:bg-orange-900/10 rounded-xl border border-orange-200 dark:border-orange-900/30">
                           <p className="text-sm font-semibold text-orange-700 dark:text-orange-400">
-                            Minimum bid: <span className="font-bold">{minimumBid.toFixed(2)} SOL</span>
-                            <span className="text-xs ml-2 opacity-75">({MIN_BID_INCREMENT} SOL increment)</span>
+                            Minimum bid: <span className="font-bold">{minimumBid} RFRM</span>
+                            <span className="text-xs ml-2 opacity-75">({MIN_BID_INCREMENT_RFRM} RFRM increment)</span>
                           </p>
                         </div>
 
@@ -539,13 +731,13 @@ export default function GookieDetailPage() {
                             type="number"
                             value={bidAmount}
                             onChange={(e) => setBidAmount(e.target.value)}
-                            placeholder={minimumBid.toFixed(2)}
-                            step="0.01"
+                            placeholder={minimumBid.toString()}
+                            step="10"
                             min={minimumBid}
-                            className="w-full pl-6 pr-16 py-4 bg-gray-50 dark:bg-[#0B0C10] border border-gray-200 dark:border-gray-800 rounded-2xl text-gray-900 dark:text-white font-bold text-xl focus:ring-2 focus:ring-orange-500 outline-none transition-shadow"
+                            className="w-full pl-6 pr-20 py-4 bg-gray-50 dark:bg-[#0B0C10] border border-gray-200 dark:border-gray-800 rounded-2xl text-gray-900 dark:text-white font-bold text-xl focus:ring-2 focus:ring-orange-500 outline-none transition-shadow"
                           />
                           <div className="absolute inset-y-0 right-6 flex items-center pointer-events-none text-gray-500 font-bold">
-                            SOL
+                            RFRM
                           </div>
                         </div>
                       </div>
@@ -555,27 +747,24 @@ export default function GookieDetailPage() {
                         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-center gap-2">
                           <AlertCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />
                           <span className="text-sm font-medium text-red-700 dark:text-red-400">
-                            Bid must be at least {minimumBid.toFixed(2)} SOL
+                            Bid must be at least {minimumBid} RFRM
                           </span>
                         </div>
                       )}
-                      
-                      {bidAmount && walletBalance !== null && parseFloat(bidAmount) > walletBalance && (
-                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-center gap-2">
-                          <AlertCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />
-                          <span className="text-sm font-medium text-red-700 dark:text-red-400">
-                            Insufficient SOL Balance
-                          </span>
-                        </div>
-                      )}
+
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-center gap-2">
+                        <AlertCircle size={18} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                        <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
+                          RFRM SPL token transfer not yet implemented. Placeholder bid for testing.
+                        </span>
+                      </div>
 
                       <button
                         onClick={handlePlaceBid}
                         disabled={
                           isSubmitting || 
                           !bidAmount || 
-                          parseFloat(bidAmount || '0') < minimumBid ||
-                          (walletBalance !== null && parseFloat(bidAmount || '0') > walletBalance)
+                          parseFloat(bidAmount || '0') < minimumBid
                         }
                         className="w-full py-4 rounded-2xl font-bold text-lg text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 transition-all duration-300 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
                       >

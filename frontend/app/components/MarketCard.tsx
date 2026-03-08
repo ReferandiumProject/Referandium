@@ -8,124 +8,82 @@ interface MarketCardProps {
   market: Market
 }
 
-// ─── Simple View (Yes/No) ─────────────────────────────────────────────────────
-function SimpleView({ market }: { market: Market }) {
-  // For Binary markets (no options), use market-level vote counts
-  const isBinary = !market.options || market.options.length === 0
-  const yesCount = isBinary ? (market.yes_count || 0) : (market.options?.[0]?.yes_count || 0)
-  const noCount  = isBinary ? (market.no_count || 0) : (market.options?.[0]?.no_count || 0)
-  const totalVotes = yesCount + noCount
-  const yesPct  = totalVotes > 0 ? Math.round((yesCount / totalVotes) * 100) : 0
-  const noPct   = totalVotes > 0 ? Math.round((noCount / totalVotes) * 100) : 0
-
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      <button
-        onClick={(e) => e.stopPropagation()}
-        className="flex justify-between items-center px-4 py-3 rounded-xl bg-[#00A859]/10 border border-[#00A859]/30 text-[#00A859] hover:bg-[#00A859] hover:text-white transition-colors font-bold text-[15px] cursor-pointer"
-      >
-        <span>Yes</span>
-        <span>{yesPct}%</span>
-      </button>
-      <button
-        onClick={(e) => e.stopPropagation()}
-        className="flex justify-between items-center px-4 py-3 rounded-xl bg-[#E02424]/10 border border-[#E02424]/30 text-[#E02424] hover:bg-[#E02424] hover:text-white transition-colors font-bold text-[15px] cursor-pointer"
-      >
-        <span>No</span>
-        <span>{noPct}%</span>
-      </button>
-    </div>
-  )
-}
-
-// ─── Main MarketCard ──────────────────────────────────────────────────────────
 export default function MarketCard({ market }: MarketCardProps) {
   const router = useRouter()
 
-  const options        = market.options || []
-  const isSimpleMarket = options.length <= 1
-  const displayOptions = options.slice(0, 2)
-  const hasMore        = options.length > 2
+  const getStatusBadge = () => {
+    const colors = {
+      draft: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+      active: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+      closed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    }
+    return colors[market.status] || colors.draft
+  }
 
-  const totalPool = options.reduce(
-    (sum, opt) => sum + Number(opt.yes_pool || 0) + Number(opt.no_pool || 0), 0
-  ) || Number(market.total_pool || 0)
-  const totalVotes = (market.yes_count || 0) + (market.no_count || 0)
+  const formatGookieWallet = (wallet: string | null) => {
+    if (!wallet) return 'Platform'
+    return `${wallet.slice(0, 4)}...${wallet.slice(-4)}`
+  }
 
   return (
     <div
       onClick={() => router.push(`/market/${market.id}`)}
-      className="bg-white dark:bg-[#1A1C24] border-2 border-gray-100 dark:border-gray-800 hover:border-blue-500/50 dark:hover:border-blue-500/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl rounded-2xl flex flex-col justify-between p-5 min-h-[240px] cursor-pointer group"
+      className="bg-white dark:bg-[#1A1C24] border-2 border-gray-100 dark:border-gray-800 hover:border-blue-500/50 dark:hover:border-blue-500/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl rounded-2xl flex flex-col justify-between p-5 min-h-[260px] cursor-pointer group"
     >
-      {/* ── Icon + Title ── */}
+      {/* Header */}
       <div className="flex gap-3 items-start mb-4">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-lg flex-shrink-0 shadow-md">
           <Zap size={20} />
         </div>
-        <h3 className="text-[17px] font-bold text-gray-900 dark:text-white leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-          {market.title || market.question}
-        </h3>
+        <div className="flex-1">
+          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+            {market.title}
+          </h3>
+          <div className="flex items-center gap-2 mt-2">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase ${getStatusBadge()}`}>
+              {market.status}
+            </span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 capitalize">
+              {market.market_type}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* ── Voting area ── */}
+      {/* Stats */}
       <div className="flex-1 flex flex-col justify-end">
-        {isSimpleMarket ? (
-          <SimpleView market={market} />
-        ) : (
-          <div className="space-y-2">
-            {displayOptions.map((opt) => {
-              // Calculate total votes for this option
-              const optionYesCount = opt.yes_count || 0
-              const optionNoCount = opt.no_count || 0
-              const optionTotalVotes = optionYesCount + optionNoCount
-              // Calculate percentage based on vote count (not pool amount)
-              const yesPercent = optionTotalVotes > 0 ? Math.round((optionYesCount / optionTotalVotes) * 100) : 0
-              
-              return (
-                <div key={opt.id} className="flex justify-between items-center">
-                  <span className="font-semibold text-gray-800 dark:text-gray-200 text-[15px] truncate pr-3 flex-1">
-                    {opt.title}
-                  </span>
-                  <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="shrink-0 bg-blue-600 text-white font-bold text-[14px] px-3 py-1.5 rounded-lg shadow-sm border border-blue-700 hover:bg-blue-700 transition-colors"
-                  >
-                    {yesPercent}%
-                  </button>
-                </div>
-              )
-            })}
-            {hasMore && (
-              <button
-                onClick={(e) => e.stopPropagation()}
-                className="text-sm font-semibold text-blue-500 hover:text-blue-600 dark:text-blue-400 mt-2 inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-lg w-full justify-center transition-colors"
-              >
-                +{options.length - 2} more options
-              </button>
-            )}
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 mb-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Signals</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">{market.total_signals}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">SOL Locked</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">{market.total_sol_locked.toFixed(2)}</p>
+            </div>
           </div>
-        )}
+        </div>
 
-        {/* ── Pump.fun Trade Button ── */}
+        {/* Pump.fun Trade Button */}
         <a
           href="https://pump.fun/coin/8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump"
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="flex justify-center items-center gap-2 w-full py-3 mt-3 mb-1 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-sm transition-all duration-200 shadow-md hover:shadow-xl hover:-translate-y-0.5"
+          className="flex justify-center items-center gap-2 w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-sm transition-all duration-200 shadow-md hover:shadow-xl"
         >
           💊 Trade on pump.fun
         </a>
 
-        {/* ── Footer ── */}
-        <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-100 dark:border-gray-800 flex justify-between items-center">
-          <span className="flex items-center gap-1 text-sm font-bold text-gray-500 dark:text-gray-400">
-            <TrendingUp size={13} />
-            {totalPool.toFixed(1)} SOL
+        {/* Footer */}
+        <div className="mt-3 pt-3 border-t-2 border-dashed border-gray-100 dark:border-gray-800 flex justify-between items-center">
+          <span className="flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+            <Users size={12} />
+            Gookie: {formatGookieWallet(market.gookie_wallet || null)}
           </span>
-          <span className="flex items-center gap-1 text-sm font-bold text-gray-500 dark:text-gray-400">
-            <Users size={13} />
-            {totalVotes}
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            Ends {new Date(market.end_time).toLocaleDateString()}
           </span>
         </div>
       </div>

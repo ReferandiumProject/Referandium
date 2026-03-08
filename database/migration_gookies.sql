@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS public.gookies (
   current_highest_bid NUMERIC DEFAULT 0,
   highest_bidder_wallet TEXT,
   end_time TIMESTAMPTZ NOT NULL,
-  status TEXT NOT NULL DEFAULT 'active', -- 'active' or 'closed'
+  status TEXT NOT NULL DEFAULT 'active', -- 'active', 'closed', or 'deployed'
+  market_id UUID REFERENCES public.markets(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   creator_wallet TEXT NOT NULL
 );

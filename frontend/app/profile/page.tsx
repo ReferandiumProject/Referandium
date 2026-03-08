@@ -21,9 +21,9 @@ export default function ProfilePage() {
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Voting history states
-  const [votes, setVotes] = useState<any[]>([]);
-  const [votesLoading, setVotesLoading] = useState(false);
+  // Signal history states
+  const [signals, setSignals] = useState<any[]>([]);
+  const [signalsLoading, setSignalsLoading] = useState(false);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<'markets' | 'gookies'>('markets');
@@ -48,50 +48,50 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  // Fetch voting history
+  // Fetch signal history
   useEffect(() => {
     if (connected && publicKey) {
-      fetchUserVotes();
+      fetchUserSignals();
       fetchUserGookies();
     } else {
-      setVotes([]);
+      setSignals([]);
       setOwnedGookies([]);
       setMyBids([]);
     }
   }, [connected, publicKey]);
 
-  const fetchUserVotes = async () => {
+  const fetchUserSignals = async () => {
     if (!publicKey) return;
-    setVotesLoading(true);
+    setSignalsLoading(true);
     const walletAddress = publicKey.toBase58();
 
     try {
-      const { data: votesData, error: votesError } = await supabase
-        .from('votes')
+      const { data: signalsData, error: signalsError } = await supabase
+        .from('signals')
         .select('*')
         .eq('user_wallet', walletAddress)
         .order('created_at', { ascending: false });
 
-      if (votesError || !votesData || votesData.length === 0) {
-        setVotes([]);
+      if (signalsError || !signalsData || signalsData.length === 0) {
+        setSignals([]);
         return;
       }
 
-      const marketIds = [...new Set(votesData.map((v: any) => v.market_id))];
+      const marketIds = [...new Set(signalsData.map((s: any) => s.market_id))];
       const { data: marketsData } = await supabase
         .from('markets')
         .select('*')
         .in('id', marketIds);
 
-      const merged = votesData.map((vote: any) => ({
-        ...vote,
-        markets: marketsData?.find((m: any) => m.id === vote.market_id) || null,
+      const merged = signalsData.map((signal: any) => ({
+        ...signal,
+        market: marketsData?.find((m: any) => m.id === signal.market_id) || null,
       }));
-      setVotes(merged);
+      setSignals(merged);
     } catch (error) {
-      console.error('Error fetching votes:', error);
+      console.error('Error fetching signals:', error);
     } finally {
-      setVotesLoading(false);
+      setSignalsLoading(false);
     }
   };
 
@@ -101,13 +101,12 @@ export default function ProfilePage() {
     const walletAddress = publicKey.toBase58();
 
     try {
-      // Fetch owned Gookies (won auctions)
+      // Fetch owned Gookies (won auctions - where user is winner)
       const { data: ownedData, error: ownedError } = await supabase
         .from('gookies')
         .select('*')
-        .eq('highest_bidder_wallet', walletAddress)
-        .eq('status', 'closed')
-        .order('end_time', { ascending: false });
+        .eq('winner_wallet', walletAddress)
+        .order('auction_end_time', { ascending: false });
 
       if (!ownedError && ownedData) {
         setOwnedGookies(ownedData);
@@ -117,7 +116,7 @@ export default function ProfilePage() {
       const { data: bidsData, error: bidsError } = await supabase
         .from('gookie_bids')
         .select('*')
-        .eq('user_wallet', walletAddress)
+        .eq('bidder_wallet', walletAddress)
         .order('created_at', { ascending: false });
 
       if (!bidsError && bidsData) {
@@ -175,12 +174,12 @@ export default function ProfilePage() {
   };
 
   // Calculate comprehensive user statistics
-  const totalSpent = votes.reduce((acc, vote) => acc + (vote.amount_sol || 0), 0);
-  const totalVotes = votes.length;
-  const yesVotes = votes.filter(v => v.vote_direction === 'yes').length;
-  const noVotes = votes.filter(v => v.vote_direction === 'no').length;
-  const uniqueMarkets = new Set(votes.map(v => v.market_id)).size;
-  const avgVoteAmount = totalVotes > 0 ? (totalSpent / totalVotes) : 0;
+  const totalSpent = signals.reduce((acc, signal) => acc + (signal.sol_amount || 0), 0);
+  const totalSignals = signals.length;
+  const yesSignals = signals.filter(s => s.signal_direction === 'yes').length;
+  const noSignals = signals.filter(s => s.signal_direction === 'no').length;
+  const uniqueMarkets = new Set(signals.map(s => s.market_id)).size;
+  const totalYield = signals.reduce((acc, signal) => acc + (signal.yield_earned || 0), 0);
 
   if (!mounted) return null;
 
@@ -322,8 +321,8 @@ export default function ProfilePage() {
                   <BarChart3 size={28} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Total Votes</p>
-                  <p className="text-3xl font-extrabold text-gray-900 dark:text-white">{totalVotes}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Total Signals</p>
+                  <p className="text-3xl font-extrabold text-gray-900 dark:text-white">{totalSignals}</p>
                 </div>
               </div>
               <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-5">
@@ -331,8 +330,8 @@ export default function ProfilePage() {
                   <Coins size={28} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Total Volume</p>
-                  <p className="text-3xl font-extrabold text-gray-900 dark:text-white">{totalSpent.toFixed(4)} <span className="text-lg font-bold text-gray-400">SOL</span></p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Total Yield Earned</p>
+                  <p className="text-3xl font-extrabold text-gray-900 dark:text-white">{totalYield.toFixed(4)} <span className="text-lg font-bold text-gray-400">SOL</span></p>
                 </div>
               </div>
             </div>
@@ -368,57 +367,60 @@ export default function ProfilePage() {
               {/* Markets Tab Content */}
               {activeTab === 'markets' && (
                 <>
-              {votesLoading ? (
+              {signalsLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-                  <span className="ml-3 text-gray-500 dark:text-gray-400">Loading your votes...</span>
+                  <span className="ml-3 text-gray-500 dark:text-gray-400">Loading your signals...</span>
                 </div>
-              ) : votes.length === 0 ? (
+              ) : signals.length === 0 ? (
                 <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
                   <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                     <History className="text-gray-400" size={28} />
                   </div>
-                  <p className="text-gray-500 dark:text-gray-400 mb-2 text-lg">No votes found yet.</p>
-                  <p className="text-sm text-gray-400 dark:text-gray-500 mb-6">Start voting on markets to see your history here.</p>
+                  <p className="text-gray-500 dark:text-gray-400 mb-2 text-lg">No signals found yet.</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500 mb-6">Start signaling on markets to see your history here.</p>
                   <Link href="/" className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition text-sm">
                     Explore Markets <ArrowRight size={16} />
                   </Link>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {votes.map((vote) => (
+                  {signals.map((signal) => (
                     <Link
-                      href={vote.markets ? `/market/${vote.markets.id}` : '#'}
-                      key={vote.id}
+                      href={signal.market ? `/market/${signal.market.id}` : '#'}
+                      key={signal.id}
                       className="block group"
                     >
                       <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-gray-100 dark:border-gray-700 flex items-center gap-4">
                         <img
-                          src={vote.markets?.image_url || 'https://placehold.co/100'}
+                          src={signal.market?.image_url || 'https://placehold.co/100'}
                           alt="market"
                           className="w-14 h-14 rounded-xl object-cover bg-gray-100 dark:bg-gray-700 flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
                           <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 transition truncate">
-                            {vote.markets?.question || 'Deleted Market'}
+                            {signal.market?.title || 'Deleted Market'}
                           </h3>
                           <p className="text-xs text-gray-400 mt-1">
-                            {new Date(vote.created_at).toLocaleDateString('en-US', {
+                            {new Date(signal.created_at).toLocaleDateString('en-US', {
                               year: 'numeric', month: 'short', day: 'numeric',
                             })}
                           </p>
                         </div>
                         <div className="flex items-center gap-3 flex-shrink-0">
                           <span className={`px-3 py-1 rounded-lg text-xs font-bold tracking-wide ${
-                            vote.vote_direction === 'yes'
+                            signal.signal_direction === 'yes'
                               ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
                               : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                           }`}>
-                            {vote.vote_direction === 'yes' ? 'YES' : 'NO'}
+                            {signal.signal_direction === 'yes' ? 'YES' : 'NO'}
                           </span>
-                          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 tabular-nums">
-                            {vote.amount_sol} SOL
-                          </span>
+                          <div className="text-right">
+                            <p className="text-xs text-gray-400">Yield</p>
+                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 tabular-nums">
+                              {signal.yield_earned ? `+${signal.yield_earned.toFixed(4)}` : '0'} SOL
+                            </p>
+                          </div>
                           <ArrowRight size={18} className="text-gray-300 group-hover:text-blue-500 transition" />
                         </div>
                       </div>
@@ -487,7 +489,7 @@ export default function ProfilePage() {
                                       {gookie.title}
                                     </h4>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                      {gookie.current_highest_bid} SOL
+                                      {gookie.winning_bid_rfrm} RFRM
                                     </p>
                                   </div>
                                 </div>
@@ -517,8 +519,8 @@ export default function ProfilePage() {
                           <div className="space-y-3">
                             {myBids.map((bid) => {
                               const gookie = bid.gookie;
-                              const isWinning = gookie?.highest_bidder_wallet === publicKey?.toBase58();
-                              const isEnded = gookie?.status === 'closed' || (gookie?.end_time && new Date(gookie.end_time) < new Date());
+                              const isWinning = gookie?.winner_wallet === publicKey?.toBase58();
+                              const isEnded = gookie?.status !== 'auction';
                               
                               return (
                                 <Link
@@ -565,7 +567,7 @@ export default function ProfilePage() {
                                       <div className="text-right">
                                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">My Bid</p>
                                         <p className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">
-                                          {bid.bid_amount} SOL
+                                          {bid.bid_amount_rfrm} RFRM
                                         </p>
                                       </div>
                                       {isEnded ? (
