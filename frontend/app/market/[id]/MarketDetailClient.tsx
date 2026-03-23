@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { ArrowLeft, CheckCircle, XCircle, MessageSquare, Send, Loader2, Trash2, TrendingUp, Clock, FileText } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, MessageSquare, Send, Loader2, Trash2, TrendingUp, Clock, FileText, Lock } from 'lucide-react';
 import { Market, MarketOption, Signal, Comment } from '@/app/types';
 import * as marketEscrowContract from '@/app/utils/marketEscrowContract';
 import MarketChart from '../../components/MarketChart';
@@ -731,6 +731,44 @@ export default function MarketDetailClient() {
                   <span className="font-semibold text-gray-900 dark:text-white">
                     {(() => { const d = new Date(market.end_time); return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`; })()}
                   </span>
+                </div>
+              </div>
+
+              {/* Vault Info Card */}
+              <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lock size={16} className="text-purple-600 dark:text-purple-400" />
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900 dark:text-white">🔒 Vault</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Transparent & On-Chain</p>
+                    </div>
+                  </div>
+                  
+                  {market.escrow_pda ? (
+                    <>
+                      <div className="space-y-2 mt-3">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-500 dark:text-gray-400">Escrow Address:</span>
+                          <a 
+                            href={`https://explorer.solana.com/address/${market.escrow_pda}?cluster=devnet`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-purple-600 dark:text-purple-400 hover:underline"
+                          >
+                            {market.escrow_pda.slice(0, 4)}...{market.escrow_pda.slice(-4)}
+                          </a>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-3 leading-relaxed">
+                        SOL is held in a Solana smart contract escrow. Platform actively manages yield generation. Principal is always returned when market closes.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      Escrow pending
+                    </p>
+                  )}
                 </div>
               </div>
 
