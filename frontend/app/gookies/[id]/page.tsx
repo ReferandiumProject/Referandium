@@ -5,9 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { PublicKey } from '@solana/web3.js';
 import { ArrowLeft, Clock, AlertCircle, Loader2, Trophy, ArrowRight, Wallet, ShieldCheck, CheckCircle, Plus, Trash2, Sparkles, Calendar } from 'lucide-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Gookie, GookieBid } from '@/app/types';
+import * as gookieContract from '@/app/utils/gookieContract';
+import * as marketEscrowContract from '@/app/utils/marketEscrowContract';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,7 +28,8 @@ export default function GookieDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
-  const { publicKey, connected, sendTransaction } = useWallet();
+  const wallet = useWallet();
+  const { publicKey, connected } = wallet;
   const { connection } = useConnection();
 
   const [gookie, setGookie] = useState<Gookie | null>(null);
@@ -159,13 +163,12 @@ export default function GookieDetailPage() {
   };
 
   const handleDeployMarket = async () => {
-    if (!connected || !publicKey) {
+    if (!connected || !publicKey || !wallet.wallet) {
       setNotification({ type: 'error', message: 'Please connect your wallet first!' });
       setTimeout(() => setNotification(null), 3000);
       return;
     }
 
-    // Validation
     if (!marketTitle.trim()) {
       setNotification({ type: 'error', message: 'Please enter a market title!' });
       setTimeout(() => setNotification(null), 3000);
@@ -187,14 +190,30 @@ export default function GookieDetailPage() {
       }
     }
 
+    if (!gookie || gookie.auction_id === undefined || gookie.auction_id === null) {
+      setNotification({ type: 'error', message: 'Auction ID not found' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
     setIsDeployingMarket(true);
     setNotification(null);
 
     try {
-      // 1. Create the market
+      const marketId = crypto.randomUUID();
+      
+      const nftTx = await gookieContract.mintGookieNFT(
+        wallet.wallet,
+        publicKey,
+        connection,
+        gookie.auction_id,
+        marketId
+      );
+
       const { data: marketData, error: marketError } = await supabase
         .from('markets')
         .insert({
+          id: marketId,
           title: marketTitle,
           description: marketDescription || null,
           category: 'Gookie',
@@ -202,16 +221,45 @@ export default function GookieDetailPage() {
           gookie_id: id,
           gookie_wallet: publicKey.toBase58(),
           end_time: new Date(marketEndDate).toISOString(),
-          status: 'active' // Market starts active immediately
+          status: 'active',
+          nft_mint_tx: nftTx,
         })
         .select()
         .single();
 
-      if (marketError) throw marketError;
+      if (marketError) {
+        console.error('Market insert error:', marketError);
+        throw new Error(`Failed to create market: ${marketError.message}`);
+      }
 
-      const marketId = marketData.id;
+      // Create market escrow on-chain
+      try {
+        const gookieWalletPubkey = new PublicKey(publicKey.toBase58());
+        const escrowResult = await marketEscrowContract.createMarketEscrow(
+          wallet.wallet,
+          publicKey,
+          connection,
+          {
+            marketId: marketData.id,
+            gookieWallet: gookieWalletPubkey,
+            endTime: Math.floor(new Date(marketEndDate).getTime() / 1000),
+          }
+        );
 
-      // 2. Create market options if multiple type
+        // Update market in Supabase with escrow info
+        await supabase.from('markets').update({
+          escrow_pda: escrowResult.marketEscrowPDA,
+          on_chain_market_id: marketData.id,
+        }).eq('id', marketData.id);
+        
+        console.log('Escrow created:', escrowResult);
+      } catch (escrowError: any) {
+        console.error('ESCROW ERROR FULL:', escrowError);
+        console.error('ESCROW ERROR MESSAGE:', escrowError?.message);
+        console.error('ESCROW ERROR LOGS:', escrowError?.logs);
+        // Don't throw - continue with market creation
+      }
+
       if (marketType === 'multiple') {
         const validOptions = marketOptions.filter(opt => opt.trim());
         const optionsToInsert = validOptions.map(optTitle => ({
@@ -226,18 +274,15 @@ export default function GookieDetailPage() {
         if (optionsError) throw optionsError;
       }
 
-      // 3. Update gookie status to market_active
       const { error: gookieUpdateError } = await supabase
         .from('gookies')
-        .update({ status: 'market_active' })
+        .update({ status: 'market_active', nft_mint_tx: nftTx })
         .eq('id', id);
 
       if (gookieUpdateError) throw gookieUpdateError;
 
-      // Success!
-      setNotification({ type: 'success', message: '🚀 Market published successfully!' });
+      setNotification({ type: 'success', message: `🚀 NFT minted & market published! Tx: ${nftTx.slice(0, 8)}...` });
       
-      // Redirect to the new market after 1.5 seconds
       setTimeout(() => {
         router.push(`/market/${marketId}`);
       }, 1500);
@@ -252,14 +297,13 @@ export default function GookieDetailPage() {
   };
 
   const handlePlaceBid = async () => {
-    if (!connected || !publicKey) {
+    if (!connected || !publicKey || !wallet.wallet) {
       setNotification({ type: 'error', message: 'Please connect your wallet first!' });
       setTimeout(() => setNotification(null), 3000);
       return;
     }
 
     const amount = parseFloat(bidAmount);
-    // Calculate minimum required bid with 10 RFRM increment
     const minRequiredBid = gookie!.winning_bid_rfrm > 0 
       ? gookie!.winning_bid_rfrm + MIN_BID_INCREMENT_RFRM
       : gookie!.starting_bid_rfrm;
@@ -279,62 +323,41 @@ export default function GookieDetailPage() {
       return;
     }
 
+    if (!gookie || !gookie.on_chain_address) {
+      setNotification({ type: 'error', message: 'On-chain auction address not found' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
     setIsSubmitting(true);
     setNotification(null);
 
     try {
-      // TODO: Implement RFRM SPL token transfer (placeholder for now)
-      // const signature = await transferRFRMTokens(publicKey, TREASURY_WALLET, amount);
-      const placeholderSignature = `rfrm_bid_${Date.now()}_placeholder`;
-
-      // Anti-Sniper Check: Check if we need to extend auction time
-      const now = new Date().getTime();
-      const auctionEndTime = new Date(gookie!.auction_end_time).getTime();
-      const timeRemaining = auctionEndTime - now;
+      const auctionPubkey = new PublicKey(gookie.on_chain_address);
+      const bidAmountLamports = amount * 1_000_000_000;
       
-      let auctionExtended = false;
+      const tx = await gookieContract.placeBid(
+        wallet.wallet,
+        publicKey,
+        connection,
+        auctionPubkey,
+        bidAmountLamports
+      );
 
-      if (timeRemaining < ANTI_SNIPER_WINDOW && timeRemaining > 0) {
-        // Bid placed within last 1 minute - extend auction
-        const newEndTime = new Date(now + EXTENSION_DURATION).toISOString();
-        auctionExtended = true;
-
-        // Update gookies table with new auction_end_time
-        const { error: updateError } = await supabase
-          .from('gookies')
-          .update({ auction_end_time: newEndTime })
-          .eq('id', id);
-
-        if (updateError) {
-          console.error('Error extending auction:', updateError);
-        }
-      }
-
-      // Insert bid to Supabase
       const { error: bidError } = await supabase
         .from('gookie_bids')
         .insert({
           gookie_id: id,
           bidder_wallet: publicKey.toBase58(),
           bid_amount_rfrm: amount,
-          transaction_signature: placeholderSignature
+          transaction_signature: tx
         });
 
       if (bidError) throw bidError;
 
-      // Show appropriate success message
-      if (auctionExtended) {
-        setNotification({ 
-          type: 'success', 
-          message: '🔥 Sniper prevented! Auction extended by 1 minute. Bid placed successfully!' 
-        });
-      } else {
-        setNotification({ type: 'success', message: 'Bid placed successfully! 🎉' });
-      }
-      
+      setNotification({ type: 'success', message: `Bid placed on-chain! Tx: ${tx.slice(0, 8)}...` });
       setBidAmount('');
       
-      // Refresh Data
       await fetchGookieDetails();
       await fetchBids();
 
@@ -755,7 +778,7 @@ export default function GookieDetailPage() {
                       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-center gap-2">
                         <AlertCircle size={18} className="text-blue-600 dark:text-blue-400 shrink-0" />
                         <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
-                          RFRM SPL token transfer not yet implemented. Placeholder bid for testing.
+                          On-chain bidding with automatic refunds. Anti-snipe protection active.
                         </span>
                       </div>
 

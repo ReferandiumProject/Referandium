@@ -402,9 +402,7 @@ export default function ProfilePage() {
                             {signal.market?.title || 'Deleted Market'}
                           </h3>
                           <p className="text-xs text-gray-400 mt-1">
-                            {new Date(signal.created_at).toLocaleDateString('en-US', {
-                              year: 'numeric', month: 'short', day: 'numeric',
-                            })}
+                            {(() => { const d = new Date(signal.created_at); return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`; })()}
                           </p>
                         </div>
                         <div className="flex items-center gap-3 flex-shrink-0">
@@ -548,9 +546,7 @@ export default function ProfilePage() {
                                       </h3>
                                       <div className="flex items-center gap-2 mt-1">
                                         <p className="text-xs text-gray-400">
-                                          {new Date(bid.created_at).toLocaleDateString('en-US', {
-                                            year: 'numeric', month: 'short', day: 'numeric',
-                                          })}
+                                          {(() => { const d = new Date(bid.created_at); return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`; })()}
                                         </p>
                                         {gookie?.end_time && (
                                           <>

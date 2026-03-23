@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { ArrowLeft, CheckCircle, XCircle, MessageSquare, Send, Loader2, Trash2, TrendingUp, Clock } from 'lucide-react';
 import { Market, MarketOption, Signal, Comment } from '@/app/types';
+import * as marketEscrowContract from '@/app/utils/marketEscrowContract';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,7 +19,9 @@ const MIN_SIGNAL_AMOUNT = 0.05; // Minimum 0.05 SOL per signal
 export default function MarketDetailClient() {
   const params = useParams();
   const id = params?.id as string;
-  const { publicKey, connected } = useWallet();
+  const wallet = useWallet();
+  const { publicKey, connected } = wallet;
+  const { connection } = useConnection();
 
   const [market, setMarket] = useState<Market | null>(null);
   const [options, setOptions] = useState<MarketOption[]>([]);
@@ -34,6 +37,8 @@ export default function MarketDetailClient() {
   const [commentText, setCommentText] = useState('');
   const [isPostingComment, setIsPostingComment] = useState(false);
   const [signals, setSignals] = useState<Signal[]>([]);
+  const [onChainSignal, setOnChainSignal] = useState<any | null>(null);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   // Fetch market data on mount
   useEffect(() => {
@@ -46,6 +51,7 @@ export default function MarketDetailClient() {
   useEffect(() => {
     if (connected && publicKey && market) {
       checkIfUserSignaled();
+      checkOnChainSignal();
     }
   }, [connected, publicKey, market]);
 
@@ -166,6 +172,25 @@ export default function MarketDetailClient() {
     }
   };
 
+  const checkOnChainSignal = async () => {
+    if (!publicKey || !market?.on_chain_market_id) return;
+    
+    try {
+      const signal = await marketEscrowContract.getUserSignal(
+        connection,
+        market.on_chain_market_id,
+        publicKey
+      );
+      setOnChainSignal(signal);
+      if (signal && !signal.withdrawn) {
+        setHasSignaled(true);
+      }
+    } catch (error) {
+      console.error('Error fetching on-chain signal:', error);
+      setOnChainSignal(null);
+    }
+  };
+
   const checkIfUserSignaled = async () => {
     if (!publicKey) return;
     
@@ -191,22 +216,63 @@ export default function MarketDetailClient() {
     }
   };
 
+  const handleWithdraw = async () => {
+    if (!connected || !publicKey || !wallet.wallet || !market?.on_chain_market_id) {
+      setNotification({ type: 'error', message: 'Please connect your wallet first!' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    if (!onChainSignal || onChainSignal.withdrawn) {
+      setNotification({ type: 'error', message: 'No signal to withdraw or already withdrawn' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    setIsWithdrawing(true);
+    try {
+      const tx = await marketEscrowContract.withdraw(
+        wallet.wallet,
+        publicKey,
+        connection,
+        market.on_chain_market_id
+      );
+
+      await supabase
+        .from('signals')
+        .update({ 
+          principal_returned: true,
+          yield_claimed: true,
+          withdrawal_tx_signature: tx 
+        })
+        .eq('market_id', id)
+        .eq('user_wallet', publicKey.toBase58());
+
+      setNotification({ type: 'success', message: `Withdrawal successful! Tx: ${tx.slice(0, 8)}...` });
+      await checkOnChainSignal();
+      await checkIfUserSignaled();
+    } catch (error: any) {
+      console.error('Withdraw error:', error);
+      setNotification({ type: 'error', message: error.message || 'Failed to withdraw' });
+    } finally {
+      setIsWithdrawing(false);
+      setTimeout(() => setNotification(null), 4000);
+    }
+  };
+
   const handleSubmitSignal = async () => {
-    // Validation: Wallet must be connected
-    if (!connected || !publicKey) {
+    if (!connected || !publicKey || !wallet.wallet) {
       setNotification({ type: 'error', message: 'Please connect your Solana wallet first!' });
       setTimeout(() => setNotification(null), 3000);
       return;
     }
 
-    // Check if user already signaled
     if (hasSignaled) {
       setNotification({ type: 'error', message: 'You have already signaled on this market' });
       setTimeout(() => setNotification(null), 3000);
       return;
     }
 
-    // Validation: Amount must be valid and >= 0.05 SOL
     const signalAmount = parseFloat(amount);
     if (!signalAmount || signalAmount < MIN_SIGNAL_AMOUNT) {
       setNotification({ type: 'error', message: `Minimum signal amount is ${MIN_SIGNAL_AMOUNT} SOL` });
@@ -216,25 +282,35 @@ export default function MarketDetailClient() {
 
     setIsSubmitting(true);
     try {
-      // Prepare signal data
+      let depositTx = null;
+      
+      if (market?.on_chain_market_id) {
+        const signalDirection = selectedTab === 'yes' ? 1 : 0;
+        depositTx = await marketEscrowContract.depositSignal(
+          wallet.wallet,
+          publicKey,
+          connection,
+          market.on_chain_market_id,
+          signalAmount,
+          signalDirection
+        );
+      }
+
       const signalData: any = {
         market_id: market!.id,
         user_wallet: publicKey.toBase58(),
         signal_direction: selectedTab,
         sol_amount: signalAmount,
-        deposit_tx_signature: null // Off-chain: no on-chain tx for now
+        deposit_tx_signature: depositTx
       };
       
-      // Include option_id for multi-option markets
       if (!isBinaryMarket && selectedOption) {
         signalData.option_id = selectedOption.id;
       }
       
-      // Insert signal into Supabase
       const { error: signalError } = await supabase.from('signals').insert(signalData);
       
       if (signalError) {
-        // Handle unique constraint violation (error code 23505)
         if (signalError.code === '23505' || signalError.message.includes('duplicate') || signalError.message.includes('unique')) {
           throw new Error('You have already signaled on this market');
         } else if (signalError.message.includes('violates foreign key')) {
@@ -246,16 +322,16 @@ export default function MarketDetailClient() {
         }
       }
 
-      // Success: Database triggers will automatically update market stats
       setHasSignaled(true);
-      setNotification({ type: 'success', message: `Signal ${selectedTab.toUpperCase()} submitted successfully! 🎉` });
+      const txMsg = depositTx ? ` Tx: ${depositTx.slice(0, 8)}...` : '';
+      setNotification({ type: 'success', message: `Signal ${selectedTab.toUpperCase()} submitted on-chain!${txMsg}` });
       setAmount('');
       
-      // Refresh data
       await Promise.all([
         fetchMarketData(),
         fetchSignals(),
-        checkIfUserSignaled()
+        checkIfUserSignaled(),
+        checkOnChainSignal()
       ]);
 
     } catch (error: any) {
@@ -630,7 +706,7 @@ export default function MarketDetailClient() {
                     <Clock size={14} /> Ends
                   </span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {new Date(market.end_time).toLocaleDateString()}
+                    {(() => { const d = new Date(market.end_time); return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`; })()}
                   </span>
                 </div>
               </div>

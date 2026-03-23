@@ -1,141 +1,206 @@
 use anchor_lang::prelude::*;
-use anchor_lang::system_program;
+use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
-declare_id!("C3kp55sPwskwHygfFSqYZhqUEvEb3JDmjt2GhDXu31gV");
+declare_id!("FUTVzQF86UckN9KhyuRajM4xRsYS62f24hTbJqGkZxed");
+
+const SECONDS_PER_MONTH: i64 = 30 * 24 * 60 * 60;
 
 #[program]
 pub mod referandium {
     use super::*;
 
-    /// Initialize the platform vault (one-time setup by admin).
-    pub fn initialize_vault(ctx: Context<InitializeVault>) -> Result<()> {
-        let vault = &mut ctx.accounts.vault;
-        vault.authority = ctx.accounts.authority.key();
-        vault.total_markets = 0;
-        vault.bump = ctx.bumps.vault;
-        Ok(())
-    }
-
-    /// Create a new policy prescription market.
-    pub fn create_market(
-        ctx: Context<CreateMarket>,
-        market_id: String,
-        question: String,
-        description: String,
-        end_timestamp: i64,
+    /// Initialize the platform (one-time setup by admin)
+    pub fn initialize_platform(
+        ctx: Context<InitializePlatform>,
+        required_usd_per_month: u64,
     ) -> Result<()> {
-        require!(question.len() <= 200, ReferandiumError::QuestionTooLong);
-        require!(description.len() <= 500, ReferandiumError::DescriptionTooLong);
-        require!(market_id.len() <= 64, ReferandiumError::MarketIdTooLong);
-
-        let clock = Clock::get()?;
-        require!(end_timestamp > clock.unix_timestamp, ReferandiumError::EndDateInPast);
-
-        let market = &mut ctx.accounts.market;
-        market.market_id = market_id;
-        market.authority = ctx.accounts.authority.key();
-        market.question = question;
-        market.description = description;
-        market.yes_count = 0;
-        market.no_count = 0;
-        market.total_pool = 0;
-        market.end_timestamp = end_timestamp;
-        market.outcome = MarketOutcome::Pending;
-        market.created_at = clock.unix_timestamp;
-        market.bump = ctx.bumps.market;
-
-        let vault = &mut ctx.accounts.vault;
-        vault.total_markets = vault.total_markets.checked_add(1).unwrap();
-
+        let platform = &mut ctx.accounts.platform_state;
+        platform.authority = ctx.accounts.authority.key();
+        platform.required_usd_per_month = required_usd_per_month;
+        platform.bump = ctx.bumps.platform_state;
         Ok(())
     }
 
-    /// Cast a vote (YES or NO) and deposit SOL into the market escrow.
-    pub fn vote(ctx: Context<CastVote>, vote_direction: VoteDirection, amount: u64) -> Result<()> {
-        let market = &ctx.accounts.market;
+    /// Update platform settings (admin only)
+    pub fn update_platform(
+        ctx: Context<UpdatePlatform>,
+        required_usd_per_month: u64,
+    ) -> Result<()> {
+        let platform = &mut ctx.accounts.platform_state;
+        platform.required_usd_per_month = required_usd_per_month;
+        Ok(())
+    }
 
-        // Validations
-        require!(amount > 0, ReferandiumError::ZeroAmount);
-        require!(
-            market.outcome == MarketOutcome::Pending,
-            ReferandiumError::MarketAlreadyResolved
-        );
+    /// Lock RFRM tokens for N months of subscription
+    pub fn lock_rfrm(
+        ctx: Context<LockRFRM>,
+        rfrm_amount: u64,
+        months: u8,
+    ) -> Result<()> {
+        require!(rfrm_amount > 0, SubscriptionError::InsufficientAmount);
+        require!(months > 0, SubscriptionError::InsufficientAmount);
 
         let clock = Clock::get()?;
-        require!(
-            clock.unix_timestamp < market.end_timestamp,
-            ReferandiumError::MarketExpired
-        );
+        let subscription = &mut ctx.accounts.user_subscription;
 
-        // Transfer SOL from voter to market escrow PDA
-        system_program::transfer(
+        // Check if user already has an active subscription
+        require!(!subscription.is_active, SubscriptionError::AlreadySubscribed);
+
+        // Transfer RFRM from user to escrow PDA
+        token::transfer(
             CpiContext::new(
-                ctx.accounts.system_program.to_account_info(),
-                system_program::Transfer {
-                    from: ctx.accounts.voter.to_account_info(),
-                    to: ctx.accounts.market_escrow.to_account_info(),
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.user_token_account.to_account_info(),
+                    to: ctx.accounts.escrow_token_account.to_account_info(),
+                    authority: ctx.accounts.user.to_account_info(),
                 },
             ),
-            amount,
+            rfrm_amount,
         )?;
 
-        // Record the vote
-        let vote_account = &mut ctx.accounts.vote_account;
-        vote_account.voter = ctx.accounts.voter.key();
-        vote_account.market = ctx.accounts.market.key();
-        vote_account.direction = vote_direction;
-        vote_account.amount = amount;
-        vote_account.timestamp = clock.unix_timestamp;
-        vote_account.bump = ctx.bumps.vote_account;
-
-        // Update market counters
-        let market = &mut ctx.accounts.market;
-        match vote_direction {
-            VoteDirection::Yes => {
-                market.yes_count = market.yes_count.checked_add(1).unwrap();
-            }
-            VoteDirection::No => {
-                market.no_count = market.no_count.checked_add(1).unwrap();
-            }
-        }
-        market.total_pool = market.total_pool.checked_add(amount).unwrap();
+        // Initialize subscription
+        subscription.wallet = ctx.accounts.user.key();
+        subscription.locked_rfrm = rfrm_amount;
+        subscription.months_paid = months;
+        subscription.subscription_start = clock.unix_timestamp;
+        subscription.subscription_expiry = clock.unix_timestamp + (months as i64 * SECONDS_PER_MONTH);
+        subscription.is_active = true;
+        subscription.bump = ctx.bumps.user_subscription;
 
         Ok(())
     }
 
-    /// Settle (resolve) a market — only the vault authority can do this.
-    pub fn settle_market(ctx: Context<SettleMarket>, outcome: MarketOutcome) -> Result<()> {
+    /// Extend existing subscription by adding more months
+    pub fn extend_subscription(
+        ctx: Context<ExtendSubscription>,
+        rfrm_amount: u64,
+        months: u8,
+    ) -> Result<()> {
+        require!(rfrm_amount > 0, SubscriptionError::InsufficientAmount);
+        require!(months > 0, SubscriptionError::InsufficientAmount);
+
+        let subscription = &mut ctx.accounts.user_subscription;
+        require!(subscription.is_active, SubscriptionError::InsufficientAmount);
+
+        // Transfer additional RFRM to escrow
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.user_token_account.to_account_info(),
+                    to: ctx.accounts.escrow_token_account.to_account_info(),
+                    authority: ctx.accounts.user.to_account_info(),
+                },
+            ),
+            rfrm_amount,
+        )?;
+
+        // Update subscription
+        subscription.locked_rfrm = subscription.locked_rfrm.checked_add(rfrm_amount).unwrap();
+        subscription.months_paid = subscription.months_paid.checked_add(months).unwrap();
+        subscription.subscription_expiry = subscription.subscription_expiry
+            .checked_add(months as i64 * SECONDS_PER_MONTH)
+            .unwrap();
+
+        Ok(())
+    }
+
+    /// Unlock RFRM after subscription expiry
+    pub fn unlock_rfrm(ctx: Context<UnlockRFRM>) -> Result<()> {
+        let subscription = &ctx.accounts.user_subscription;
+        let clock = Clock::get()?;
+
+        // Require subscription to have expired
         require!(
-            outcome == MarketOutcome::Yes || outcome == MarketOutcome::No,
-            ReferandiumError::InvalidOutcome
+            clock.unix_timestamp >= subscription.subscription_expiry,
+            SubscriptionError::SubscriptionStillActive
         );
 
-        let market = &mut ctx.accounts.market;
-        require!(
-            market.outcome == MarketOutcome::Pending,
-            ReferandiumError::MarketAlreadyResolved
-        );
+        let locked_amount = subscription.locked_rfrm;
+        require!(locked_amount > 0, SubscriptionError::InsufficientAmount);
 
-        market.outcome = outcome;
+        // Transfer RFRM back to user
+        let seeds = &[
+            b"escrow",
+            subscription.wallet.as_ref(),
+            &[subscription.bump],
+        ];
+        let signer = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.escrow_token_account.to_account_info(),
+                    to: ctx.accounts.user_token_account.to_account_info(),
+                    authority: ctx.accounts.escrow_token_account.to_account_info(),
+                },
+                signer,
+            ),
+            locked_amount,
+        )?;
+
+        // Deactivate subscription
+        let subscription = &mut ctx.accounts.user_subscription;
+        subscription.is_active = false;
+        subscription.locked_rfrm = 0;
+
+        Ok(())
+    }
+
+    /// Admin force unlock for refunds/disputes
+    pub fn admin_unlock(ctx: Context<AdminUnlock>) -> Result<()> {
+        let subscription = &ctx.accounts.user_subscription;
+        let locked_amount = subscription.locked_rfrm;
+
+        require!(locked_amount > 0, SubscriptionError::InsufficientAmount);
+
+        // Transfer RFRM back to user
+        let user_key = subscription.wallet;
+        let seeds = &[
+            b"escrow",
+            user_key.as_ref(),
+            &[subscription.bump],
+        ];
+        let signer = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.escrow_token_account.to_account_info(),
+                    to: ctx.accounts.user_token_account.to_account_info(),
+                    authority: ctx.accounts.escrow_token_account.to_account_info(),
+                },
+                signer,
+            ),
+            locked_amount,
+        )?;
+
+        // Deactivate subscription
+        let subscription = &mut ctx.accounts.user_subscription;
+        subscription.is_active = false;
+        subscription.locked_rfrm = 0;
 
         Ok(())
     }
 }
 
 // ============================================================
-// ACCOUNTS
+// ACCOUNT CONTEXTS
 // ============================================================
 
 #[derive(Accounts)]
-pub struct InitializeVault<'info> {
+pub struct InitializePlatform<'info> {
     #[account(
         init,
         payer = authority,
-        space = VaultAccount::SIZE,
-        seeds = [b"vault"],
+        space = PlatformState::SIZE,
+        seeds = [b"platform"],
         bump,
     )]
-    pub vault: Account<'info, VaultAccount>,
+    pub platform_state: Account<'info, PlatformState>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -144,81 +209,138 @@ pub struct InitializeVault<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(market_id: String)]
-pub struct CreateMarket<'info> {
+pub struct UpdatePlatform<'info> {
     #[account(
         mut,
-        seeds = [b"vault"],
-        bump = vault.bump,
-        has_one = authority,
+        seeds = [b"platform"],
+        bump = platform_state.bump,
+        has_one = authority @ SubscriptionError::NotAdmin,
     )]
-    pub vault: Account<'info, VaultAccount>,
+    pub platform_state: Account<'info, PlatformState>,
+
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct LockRFRM<'info> {
+    #[account(
+        seeds = [b"platform"],
+        bump = platform_state.bump,
+    )]
+    pub platform_state: Account<'info, PlatformState>,
 
     #[account(
         init,
-        payer = authority,
-        space = MarketAccount::SIZE,
-        seeds = [b"market", market_id.as_bytes()],
+        payer = user,
+        space = UserSubscription::SIZE,
+        seeds = [b"subscription", user.key().as_ref()],
         bump,
     )]
-    pub market: Account<'info, MarketAccount>,
-
-    #[account(mut)]
-    pub authority: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct CastVote<'info> {
-    #[account(
-        mut,
-        seeds = [b"market", market.market_id.as_bytes()],
-        bump = market.bump,
-    )]
-    pub market: Account<'info, MarketAccount>,
-
-    /// The escrow PDA that holds SOL for this market.
-    /// CHECK: This is a PDA used only as a SOL escrow, validated by seeds.
-    #[account(
-        mut,
-        seeds = [b"escrow", market.key().as_ref()],
-        bump,
-    )]
-    pub market_escrow: SystemAccount<'info>,
+    pub user_subscription: Account<'info, UserSubscription>,
 
     #[account(
         init,
-        payer = voter,
-        space = VoteAccount::SIZE,
-        seeds = [b"vote", market.key().as_ref(), voter.key().as_ref()],
+        payer = user,
+        seeds = [b"escrow", user.key().as_ref()],
         bump,
+        token::mint = rfrm_mint,
+        token::authority = escrow_token_account,
     )]
-    pub vote_account: Account<'info, VoteAccount>,
+    pub escrow_token_account: Account<'info, TokenAccount>,
 
     #[account(mut)]
-    pub voter: Signer<'info>,
+    pub user_token_account: Account<'info, TokenAccount>,
 
+    /// CHECK: RFRM token mint
+    pub rfrm_mint: AccountInfo<'info>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
-pub struct SettleMarket<'info> {
+pub struct ExtendSubscription<'info> {
     #[account(
-        seeds = [b"vault"],
-        bump = vault.bump,
-        has_one = authority,
+        mut,
+        seeds = [b"subscription", user.key().as_ref()],
+        bump = user_subscription.bump,
     )]
-    pub vault: Account<'info, VaultAccount>,
+    pub user_subscription: Account<'info, UserSubscription>,
 
     #[account(
         mut,
-        seeds = [b"market", market.market_id.as_bytes()],
-        bump = market.bump,
+        seeds = [b"escrow", user.key().as_ref()],
+        bump,
     )]
-    pub market: Account<'info, MarketAccount>,
+    pub escrow_token_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub user_token_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct UnlockRFRM<'info> {
+    #[account(
+        mut,
+        seeds = [b"subscription", user.key().as_ref()],
+        bump = user_subscription.bump,
+    )]
+    pub user_subscription: Account<'info, UserSubscription>,
+
+    #[account(
+        mut,
+        seeds = [b"escrow", user.key().as_ref()],
+        bump,
+    )]
+    pub escrow_token_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub user_token_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct AdminUnlock<'info> {
+    #[account(
+        seeds = [b"platform"],
+        bump = platform_state.bump,
+        has_one = authority @ SubscriptionError::NotAdmin,
+    )]
+    pub platform_state: Account<'info, PlatformState>,
+
+    #[account(
+        mut,
+        seeds = [b"subscription", user_subscription.wallet.as_ref()],
+        bump = user_subscription.bump,
+    )]
+    pub user_subscription: Account<'info, UserSubscription>,
+
+    #[account(
+        mut,
+        seeds = [b"escrow", user_subscription.wallet.as_ref()],
+        bump,
+    )]
+    pub escrow_token_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub user_token_account: Account<'info, TokenAccount>,
 
     pub authority: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
 }
 
 // ============================================================
@@ -226,75 +348,29 @@ pub struct SettleMarket<'info> {
 // ============================================================
 
 #[account]
-pub struct VaultAccount {
-    pub authority: Pubkey,    // 32
-    pub total_markets: u64,   // 8
-    pub bump: u8,             // 1
+pub struct PlatformState {
+    pub authority: Pubkey,             // 32
+    pub required_usd_per_month: u64,   // 8 (in cents, e.g. 2500 = $25)
+    pub bump: u8,                      // 1
 }
 
-impl VaultAccount {
+impl PlatformState {
     pub const SIZE: usize = 8 + 32 + 8 + 1;
 }
 
 #[account]
-pub struct MarketAccount {
-    pub market_id: String,        // 4 + 64
-    pub authority: Pubkey,        // 32
-    pub question: String,         // 4 + 200
-    pub description: String,      // 4 + 500
-    pub yes_count: u64,           // 8
-    pub no_count: u64,            // 8
-    pub total_pool: u64,          // 8
-    pub end_timestamp: i64,       // 8
-    pub outcome: MarketOutcome,   // 1
-    pub created_at: i64,          // 8
-    pub bump: u8,                 // 1
+pub struct UserSubscription {
+    pub wallet: Pubkey,               // 32
+    pub locked_rfrm: u64,             // 8
+    pub months_paid: u8,              // 1
+    pub subscription_start: i64,      // 8
+    pub subscription_expiry: i64,     // 8
+    pub is_active: bool,              // 1
+    pub bump: u8,                     // 1
 }
 
-impl MarketAccount {
-    pub const SIZE: usize = 8   // discriminator
-        + (4 + 64)              // market_id
-        + 32                    // authority
-        + (4 + 200)             // question
-        + (4 + 500)             // description
-        + 8                     // yes_count
-        + 8                     // no_count
-        + 8                     // total_pool
-        + 8                     // end_timestamp
-        + 1                     // outcome
-        + 8                     // created_at
-        + 1;                    // bump
-}
-
-#[account]
-pub struct VoteAccount {
-    pub voter: Pubkey,              // 32
-    pub market: Pubkey,             // 32
-    pub direction: VoteDirection,   // 1
-    pub amount: u64,                // 8
-    pub timestamp: i64,             // 8
-    pub bump: u8,                   // 1
-}
-
-impl VoteAccount {
-    pub const SIZE: usize = 8 + 32 + 32 + 1 + 8 + 8 + 1;
-}
-
-// ============================================================
-// ENUMS
-// ============================================================
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
-pub enum VoteDirection {
-    Yes,
-    No,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
-pub enum MarketOutcome {
-    Pending,
-    Yes,
-    No,
+impl UserSubscription {
+    pub const SIZE: usize = 8 + 32 + 8 + 1 + 8 + 8 + 1 + 1;
 }
 
 // ============================================================
@@ -302,21 +378,13 @@ pub enum MarketOutcome {
 // ============================================================
 
 #[error_code]
-pub enum ReferandiumError {
-    #[msg("Question exceeds 200 characters.")]
-    QuestionTooLong,
-    #[msg("Description exceeds 500 characters.")]
-    DescriptionTooLong,
-    #[msg("Market ID exceeds 64 characters.")]
-    MarketIdTooLong,
-    #[msg("End date must be in the future.")]
-    EndDateInPast,
-    #[msg("Deposit amount must be greater than zero.")]
-    ZeroAmount,
-    #[msg("This market has already been resolved.")]
-    MarketAlreadyResolved,
-    #[msg("This market has expired.")]
-    MarketExpired,
-    #[msg("Invalid outcome. Must be Yes or No.")]
-    InvalidOutcome,
+pub enum SubscriptionError {
+    #[msg("Only admin can perform this action.")]
+    NotAdmin,
+    #[msg("Subscription is still active. Cannot unlock yet.")]
+    SubscriptionStillActive,
+    #[msg("Insufficient amount or invalid parameters.")]
+    InsufficientAmount,
+    #[msg("User already has an active subscription.")]
+    AlreadySubscribed,
 }

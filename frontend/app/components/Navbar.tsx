@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Users } from 'lucide-react';
+import { Users, GraduationCap } from 'lucide-react';
 import LanguageToggle from './LanguageToggle';
 import ThemeSwitch from './ThemeSwitch';
 import { useLanguage } from '../context/LanguageContext';
@@ -28,6 +28,9 @@ export default function Navbar() {
             </Link>
             <Link href="/gookies" className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-orange-500 dark:hover:text-orange-400 font-medium transition">
               <span>🍪</span> Gookies
+            </Link>
+            <Link href="/learning" className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 font-medium transition">
+              <GraduationCap size={18} /> Learning
             </Link>
             <Link href="/docs" className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition">
               <span>📖</span> Docs

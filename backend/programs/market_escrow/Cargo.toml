@@ -1,12 +1,11 @@
 [package]
-name = "referandium"
+name = "market_escrow"
 version = "0.1.0"
-description = "Referandium - Policy Prescription Market on Solana"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "referandium"
+name = "market_escrow"
 
 [features]
 no-entrypoint = []

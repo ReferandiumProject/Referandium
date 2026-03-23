@@ -8,6 +8,11 @@ interface MarketCardProps {
   market: Market
 }
 
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
+};
+
 export default function MarketCard({ market }: MarketCardProps) {
   const router = useRouter()
 
@@ -83,7 +88,7 @@ export default function MarketCard({ market }: MarketCardProps) {
             Gookie: {formatGookieWallet(market.gookie_wallet || null)}
           </span>
           <span className="text-xs text-gray-400 dark:text-gray-500">
-            Ends {new Date(market.end_time).toLocaleDateString()}
+            Ends {formatDate(market.end_time)}
           </span>
         </div>
       </div>

@@ -1,12 +1,19 @@
+[toolchain]
+anchor_version = "0.32.1"
+
 [features]
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-referandium = "C3kp55sPwskwHygfFSqYZhqUEvEb3JDmjt2GhDXu31gV"
-
 [programs.devnet]
-referandium = "C3kp55sPwskwHygfFSqYZhqUEvEb3JDmjt2GhDXu31gV"
+gookie = "3VkzfA6GU6VhMdEnYRJywLLEQ454B9gmQoNh4ycVFFS5"
+referandium = "FUTVzQF86UckN9KhyuRajM4xRsYS62f24hTbJqGkZxed"
+market_escrow = "Aby8pc1zLWbKUPgPzgh4ntbkTsbPaZWb6FyuxSwtkR8e"
+
+[programs.localnet]
+gookie = "3VkzfA6GU6VhMdEnYRJywLLEQ454B9gmQoNh4ycVFFS5"
+referandium = "FUTVzQF86UckN9KhyuRajM4xRsYS62f24hTbJqGkZxed"
+market_escrow = "Aby8pc1zLWbKUPgPzgh4ntbkTsbPaZWb6FyuxSwtkR8e"
 
 [registry]
 url = "https://api.apr.dev"

@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { Connection, PublicKey } from '@solana/web3.js';
 import Link from 'next/link';
 import { ShieldAlert, Calendar, AlertTriangle, CheckCircle, XCircle, DollarSign, Eye, Loader2, Plus, Trophy, TrendingUp } from 'lucide-react';
 import { Gookie, Market } from '../types';
+import * as gookieContract from '../utils/gookieContract';
+import * as marketEscrowContract from '../utils/marketEscrowContract';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,8 +21,11 @@ const ADMIN_WALLETS = [
   '5vJggeRkrFSZBJw6rZvWNzuRbKTe4g44pQEwaBcyZVBP',
 ];
 
+const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com', 'confirmed');
+
 export default function AdminPage() {
-  const { connected, publicKey } = useWallet();
+  const wallet = useWallet();
+  const { connected, publicKey } = wallet;
   const [activeTab, setActiveTab] = useState<'gookies' | 'markets'>('gookies');
   const [isAdmin, setIsAdmin] = useState(false);
   const [gookies, setGookies] = useState<Gookie[]>([]);
@@ -38,6 +44,7 @@ export default function AdminPage() {
 
   const [slashModal, setSlashModal] = useState<{ gookieId: string, gookieName: string } | null>(null);
   const [slashReason, setSlashReason] = useState('');
+  const [yieldAmounts, setYieldAmounts] = useState<{ [marketId: string]: string }>({});
 
   useEffect(() => {
     if (connected && publicKey) {
@@ -90,12 +97,60 @@ export default function AdminPage() {
     }
   };
 
+  const handleInitPlatform = async () => {
+    if (!isAdmin || !publicKey || !wallet.wallet) return;
+    
+    try {
+      setIsSubmitting(true);
+      const treasury = publicKey;
+      const tx = await gookieContract.initializeGookiePlatform(wallet.wallet, publicKey, connection, treasury);
+      setNotification({ type: 'success', message: `Gookie Platform initialized! Tx: ${tx.slice(0, 8)}...` });
+    } catch (error: any) {
+      setNotification({ type: 'error', message: error.message || 'Failed to init gookie platform' });
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => setNotification(null), 4000);
+    }
+  };
+
+  const handleInitEscrowPlatform = async () => {
+    if (!isAdmin || !publicKey || !wallet.wallet) return;
+    
+    try {
+      setIsSubmitting(true);
+      const treasury = publicKey;
+      const tx = await marketEscrowContract.initializeEscrowPlatform(wallet.wallet, publicKey, connection, treasury);
+      setNotification({ type: 'success', message: `Escrow Platform initialized! Tx: ${tx.slice(0, 8)}...` });
+    } catch (error: any) {
+      setNotification({ type: 'error', message: error.message || 'Failed to init escrow platform' });
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => setNotification(null), 4000);
+    }
+  };
+
   const handleCreateGookie = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAdmin || !publicKey) return;
+    if (!isAdmin || !publicKey || !wallet.wallet) return;
 
     try {
       setIsSubmitting(true);
+      
+      const startingBidRfrmLamports = parseFloat(gookieForm.starting_bid_rfrm) * 1_000_000_000;
+      const auctionEndTimeUnix = Math.floor(new Date(gookieForm.auction_end_time).getTime() / 1000);
+      
+      const result = await gookieContract.createGookieAuction(
+        wallet.wallet,
+        publicKey,
+        connection,
+        {
+          title: gookieForm.title,
+          description: gookieForm.description || '',
+          startingBidRfrm: startingBidRfrmLamports,
+          auctionEndTime: auctionEndTimeUnix,
+        }
+      );
+      
       const { error } = await supabase.from('gookies').insert({
         title: gookieForm.title,
         description: gookieForm.description || null,
@@ -104,9 +159,13 @@ export default function AdminPage() {
         auction_end_time: new Date(gookieForm.auction_end_time).toISOString(),
         created_by_wallet: publicKey.toBase58(),
         status: 'auction',
+        on_chain_tx: result.tx,
+        on_chain_address: result.auctionPDA,
+        auction_id: result.auctionId,
       });
       if (error) throw error;
-      setNotification({ type: 'success', message: 'Gookie auction created successfully!' });
+      
+      setNotification({ type: 'success', message: `Gookie created on-chain! Tx: ${result.tx.slice(0, 8)}...` });
       setGookieForm({ title: '', description: '', image_url: '', starting_bid_rfrm: '100', auction_end_time: '' });
       fetchGookies();
     } catch (error: any) {
@@ -118,11 +177,19 @@ export default function AdminPage() {
   };
 
   const handleSlashGookie = async () => {
-    if (!slashModal || !slashReason.trim()) return;
+    if (!slashModal || !slashReason.trim() || !publicKey || !wallet.wallet) return;
 
     try {
       const gookie = gookies.find(g => g.id === slashModal.gookieId);
-      if (!gookie) return;
+      if (!gookie || gookie.auction_id === undefined || gookie.auction_id === null) return;
+
+      const tx = await gookieContract.adminSlash(
+        wallet.wallet,
+        publicKey,
+        connection,
+        gookie.auction_id,
+        slashReason
+      );
 
       const penaltyAmount = gookie.rfrm_locked_amount;
 
@@ -134,7 +201,7 @@ export default function AdminPage() {
         penalty_amount_rfrm: penaltyAmount,
         returned_amount_rfrm: 0,
         reason: slashReason,
-        executed_by_wallet: publicKey!.toBase58(),
+        executed_by_wallet: publicKey.toBase58(),
       });
 
       await supabase.from('gookies').update({
@@ -143,9 +210,10 @@ export default function AdminPage() {
         slash_amount: penaltyAmount,
         slash_reason: slashReason,
         slash_date: new Date().toISOString(),
+        slash_tx: tx,
       }).eq('id', slashModal.gookieId);
 
-      setNotification({ type: 'success', message: 'Gookie slashed successfully' });
+      setNotification({ type: 'success', message: `Gookie slashed on-chain! Tx: ${tx.slice(0, 8)}...` });
       setSlashModal(null);
       setSlashReason('');
       fetchGookies();
@@ -156,16 +224,93 @@ export default function AdminPage() {
     }
   };
 
-  const handleCloseMarketEarly = async (marketId: string) => {
-    if (!confirm('Close this market early? This will end signaling immediately.')) return;
+  const handleCloseAuction = async (gookieId: string) => {
+    if (!confirm('Close this auction? Winner will be determined.') || !publicKey || !wallet.wallet) return;
 
     try {
-      await supabase.from('markets').update({ status: 'closed' }).eq('id', marketId);
+      const gookie = gookies.find(g => g.id === gookieId);
+      if (!gookie || gookie.auction_id === undefined || gookie.auction_id === null) return;
+
+      const tx = await gookieContract.closeAuction(wallet.wallet, publicKey, connection, gookie.auction_id);
+
+      if (gookie.status !== 'won') {
+        await supabase.from('gookies').update({ status: 'won', close_tx: tx }).eq('id', gookieId);
+      } else {
+        await supabase.from('gookies').update({ close_tx: tx }).eq('id', gookieId);
+      }
+      setNotification({ type: 'success', message: `Auction closed on-chain! Tx: ${tx.slice(0, 8)}...` });
+      fetchGookies();
+    } catch (error: any) {
+      setNotification({ type: 'error', message: error.message || 'Failed to close auction' });
+    } finally {
+      setTimeout(() => setNotification(null), 4000);
+    }
+  };
+
+  const handleSetYield = async (marketId: string) => {
+    if (!publicKey || !wallet.wallet) return;
+    const market = markets.find(m => m.id === marketId);
+    if (!market || !market.on_chain_market_id) {
+      setNotification({ type: 'error', message: 'On-chain market ID not found' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    const yieldAmount = parseFloat(yieldAmounts[marketId] || '0');
+    if (yieldAmount <= 0) {
+      setNotification({ type: 'error', message: 'Please enter a valid yield amount' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    try {
+      const tx = await marketEscrowContract.setYield(
+        wallet.wallet,
+        publicKey,
+        connection,
+        market.on_chain_market_id,
+        yieldAmount
+      );
+
+      await supabase.from('markets').update({ total_yield_earned: yieldAmount }).eq('id', marketId);
+      setNotification({ type: 'success', message: `Yield set! Tx: ${tx.slice(0, 8)}...` });
+      setYieldAmounts({ ...yieldAmounts, [marketId]: '' });
+      fetchMarkets();
+    } catch (error: any) {
+      setNotification({ type: 'error', message: error.message || 'Failed to set yield' });
+    } finally {
+      setTimeout(() => setNotification(null), 4000);
+    }
+  };
+
+  const handleCloseMarketOnChain = async (marketId: string) => {
+    if (!confirm('Close this market on-chain? This will distribute fees.') || !publicKey || !wallet.wallet) return;
+
+    try {
       const market = markets.find(m => m.id === marketId);
-      if (market?.gookie_id) {
+      if (!market || !market.on_chain_market_id || !market.gookie_wallet) {
+        setNotification({ type: 'error', message: 'Missing on-chain data' });
+        setTimeout(() => setNotification(null), 3000);
+        return;
+      }
+
+      const gookieWallet = new PublicKey(market.gookie_wallet);
+      const treasury = publicKey;
+
+      const tx = await marketEscrowContract.closeMarket(
+        wallet.wallet,
+        publicKey,
+        connection,
+        market.on_chain_market_id,
+        gookieWallet,
+        treasury
+      );
+
+      await supabase.from('markets').update({ status: 'closed', market_closed_tx: tx }).eq('id', marketId);
+      if (market.gookie_id) {
         await supabase.from('gookies').update({ status: 'market_closed' }).eq('id', market.gookie_id);
       }
-      setNotification({ type: 'success', message: 'Market closed successfully' });
+      setNotification({ type: 'success', message: `Market closed on-chain! Tx: ${tx.slice(0, 8)}...` });
       fetchMarkets();
       fetchGookies();
     } catch (error: any) {
@@ -175,14 +320,50 @@ export default function AdminPage() {
     }
   };
 
-  const handleApproveFee = async (gookieId: string) => {
-    if (!confirm('Approve fee payment for this gookie?')) return;
+  const handleWithdrawBuyback = async (marketId: string) => {
+    if (!confirm('Withdraw 5% buyback amount to treasury?') || !publicKey || !wallet.wallet) return;
+
     try {
-      await supabase.from('gookies').update({ fee_paid: true }).eq('id', gookieId);
-      setNotification({ type: 'success', message: 'Fee payment approved' });
+      const market = markets.find(m => m.id === marketId);
+      if (!market || !market.on_chain_market_id) {
+        setNotification({ type: 'error', message: 'On-chain market ID not found' });
+        setTimeout(() => setNotification(null), 3000);
+        return;
+      }
+
+      const treasury = publicKey;
+      const tx = await marketEscrowContract.adminWithdrawBuyback(
+        wallet.wallet,
+        publicKey,
+        connection,
+        market.on_chain_market_id,
+        treasury
+      );
+
+      await supabase.from('markets').update({ buyback_burn_amount: market.total_yield_earned * 0.05 }).eq('id', marketId);
+      setNotification({ type: 'success', message: `Buyback withdrawn! Tx: ${tx.slice(0, 8)}...` });
+      fetchMarkets();
+    } catch (error: any) {
+      setNotification({ type: 'error', message: error.message || 'Failed to withdraw buyback' });
+    } finally {
+      setTimeout(() => setNotification(null), 4000);
+    }
+  };
+
+  const handleApproveFee = async (gookieId: string) => {
+    if (!confirm('Approve and release RFRM to winner?') || !publicKey || !wallet.wallet) return;
+    
+    try {
+      const gookie = gookies.find(g => g.id === gookieId);
+      if (!gookie || gookie.auction_id === undefined || gookie.auction_id === null) return;
+
+      const tx = await gookieContract.releaseGookie(wallet.wallet, publicKey, connection, gookie.auction_id);
+
+      await supabase.from('gookies').update({ fee_paid: true, status: 'completed', release_tx: tx }).eq('id', gookieId);
+      setNotification({ type: 'success', message: `RFRM released! Tx: ${tx.slice(0, 8)}...` });
       fetchGookies();
     } catch (error: any) {
-      setNotification({ type: 'error', message: error.message || 'Failed to approve fee' });
+      setNotification({ type: 'error', message: error.message || 'Failed to release RFRM' });
     } finally {
       setTimeout(() => setNotification(null), 4000);
     }
@@ -300,6 +481,20 @@ export default function AdminPage() {
             {/* Gookie Creation Form */}
             <div className="lg:col-span-1">
               <div className="bg-white dark:bg-[#181A20] rounded-2xl border border-gray-200 dark:border-gray-800 p-6 sticky top-6">
+                <button
+                  onClick={handleInitPlatform}
+                  disabled={isSubmitting}
+                  className="w-full mb-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-bold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  🚀 Init Gookie Platform (One-time)
+                </button>
+                <button
+                  onClick={handleInitEscrowPlatform}
+                  disabled={isSubmitting}
+                  className="w-full mb-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  🏦 Init Escrow Platform (One-time)
+                </button>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                   <Plus size={20} className="text-orange-500" />
                   Create Gookie Auction
@@ -438,18 +633,27 @@ export default function AdminPage() {
                               {gookie.winner_wallet ? `${gookie.winner_wallet.slice(0, 4)}...${gookie.winner_wallet.slice(-4)}` : '-'}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                              {new Date(gookie.auction_end_time).toLocaleDateString()}
+                              {(() => { const d = new Date(gookie.auction_end_time); return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`; })()}
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
+                                {(gookie.status === 'auction' || gookie.status === 'won') && gookie.auction_id !== null && gookie.auction_id !== undefined && (
+                                  <button
+                                    onClick={() => handleCloseAuction(gookie.id)}
+                                    className="px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg text-xs font-bold hover:bg-blue-200 dark:hover:bg-blue-900/50 transition"
+                                    title="Close Auction"
+                                  >
+                                    Close Auction
+                                  </button>
+                                )}
                                 {gookie.status === 'market_active' && (
                                   <button
                                     onClick={() => {
                                       const market = markets.find(m => m.gookie_id === gookie.id);
-                                      if (market) handleCloseMarketEarly(market.id);
+                                      if (market) handleCloseMarketOnChain(market.id);
                                     }}
                                     className="px-3 py-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-lg text-xs font-bold hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition"
-                                    title="Close Market Early"
+                                    title="Close Market On-Chain"
                                   >
                                     Close
                                   </button>
@@ -557,7 +761,7 @@ export default function AdminPage() {
                           {market.total_sol_locked.toFixed(2)} SOL
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                          {new Date(market.end_time).toLocaleDateString()}
+                          {(() => { const d = new Date(market.end_time); return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`; })()}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
@@ -569,10 +773,10 @@ export default function AdminPage() {
                             </Link>
                             {market.status === 'active' && (
                               <button
-                                onClick={() => handleCloseMarketEarly(market.id)}
+                                onClick={() => handleCloseMarketOnChain(market.id)}
                                 className="px-3 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-lg text-xs font-bold hover:bg-red-200 dark:hover:bg-red-900/50 transition"
                               >
-                                Close Early
+                                Close On-Chain
                               </button>
                             )}
                           </div>

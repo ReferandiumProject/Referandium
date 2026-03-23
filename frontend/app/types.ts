@@ -25,6 +25,9 @@ export interface Market {
   created_at?: string
   updated_at?: string
   options?: MarketOption[]
+  on_chain_market_id?: string | null
+  escrow_pda?: string | null
+  market_closed_tx?: string | null
 }
 
 export interface MarketOption {
@@ -76,6 +79,13 @@ export interface Gookie {
   created_at?: string
   updated_at?: string
   created_by_wallet: string
+  on_chain_address?: string | null
+  on_chain_tx?: string | null
+  auction_id?: number | null
+  close_tx?: string | null
+  slash_tx?: string | null
+  release_tx?: string | null
+  nft_mint_tx?: string | null
 }
 
 export interface GookieBid {
