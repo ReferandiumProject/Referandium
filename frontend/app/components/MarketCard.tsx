@@ -37,8 +37,12 @@ export default function MarketCard({ market }: MarketCardProps) {
     >
       {/* Header */}
       <div className="flex gap-3 items-start mb-4">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-lg flex-shrink-0 shadow-md">
-          <Zap size={20} />
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-lg flex-shrink-0 shadow-md overflow-hidden">
+          {market.image_url ? (
+            <img src={market.image_url} alt={market.title} className="w-full h-full object-cover" />
+          ) : (
+            <Zap size={20} />
+          )}
         </div>
         <div className="flex-1">
           <h3 className="text-[17px] font-bold text-gray-900 dark:text-white leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
@@ -70,17 +74,6 @@ export default function MarketCard({ market }: MarketCardProps) {
           </div>
         </div>
 
-        {/* Pump.fun Trade Button */}
-        <a
-          href="https://pump.fun/coin/8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump"
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="flex justify-center items-center gap-2 w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-sm transition-all duration-200 shadow-md hover:shadow-xl"
-        >
-          💊 Trade on pump.fun
-        </a>
-
         {/* Footer */}
         <div className="mt-3 pt-3 border-t-2 border-dashed border-gray-100 dark:border-gray-800 flex justify-between items-center">
           <span className="flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -91,6 +84,17 @@ export default function MarketCard({ market }: MarketCardProps) {
             Ends {formatDate(market.end_time)}
           </span>
         </div>
+        
+        {/* Pump.fun Link */}
+        <a
+          href="https://pump.fun/coin/8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-xs text-gray-400 hover:text-purple-400 transition-colors mt-2 inline-block"
+        >
+          💊 Speculate on pump.fun →
+        </a>
       </div>
     </div>
   )

@@ -64,8 +64,8 @@ export default function MarketChart({ marketId, isSimpleMarket, selectedOptionId
       if (error) throw error;
       
       if (signals && signals.length > 0) {
-        // Group signals by date and count them
-        const signalsByDate: { [key: string]: number } = {};
+        // Group signals by date and signal direction
+        const signalsByDate: { [key: string]: { yes: number; no: number } } = {};
         
         signals.forEach((signal: any) => {
           const signalDate = new Date(signal.created_at);
@@ -74,13 +74,22 @@ export default function MarketChart({ marketId, isSimpleMarket, selectedOptionId
             day: 'numeric' 
           });
           
-          signalsByDate[dateKey] = (signalsByDate[dateKey] || 0) + 1;
+          if (!signalsByDate[dateKey]) {
+            signalsByDate[dateKey] = { yes: 0, no: 0 };
+          }
+          
+          if (signal.signal_direction === 'yes') {
+            signalsByDate[dateKey].yes += 1;
+          } else {
+            signalsByDate[dateKey].no += 1;
+          }
         });
         
         // Convert to time series format
-        const timeSeriesData = Object.entries(signalsByDate).map(([date, count]) => ({
+        const timeSeriesData = Object.entries(signalsByDate).map(([date, counts]) => ({
           date,
-          signals: count,
+          YES: counts.yes,
+          NO: counts.no,
         }));
         
         setChartData(timeSeriesData);
@@ -141,11 +150,19 @@ export default function MarketChart({ marketId, isSimpleMarket, selectedOptionId
           
           <Line 
             type="monotone" 
-            dataKey="signals" 
-            stroke="#3B82F6" 
+            dataKey="YES" 
+            stroke="#22C55E" 
             strokeWidth={3}
-            dot={{ fill: '#3B82F6', r: 4 }}
-            name="Signals"
+            dot={{ fill: '#22C55E', r: 4 }}
+            name="YES"
+          />
+          <Line 
+            type="monotone" 
+            dataKey="NO" 
+            stroke="#EF4444" 
+            strokeWidth={3}
+            dot={{ fill: '#EF4444', r: 4 }}
+            name="NO"
           />
         </LineChart>
       </ResponsiveContainer>

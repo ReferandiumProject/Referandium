@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Wallet, BarChart2, TrendingUp, ShieldCheck, Zap, Users, VolumeX, Volume1, Volume2 } from 'lucide-react';
 import MarketCard from './MarketCard';
@@ -8,6 +8,12 @@ import LanguageToggle from './LanguageToggle';
 import ThemeSwitch from './ThemeSwitch';
 import { useLanguage } from '../context/LanguageContext';
 import { useUser } from '../context/UserContext';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface HomeClientProps {
   markets: any[];
@@ -20,6 +26,36 @@ export default function HomeClient({ markets }: HomeClientProps) {
   const [volume, setVolume] = useState(0);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [stats, setStats] = useState({ policyShapersCount: 0, signalVolume: 0, activeMarkets: 0 });
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const { data: signals } = await supabase
+        .from('signals')
+        .select('user_wallet, sol_amount');
+      
+      const { data: activeMarkets } = await supabase
+        .from('markets')
+        .select('id')
+        .eq('status', 'active');
+      
+      const uniqueWallets = new Set(signals?.map(s => s.user_wallet) || []).size;
+      const totalVolume = signals?.reduce((sum, s) => sum + (s.sol_amount || 0), 0) || 0;
+      const activeCount = activeMarkets?.length || 0;
+      
+      setStats({
+        policyShapersCount: uniqueWallets,
+        signalVolume: totalVolume,
+        activeMarkets: activeCount
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
@@ -167,16 +203,16 @@ export default function HomeClient({ markets }: HomeClientProps) {
               {/* İstatistikler */}
               <div className="grid grid-cols-3 gap-6 mt-10 pt-8 border-t border-gray-200/60 dark:border-gray-700/60">
                 <div>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">1.2K+</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('policyShapers')}</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.policyShapersCount > 0 ? stats.policyShapersCount : '-'}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Policy Shapers</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">$450K+</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('signalVolume')}</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.signalVolume > 0 ? `${stats.signalVolume.toFixed(2)} SOL` : '-'}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Signal Volume</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">98%</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('consensusRate')}</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.activeMarkets > 0 ? stats.activeMarkets : '-'}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Active Markets</p>
                 </div>
               </div>
             </div>
@@ -206,16 +242,16 @@ export default function HomeClient({ markets }: HomeClientProps) {
               <div className="w-14 h-14 bg-white dark:bg-gray-700 rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition text-purple-600">
                 <TrendingUp size={28} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{t('step2Title')}</h3>
-              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">{t('step2Desc')}</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Signal Your Demand</h3>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Deposit SOL to back the outcome you want. Your principal is always returned — you never lose your deposit.</p>
             </div>
 
             <div className="p-8 bg-gray-50 dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-500 transition group cursor-default">
               <div className="w-14 h-14 bg-white dark:bg-gray-700 rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition text-green-600">
                 <ShieldCheck size={28} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{t('step3Title')}</h3>
-              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">{t('step3Desc')}</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Earn While You Signal</h3>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Your SOL earns yield while locked. When the market closes, get your SOL back plus your share of the yield earned.</p>
             </div>
           </div>
         </div>

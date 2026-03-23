@@ -6,10 +6,15 @@ import LanguageToggle from './LanguageToggle';
 import ThemeSwitch from './ThemeSwitch';
 import { useLanguage } from '../context/LanguageContext';
 import { useUser } from '../context/UserContext';
+import { useWallet } from '@solana/wallet-adapter-react';
+
+const ADMIN_WALLETS = ['PanbgtcTiZ2HasCT9CC94nUBwUx55uH8YDmZk6587da', '5vJggeRkrFSZBJw6rZvWNzuRbKTe4g44pQEwaBcyZVBP'];
 
 export default function Navbar() {
   const { t } = useLanguage();
   const { user } = useUser();
+  const { publicKey, connected } = useWallet();
+  const isAdmin = connected && publicKey ? ADMIN_WALLETS.includes(publicKey.toBase58()) : false;
 
   return (
     <nav className="sticky top-0 z-50 bg-white/80 dark:bg-[#0B0C10]/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
@@ -35,15 +40,20 @@ export default function Navbar() {
             <Link href="/docs" className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition">
               <span>📖</span> Docs
             </Link>
-            <Link href="/admin" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition">
-              {t('admin')}
-            </Link>
           </div>
 
           {/* Right Side */}
           <div className="flex items-center gap-3">
             <ThemeSwitch />
             <LanguageToggle />
+            {isAdmin && (
+              <Link 
+                href="/admin" 
+                className="text-xs text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 font-medium transition"
+              >
+                Admin
+              </Link>
+            )}
             <Link 
               href="/profile" 
               className="bg-transparent text-gray-700 dark:text-gray-300 px-4 py-1.5 rounded-full font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition flex items-center gap-2 text-sm"

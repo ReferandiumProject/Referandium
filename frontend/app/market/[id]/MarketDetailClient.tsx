@@ -617,21 +617,24 @@ export default function MarketDetailClient() {
                 </div>
               ) : (
                 <>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-                    {isBinaryMarket ? (
-                      <>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">Signal on:</span>
+                  {isBinaryMarket ? (
+                    <div className="mb-4">
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 leading-snug">
                         {market.title}
-                      </>
-                    ) : selectedOption ? (
-                      <>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">Signaling on:</span>
-                        {selectedOption.title}
-                      </>
-                    ) : (
-                      'Submit Signal'
-                    )}
-                  </h3>
+                      </h3>
+                    </div>
+                  ) : (
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                      {selectedOption ? (
+                        <>
+                          <span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">Signaling on:</span>
+                          {selectedOption.title}
+                        </>
+                      ) : (
+                        'Submit Signal'
+                      )}
+                    </h3>
+                  )}
                   
                   {/* YES / NO Tabs */}
                   <div className="grid grid-cols-2 gap-2 mb-6">
