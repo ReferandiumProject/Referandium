@@ -1,0 +1,401 @@
+# Learning Hub
+
+## What is the Learning Hub?
+
+The **Referandium Learning Hub** is a premium educational platform providing in-depth courses, trading strategies, and market analysis for signal providers and Gookie managers. It's designed to help users maximize their success on Referandium.
+
+> 📚 **Access Model**: Lock $25/month worth of RFRM tokens to unlock all content  
+> 🔒 **Smart Contract**: `FUTVzQF86UckN9KhyuRajM4xRsYS62f24hTbJqGkZxed`
+
+---
+
+## How It Works
+
+### Subscription Mechanism
+
+Unlike traditional subscriptions that charge a fee, the Learning Hub uses a **token locking mechanism**:
+
+```
+Traditional Model:
+Pay $25 → Access content → Money gone
+
+Referandium Model:
+Lock $25 in RFRM → Access content → Unlock anytime → Tokens returned
+```
+
+**Key Benefits:**
+- ✅ **Your capital is never lost** - Tokens unlocked when you cancel
+- ✅ **Flexible duration** - No annual commitments
+- ✅ **On-chain verification** - Automatic access control
+- ✅ **Deflationary effect** - Tokens locked = Supply reduced
+
+### How to Subscribe
+
+**Step-by-step:**
+
+1. **Connect Wallet**
+   - Use Phantom, Solflare, or any Solana wallet
+   - Ensure you have RFRM tokens
+
+2. **Calculate Lock Amount**
+   ```
+   RFRM to Lock = $25 ÷ Current RFRM Price
+   
+   Example:
+   If RFRM = $0.10
+   Lock Amount = $25 ÷ $0.10 = 250 RFRM
+   ```
+
+3. **Approve Token Lock**
+   - Transaction locks RFRM in smart contract
+   - Tokens removed from transferable balance
+   - Still visible in wallet, but non-transferable
+
+4. **Access Content**
+   - Instant access to all courses and materials
+   - No additional fees
+   - New content added monthly
+
+5. **Cancel Anytime**
+   - Unlock your RFRM tokens
+   - Access removed immediately
+   - No penalties or fees
+
+---
+
+## Available Content
+
+### Courses
+
+#### 1. Prescription Markets 101
+**Duration:** 2 hours  
+**Level:** Beginner
+
+**Topics:**
+- What are prescription markets?
+- How signaling works
+- YES/NO vs Multiple Choice markets
+- Reading market sentiment
+- Risk management basics
+
+#### 2. Advanced Signal Strategies
+**Duration:** 3 hours  
+**Level:** Intermediate
+
+**Topics:**
+- Optimal signal timing
+- Portfolio diversification
+- Yield maximization techniques
+- Market selection criteria
+- Managing losing positions
+
+#### 3. Gookie Management Masterclass
+**Duration:** 4 hours  
+**Level:** Advanced
+
+**Topics:**
+- Bidding strategies for auctions
+- Viral marketing tactics
+- Community building
+- Yield optimization
+- Handling disputes and penalties
+
+#### 4. On-Chain Analysis
+**Duration:** 2 hours  
+**Level:** Intermediate
+
+**Topics:**
+- Reading Solana transactions
+- Tracking smart contract state
+- Wallet analysis
+- Detecting manipulation
+- Using block explorers effectively
+
+### Research Reports
+
+**Published monthly:**
+- 📊 Market performance analysis
+- 📈 Top Gookie rankings
+- 💡 Strategy recommendations
+- 🔍 Platform metrics deep-dive
+- 🎯 Upcoming market opportunities
+
+### Trading Tools
+
+**Exclusive access to:**
+- 📐 Signal calculator (optimal amounts)
+- 📊 Market screener (filter by criteria)
+- 🎨 Gookie ROI estimator
+- 📉 Historical data charts
+- 🤖 Alert system (market opportunities)
+
+### Community Access
+
+**Private channels for subscribers:**
+- 💬 Discord: Premium strategy channel
+- 🐦 Twitter: Alpha group DMs
+- 📹 Weekly live Q&A sessions
+- 🎤 AMAs with top Gookies
+- 🤝 Networking with other subscribers
+
+---
+
+## Pricing Model
+
+### Monthly Lock Amount
+
+**Fixed USD value, floating RFRM amount:**
+
+```
+Monthly Lock = $25 worth of RFRM
+
+RFRM Price | Tokens to Lock
+-----------|---------------
+$0.05      | 500 RFRM
+$0.10      | 250 RFRM
+$0.20      | 125 RFRM
+$0.50      | 50 RFRM
+```
+
+**Price updated:**
+- Every 24 hours
+- Based on 7-day average RFRM price
+- Sourced from Jupiter aggregator
+- On-chain oracle for transparency
+
+### What You Get
+
+For $25/month equivalent:
+- ✅ All courses (100+ hours content)
+- ✅ Monthly research reports
+- ✅ Trading tools access
+- ✅ Private community
+- ✅ Priority support
+- ✅ Early access to new features
+
+**Compared to alternatives:**
+- Udemy courses: $50-200 each
+- Premium Discord: $49/month
+- Trading signals: $99/month
+- **Referandium Learning Hub: $25/month + tokens returned**
+
+---
+
+## Token Locking Mechanics
+
+### How Locking Works
+
+**Smart contract flow:**
+
+```rust
+1. User approves RFRM transfer
+2. Contract calculates required lock amount ($25 equivalent)
+3. Tokens transferred to program-owned account
+4. User marked as "active subscriber" in contract state
+5. Frontend checks on-chain status before granting access
+6. User retains ownership, cannot transfer
+7. Cancel → Tokens returned to wallet
+```
+
+### Lock Duration
+
+**Flexible options:**
+- No minimum lock period
+- Pay monthly equivalents upfront if desired
+- Lock for 12 months → Get 2 months free (17% discount)
+- Automatic monthly renewal (requires approval)
+
+**Example: 3-month prepay**
+```
+Lock: 750 RFRM (3 × 250)
+Access: 3 months
+Unlock: After 90 days or cancel early (pro-rated refund)
+```
+
+### Cancellation & Refunds
+
+**Cancel anytime:**
+- Unlock remaining RFRM balance
+- Pro-rated refund if prepaid multiple months
+- No penalty fees
+- Access removed immediately
+
+**Refund calculation:**
+```
+Refund = Total Locked × (Days Remaining ÷ Total Days)
+
+Example:
+Locked: 750 RFRM (3 months = 90 days)
+Elapsed: 30 days
+Remaining: 60 days
+Refund: 750 × (60 ÷ 90) = 500 RFRM
+```
+
+---
+
+## Benefits for Token Holders
+
+### Supply Reduction
+
+**Locking creates scarcity:**
+- Every subscriber = ~250 RFRM locked
+- 1,000 subscribers = 250,000 RFRM locked (~0.025% of supply)
+- Locked tokens cannot be sold
+- Creates upward price pressure
+
+### Price Stability
+
+**Long-term locking reduces volatility:**
+- Subscribers commit for at least 1 month
+- Reduces circulating supply
+- Dampens sell pressure
+- Encourages price appreciation
+
+### Ecosystem Value
+
+**Educational content improves platform:**
+- Smarter signal providers = Better markets
+- Trained Gookies = Higher quality management
+- Community knowledge = Reduced risk
+- Platform growth = Increased RFRM demand
+
+---
+
+## Content Roadmap
+
+### Q1 2026 (Launch)
+- ✅ 4 foundational courses
+- ✅ First monthly research report
+- ✅ Basic trading tools
+- ✅ Private Discord channel
+
+### Q2 2026
+- 🚧 Advanced technical analysis course
+- 🚧 Gookie marketing playbook
+- 🚧 Live trading sessions
+- 🚧 AI-powered market screener
+
+### Q3 2026
+- 🔜 Cross-chain strategies (if applicable)
+- 🔜 Institutional trading course
+- 🔜 Certification program
+- 🔜 Mentorship matching
+
+### Q4 2026
+- 🔜 Mobile app access
+- 🔜 Offline content downloads
+- 🔜 Multi-language support
+- 🔜 Interactive simulations
+
+---
+
+## Who Should Subscribe?
+
+### Ideal for:
+
+**1. New Users**
+- Learning the platform
+- Understanding prescription markets
+- Building foundational knowledge
+- Avoiding beginner mistakes
+
+**2. Active Signal Providers**
+- Optimizing signal strategies
+- Maximizing yield
+- Managing risk
+- Tracking performance
+
+**3. Aspiring Gookie Managers**
+- Preparing for auctions
+- Learning promotion tactics
+- Understanding responsibilities
+- Building marketing skills
+
+**4. RFRM Holders**
+- Locking tokens for scarcity
+- Supporting ecosystem
+- Getting utility from holdings
+- Accessing alpha
+
+### Not ideal for:
+
+- ❌ Casual browsers (free content available on blog)
+- ❌ Those unwilling to lock RFRM
+- ❌ People expecting "get rich quick" schemes
+- ❌ Non-Solana users
+
+---
+
+## Technical Details
+
+### Smart Contract
+
+**Program ID:** `FUTVzQF86UckN9KhyuRajM4xRsYS62f24hTbJqGkZxed`  
+**Network:** Solana Devnet  
+**Token:** RFRM SPL Token
+
+### Subscription State
+
+```rust
+pub struct Subscription {
+    pub user: Pubkey,
+    pub rfrm_locked: u64,
+    pub start_time: i64,
+    pub end_time: i64,
+    pub is_active: bool,
+}
+```
+
+### Access Control
+
+**How frontend verifies access:**
+1. User connects wallet
+2. Frontend queries subscription contract
+3. Checks `is_active` and `end_time`
+4. Grants/denies access to protected routes
+5. Refreshes every page load
+
+---
+
+## FAQ
+
+### Is my RFRM locked forever?
+
+No. You can cancel and unlock your RFRM anytime. There are no penalties.
+
+### What if RFRM price crashes while I'm subscribed?
+
+You locked a dollar amount ($25), not a token amount. When you cancel, you get back the same number of tokens you locked, regardless of current price.
+
+### What if RFRM price moons while I'm subscribed?
+
+Same answer - you get back the exact tokens you locked. The dollar value may have changed, but token amount is fixed.
+
+### Can I gift subscriptions?
+
+Not yet, but planned for Q2 2026. You'll be able to lock tokens on behalf of another wallet address.
+
+### Is content updated?
+
+Yes. New courses, reports, and tools added monthly. All included in your subscription.
+
+### Do I need technical knowledge?
+
+No. Courses start from beginner level and progressively get more advanced.
+
+---
+
+## Get Started
+
+**Ready to level up your Referandium game?**
+
+1. **Buy RFRM**: [pump.fun](https://pump.fun/coin/8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump)
+2. **Visit Learning Hub**: [referandium.io/learning](https://referandium.io/learning)
+3. **Connect Wallet**: Use Phantom or Solflare
+4. **Lock Tokens**: Approve transaction
+5. **Start Learning**: Immediate access
+
+---
+
+> **Education is the best investment. Especially when you get your capital back.**  
+> *Learn, earn, return. 📚*

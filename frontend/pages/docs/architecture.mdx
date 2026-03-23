@@ -42,6 +42,62 @@ Referandium is built on a modern, scalable architecture leveraging the Solana bl
 - **Transaction Signing**: Client-side transaction creation
 - **SOL Transfers**: Real-time on-chain payments
 
+### Smart Contracts (Anchor Programs)
+
+**Deployed on Solana Devnet:**
+
+#### 1. Market Escrow Program
+**Address:** `Aby8pc1zLWbKUPgPzgh4ntbkTsbPaZWb6FyuxSwtkR8e`
+
+**Purpose:**
+- Escrow SOL signals for markets
+- Calculate and distribute yield
+- Manage user signal accounts
+- Automated withdrawal on market close
+
+**Key Instructions:**
+- `initialize_platform`: Setup escrow platform
+- `create_market`: Create new market escrow account
+- `deposit_signal`: Lock SOL for YES/NO signal
+- `set_yield`: Admin sets yield for distribution
+- `close_market`: Close market and enable withdrawals
+- `withdraw`: Users claim principal + yield share
+- `admin_withdraw_buyback`: Platform withdraws buyback portion
+
+#### 2. Gookie Auction Program
+**Address:** `3VkzfA6GU6VhMdEnYRJywLLEQ454B9gmQoNh4ycVFFS5`
+
+**Purpose:**
+- Manage Gookie NFT auctions
+- Lock RFRM tokens for bids
+- Mint NFT to winner
+- Handle auction lifecycle
+
+**Key Instructions:**
+- `initialize_platform`: Setup auction platform
+- `create_auction`: Create new Gookie auction
+- `place_bid`: Lock RFRM and place bid
+- `close_auction`: End auction, determine winner
+- `mint_gookie_nft`: Mint NFT to auction winner
+
+#### 3. Learning Subscription Program
+**Address:** `FUTVzQF86UckN9KhyuRajM4xRsYS62f24hTbJqGkZxed`
+
+**Purpose:**
+- Lock RFRM for Learning Hub access
+- Verify active subscriptions
+- Handle subscription cancellation
+- Return locked tokens on cancel
+
+**Key Instructions:**
+- `initialize_platform`: Setup subscription platform
+- `subscribe`: Lock RFRM tokens for access
+- `cancel_subscription`: Unlock tokens and end access
+- `verify_access`: Check if user has active subscription
+
+**Token Used:**
+- **RFRM Token**: `8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump`
+
 ### Database Layer
 ```
 ┌─────────────────────────────────────┐

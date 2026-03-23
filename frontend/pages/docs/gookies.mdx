@@ -1,0 +1,248 @@
+# Gookies: Market Manager NFTs
+
+## What is a Gookie?
+
+A **Gookie** is an NFT that grants temporary **market management rights** on Referandium. Think of it as a hybrid between a traditional bookie (market operator) and a Web3 NFT—but with a critical twist: **Gookies aren't sold, they're rented.**
+
+> 🍪 **Etymology**: Gookie = "Goo" (crypto slang) + "Bookie" (market operator)
+
+### Key Characteristics
+
+- 🎨 **Unique NFT artwork** tied to specific market themes
+- ⏱️ **Time-limited rental period** (typically 30-90 days)
+- 💰 **Bid with RFRM tokens**, not SOL
+- 🔒 **RFRM tokens are locked** during auction period
+- 🏆 **Winner gets NFT** and management rights
+- 💸 **Earn 30% of yield** from your market (paid in RFRM)
+
+---
+
+## How Gookie Auctions Work
+
+### Phase 1: Auction Launch
+
+Platform releases themed Gookies for upcoming markets:
+
+```
+Example Gookies:
+- "Fenerbahçe 2026 Transfers" → Soccer market
+- "Bitcoin $100K by Q4" → Crypto market  
+- "US Elections 2026" → Politics market
+```
+
+**Auction Mechanics:**
+- Duration: 3-7 days
+- Bid currency: **RFRM tokens only**
+- Bid increments: Minimum 5% above current highest
+- RFRM locked: Tokens locked until auction ends
+- Auction extension: +10 minutes if bid in last 2 minutes
+
+### Phase 2: Bidding
+
+Users bid RFRM tokens to win management rights:
+
+```
+Bidding Flow:
+1. Connect wallet with RFRM balance
+2. Enter bid amount (e.g., 1000 RFRM)
+3. Approve token lock transaction
+4. RFRM escrowed in auction contract
+5. Become highest bidder
+6. Wait for auction end
+```
+
+**Bidding Rules:**
+- Must have RFRM tokens in wallet
+- Previous bidder's tokens unlocked when outbid
+- Winner's tokens locked for entire market duration
+- Tokens returned when market closes
+
+### Phase 3: NFT Minting & Management
+
+Winner receives:
+1. **Gookie NFT** minted to their wallet
+2. **Market management dashboard** access
+3. **30% yield share** from market (in RFRM)
+4. **Public badge** showing their Gookie ownership
+
+---
+
+## Gookie Responsibilities
+
+As a Gookie manager, you're responsible for:
+
+### 1. Market Setup
+- Define YES/NO criteria or multiple choice options
+- Set clear resolution rules
+- Write market description
+- Upload images or media
+
+### 2. Promotion & Marketing
+- Share market on Twitter/X
+- Post in Discord/Telegram communities
+- Create viral content
+- Engage with signal providers
+
+### 3. Fair Resolution
+- Monitor market progress
+- Report outcome truthfully
+- Cooperate with admin if disputes arise
+
+### 4. Community Engagement
+- Answer questions in comments
+- Provide updates on market status
+- Build trust with participants
+
+> ⚠️ **Warning**: Failure to fulfill responsibilities results in penalties (RFRM token seizure).
+
+---
+
+## Gookie Earnings: 30% Yield Share
+
+### How You Earn
+
+Markets generate yield while SOL is locked. Gookies earn **30% of total yield** paid in **RFRM tokens** (auto-swapped via Jupiter).
+
+**Example Scenario:**
+
+| Metric | Value |
+|--------|-------|
+| Total SOL locked in market | 100 SOL |
+| Market duration | 30 days |
+| Yield earned (estimated 5% APY) | ~0.41 SOL |
+| **Gookie share (30%)** | **~0.123 SOL → RFRM** |
+
+If RFRM = $0.10, Gookie earns ~$12.30 in RFRM tokens!
+
+### Yield Calculation
+
+```
+Your RFRM Earnings = (Total Yield × 30%) → Swapped to RFRM via Jupiter
+```
+
+**Factors affecting your earnings:**
+- ✅ Higher SOL volume = More yield
+- ✅ Longer market duration = More yield
+- ✅ Better promotion = More participants = More SOL locked
+
+---
+
+## Penalties & Risk
+
+### Early Exit Penalty
+
+If you abandon your Gookie before market closes:
+
+```
+Penalty = Locked RFRM × (Time Remaining / Total Duration) × 25%
+```
+
+**Example:**
+- RFRM locked: 1000 tokens
+- Total duration: 60 days
+- Time elapsed: 20 days
+- Time remaining: 40 days
+- **Penalty: 1000 × (40/60) × 0.25 = 166.67 RFRM seized**
+
+### Misconduct Penalties
+
+Platform can seize locked RFRM for:
+- ❌ Manipulating market outcomes
+- ❌ Providing false information
+- ❌ Abandoning market without notice
+- ❌ Failing to cooperate with resolution
+- ❌ Engaging in fraud or scams
+
+**Penalty amounts:**
+- Minor infractions: 10-25% of locked RFRM
+- Major violations: 50-100% of locked RFRM + ban
+
+---
+
+## Strategy Tips for Gookie Managers
+
+### 1. Choose High-Interest Markets
+- Pick topics with existing communities
+- Leverage trending news cycles
+- Target markets with passionate fans
+
+### 2. Promote Aggressively
+- Post daily updates
+- Create memes and content
+- Engage with every comment
+- Partner with influencers
+
+### 3. Set Clear Resolution Criteria
+- Define unambiguous outcomes
+- Specify data sources (e.g., official announcements)
+- Avoid subjective questions
+
+### 4. Build Long-Term Reputation
+- Deliver fair outcomes consistently
+- Respond to community concerns
+- Build followers who trust your markets
+
+---
+
+## Gookie Economics
+
+### ROI Example
+
+**Scenario: You bid 1000 RFRM for a high-volume market**
+
+| Item | Value |
+|------|-------|
+| RFRM bid | 1000 tokens |
+| RFRM locked | 60 days |
+| Market SOL locked | 500 SOL |
+| Yield earned (5% APY) | ~4.11 SOL |
+| Your 30% share | 1.23 SOL → ~$175 worth of RFRM |
+| RFRM returned | 1000 tokens (~$100) |
+| **Total value returned** | **$275** |
+| **Net profit** | **+$175 (175% ROI)** |
+
+> 💡 **The more successful your market, the more you earn. It's literally in your interest to shill.**
+
+---
+
+## Technical Details
+
+### Smart Contract
+- **Program ID**: `3VkzfA6GU6VhMdEnYRJywLLEQ454B9gmQoNh4ycVFFS5`
+- **Network**: Solana Devnet
+- **Token standard**: SPL Token (Metaplex NFT)
+
+### Auction State
+
+```rust
+pub struct GookieAuction {
+    pub auction_id: u64,
+    pub title: String,
+    pub starting_bid: u64,
+    pub winning_bid: u64,
+    pub winner: Option<Pubkey>,
+    pub end_time: i64,
+    pub status: AuctionStatus,
+}
+```
+
+---
+
+## FAQ
+
+### Can I sell my Gookie NFT?
+No, Gookies are **non-transferable** during the rental period. After market closes, the NFT becomes a collectible but loses management rights.
+
+### What if my market fails to attract participants?
+You still earn yield proportional to whatever SOL is locked. Even small markets generate some earnings.
+
+### Can I manage multiple Gookies?
+Yes! You can bid on and manage multiple Gookies simultaneously. Volume-based discounts apply.
+
+### What if I lose my private key?
+Your locked RFRM and NFT are permanently lost. **Always secure your seed phrase.**
+
+---
+
+> **Gookies aren't gambling—they're digital entrepreneurship. Rent a market, build a community, earn yield.**  
+> *Manage markets, earn RFRM 🍪*

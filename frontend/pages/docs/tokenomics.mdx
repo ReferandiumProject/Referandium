@@ -6,7 +6,7 @@ Referandium operates on a **pure SOL economy** with a unique **refundable rental
 
 > 💰 **Core Principle**: Users don't buy assets—they rent management rights and get refunded.
 
-> ⚠️ **Development Status**: This tokenomics model describes the target system currently in active development. Smart contracts and commission distribution mechanisms are being built and tested on Solana testnet.
+> 🚀 **Live on Solana Devnet**: All smart contracts are deployed and operational. Fee distribution is automated via on-chain programs.
 
 ---
 
@@ -57,17 +57,32 @@ Referandium generates revenue through **two revenue streams**: rental fees and p
 | **Early Exit Penalty** | 25% | Renters who abandon | On early termination |
 | **Volume Incentive** | -2% discount | High-volume renters | Per successful close |
 
-#### Market Volume Fee Breakdown
+#### Yield Distribution Model
 
-**Every signal (YES/NO vote) in a market generates a small platform fee. This fee is split between the platform and the Gookie renter (market manager).**
+**Markets generate yield while SOL is locked. When a market closes, the accumulated yield is distributed as follows:**
 
-| Stakeholder | Commission Rate | Description |
-|-------------|-----------------|-------------|
-| **Platform** | 2-3% | Platform operations, development, treasury |
-| **Gookie Renter** | 3-5% | Market manager commission (your profit!) |
-| **Total Market Fee** | 5-8% | Combined fee on trading volume |
+| Stakeholder | Share | Payment Method | Description |
+|-------------|-------|----------------|-------------|
+| **Platform** | 20% | SOL | Platform operations, development, treasury |
+| **Gookie Manager** | 30% | RFRM | Market manager reward (swapped via Jupiter) |
+| **Signal Providers** | 45% | SOL | Distributed proportional to SOL amount |
+| **Buyback & Burn** | 5% | RFRM | RFRM bought from market and burned |
 
-> 💰 **Key Insight**: As a Gookie renter, **you earn 3-5% of ALL trading volume** in your market. The more you promote, the more you earn!
+> **Key Insight**: Users get their principal back 100% + 45% of yield earned. Gookies earn 30% in RFRM tokens. 5% creates deflationary pressure through buyback & burn.
+
+### Yield Distribution Example
+
+**Scenario: Market generates 10 SOL in yield**
+
+| Stakeholder | Share | Amount | Notes |
+|-------------|-------|--------|-------|
+| Platform | 20% | 2.0 SOL | Direct to treasury |
+| Gookie Manager | 30% | 3.0 SOL → RFRM | Auto-swapped via Jupiter |
+| Signal Providers | 45% | 4.5 SOL | Split proportionally |
+| Buyback & Burn | 5% | 0.5 SOL → RFRM | Burned permanently |
+| **Total** | **100%** | **10.0 SOL** | **Fully distributed** |
+
+> **Important**: Your principal is ALWAYS returned 100%. This 45% is pure profit on top of your deposit.
 
 ### Fee Breakdown Example
 
@@ -81,7 +96,7 @@ Referandium generates revenue through **two revenue streams**: rental fees and p
 | **Refund to User** | **4.50** |
 | **Platform Revenue** | **0.50** |
 
-> ⚠️ **Important**: Fees are only charged on **successful market completion**. If the market fails to launch or is canceled by admin, users receive a **100% refund**.
+> **Important**: Fees are only charged on **successful market completion**. If the market fails to launch or is canceled by admin, users receive a **100% refund**.
 
 ---
 
