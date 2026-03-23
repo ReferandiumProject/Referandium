@@ -5,9 +5,10 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { ArrowLeft, CheckCircle, XCircle, MessageSquare, Send, Loader2, Trash2, TrendingUp, Clock } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, MessageSquare, Send, Loader2, Trash2, TrendingUp, Clock, FileText } from 'lucide-react';
 import { Market, MarketOption, Signal, Comment } from '@/app/types';
 import * as marketEscrowContract from '@/app/utils/marketEscrowContract';
+import MarketChart from '../../components/MarketChart';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -472,6 +473,25 @@ export default function MarketDetailClient() {
               </div>
             )}
 
+            <MarketChart marketId={id} isSimpleMarket={isBinaryMarket} />
+
+            {/* Resolve Criteria */}
+            {market.resolve_criteria && (
+              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-xl">
+                <div className="flex items-start gap-2">
+                  <FileText size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-sm font-bold text-blue-900 dark:text-blue-300 mb-1">
+                      How this market resolves
+                    </h3>
+                    <p className="text-sm text-blue-800 dark:text-blue-400/80">
+                      {market.resolve_criteria}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Comments Section */}
             <div className="bg-white dark:bg-[#181A20] rounded-2xl border border-gray-200 dark:border-gray-800 mt-8 border-t pt-6">
               <div className="px-6 pb-4 border-b border-gray-100 dark:border-gray-800">
@@ -678,7 +698,7 @@ export default function MarketDetailClient() {
                   </button>
 
                   <p className="text-xs text-gray-400 text-center mt-4">
-                    {!connected ? 'Connect wallet to signal' : hasSignaled ? 'Already signaled' : isClosed ? 'Market closed' : 'Off-chain signaling (no SOL transfer yet)'}
+                    {!connected ? 'Connect wallet to signal' : hasSignaled ? 'Already signaled' : isClosed ? 'Market closed' : 'On-chain signal via Solana escrow'}
                   </p>
                 </>
               )}

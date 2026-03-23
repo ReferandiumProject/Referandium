@@ -44,6 +44,7 @@ export default function GookieDetailPage() {
   // Market Setup States
   const [marketTitle, setMarketTitle] = useState('');
   const [marketDescription, setMarketDescription] = useState('');
+  const [resolveCriteria, setResolveCriteria] = useState('');
   const [marketType, setMarketType] = useState<'binary' | 'multiple'>('multiple');
   const [marketOptions, setMarketOptions] = useState<string[]>(['', '']);
   const [marketEndDate, setMarketEndDate] = useState('');
@@ -216,6 +217,7 @@ export default function GookieDetailPage() {
           id: marketId,
           title: marketTitle,
           description: marketDescription || null,
+          resolve_criteria: resolveCriteria || null,
           category: 'Gookie',
           market_type: marketType,
           gookie_id: id,
@@ -633,6 +635,20 @@ export default function GookieDetailPage() {
                         value={marketDescription}
                         onChange={(e) => setMarketDescription(e.target.value)}
                         placeholder="Provide context for your market..."
+                        rows={3}
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0B0C10] border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-orange-500 outline-none resize-none"
+                      />
+                    </div>
+
+                    {/* Resolve Criteria */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                        Resolve Criteria (Optional)
+                      </label>
+                      <textarea
+                        value={resolveCriteria}
+                        onChange={(e) => setResolveCriteria(e.target.value)}
+                        placeholder="Describe how and when this market will be resolved. E.g. 'Market closes at end of transfer season. Results based on official club announcements.'"
                         rows={3}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0B0C10] border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-orange-500 outline-none resize-none"
                       />

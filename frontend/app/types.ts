@@ -28,6 +28,7 @@ export interface Market {
   on_chain_market_id?: string | null
   escrow_pda?: string | null
   market_closed_tx?: string | null
+  resolve_criteria?: string | null
 }
 
 export interface MarketOption {
