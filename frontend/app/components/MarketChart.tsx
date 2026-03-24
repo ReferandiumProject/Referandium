@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -64,33 +64,50 @@ export default function MarketChart({ marketId, isSimpleMarket, selectedOptionId
       if (error) throw error;
       
       if (signals && signals.length > 0) {
-        // Group signals by date and signal direction
-        const signalsByDate: { [key: string]: { yes: number; no: number } } = {};
+        // Sort by date
+        const sorted = [...signals].sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
         
-        signals.forEach((signal: any) => {
-          const signalDate = new Date(signal.created_at);
-          const dateKey = signalDate.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric' 
-          });
-          
-          if (!signalsByDate[dateKey]) {
-            signalsByDate[dateKey] = { yes: 0, no: 0 };
-          }
-          
-          if (signal.signal_direction === 'yes') {
-            signalsByDate[dateKey].yes += 1;
-          } else {
-            signalsByDate[dateKey].no += 1;
-          }
+        let yesCount = 0;
+        let noCount = 0;
+        const timeSeriesData: any[] = [];
+        
+        // Add starting point at 50/50 before first signal
+        const firstDate = new Date(sorted[0].created_at);
+        firstDate.setDate(firstDate.getDate() - 1);
+        const startDateKey = firstDate.toLocaleDateString('en-US', { 
+          month: 'short', day: 'numeric' 
         });
         
-        // Convert to time series format
-        const timeSeriesData = Object.entries(signalsByDate).map(([date, counts]) => ({
-          date,
-          YES: counts.yes,
-          NO: counts.no,
-        }));
+        timeSeriesData.push({
+          date: startDateKey,
+          YES: 50,
+        });
+        
+        sorted.forEach((signal: any) => {
+          if (signal.signal_direction === 'yes') yesCount++;
+          else noCount++;
+          
+          const total = yesCount + noCount;
+          const dateKey = new Date(signal.created_at).toLocaleDateString('en-US', { 
+            month: 'short', day: 'numeric' 
+          });
+          
+          // Update or add point for this date
+          const existing = timeSeriesData.findIndex(d => d.date === dateKey);
+          const point = {
+            date: dateKey,
+            YES: Math.round((yesCount / total) * 100),
+            NO: Math.round((noCount / total) * 100),
+          };
+          
+          if (existing >= 0) {
+            timeSeriesData[existing] = point;
+          } else {
+            timeSeriesData.push(point);
+          }
+        });
         
         setChartData(timeSeriesData);
       } else {
@@ -142,27 +159,27 @@ export default function MarketChart({ marketId, isSimpleMarket, selectedOptionId
             tick={{ fill: '#9CA3AF', fontSize: 12 }}
           />
           <YAxis 
+            domain={[0, 100]}
+            tickFormatter={(v) => `${v}%`}
             stroke="#9CA3AF"
             className="text-xs"
             tick={{ fill: '#9CA3AF', fontSize: 12 }}
           />
           <Tooltip content={<CustomTooltip />} />
+          <ReferenceLine 
+            y={50} 
+            stroke="#9CA3AF" 
+            strokeDasharray="3 3" 
+            opacity={0.5}
+          />
           
           <Line 
             type="monotone" 
             dataKey="YES" 
-            stroke="#22C55E" 
-            strokeWidth={3}
-            dot={{ fill: '#22C55E', r: 4 }}
+            stroke="#3B82F6" 
+            strokeWidth={2}
+            dot={{ fill: '#3B82F6', r: 3 }}
             name="YES"
-          />
-          <Line 
-            type="monotone" 
-            dataKey="NO" 
-            stroke="#EF4444" 
-            strokeWidth={3}
-            dot={{ fill: '#EF4444', r: 4 }}
-            name="NO"
           />
         </LineChart>
       </ResponsiveContainer>
