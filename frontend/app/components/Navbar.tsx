@@ -1,82 +1,85 @@
-'use client';
+'use client'
+import Link from 'next/link'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+import { usePathname } from 'next/navigation'
 
-import Link from 'next/link';
-import { Users, GraduationCap } from 'lucide-react';
-import LanguageToggle from './LanguageToggle';
-import ThemeSwitch from './ThemeSwitch';
-import { useLanguage } from '../context/LanguageContext';
-import { useUser } from '../context/UserContext';
-import { useWallet } from '@solana/wallet-adapter-react';
-
-const ADMIN_WALLETS = ['PanbgtcTiZ2HasCT9CC94nUBwUx55uH8YDmZk6587da', '5vJggeRkrFSZBJw6rZvWNzuRbKTe4g44pQEwaBcyZVBP'];
+const ADMIN_WALLETS = [
+  'PanbgtcTiZ2HasCT9CC94nUBwUx55uH8YDmZk6587da',
+  '5vJggeRkrFSZBJw6rZvWNzuRbKTe4g44pQEwaBcyZVBP'
+]
 
 export default function Navbar() {
-  const { t } = useLanguage();
-  const { user } = useUser();
-  const { publicKey, connected } = useWallet();
-  const isAdmin = connected && publicKey ? ADMIN_WALLETS.includes(publicKey.toBase58()) : false;
+  const { publicKey, connected } = useWallet()
+  const pathname = usePathname()
+  const isAdmin = connected && publicKey && ADMIN_WALLETS.includes(publicKey.toBase58())
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 dark:bg-[#0B0C10]/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
-          {/* Logo */}
-          <Link href="/" className="flex-shrink-0 flex items-center gap-2 cursor-pointer">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">R</div>
-            <span className="font-bold text-xl text-gray-900 dark:text-white tracking-tight">Referandium</span>
+    <nav style={{ 
+      backgroundColor: '#FFFFFF', 
+      borderBottom: '1px solid #E2E8F0',
+      position: 'sticky',
+      top: 0,
+      zIndex: 50
+    }}>
+      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        
+        {/* Logo */}
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+          <div style={{ width: '32px', height: '32px', backgroundColor: '#2563EB', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ color: 'white', fontWeight: '700', fontSize: '16px' }}>R</span>
+          </div>
+          <span style={{ fontWeight: '700', fontSize: '18px', color: '#0F172A', letterSpacing: '-0.02em' }}>Referandium</span>
+        </Link>
+
+        {/* Nav Links */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+          <Link href="/markets" style={{ color: pathname === '/markets' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
+            Markets
           </Link>
-
-          {/* Center Links */}
-          <div className="hidden md:flex space-x-8 items-center">
-            <Link href="/markets" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition">
-              {t('markets')}
+          <Link href="/gookies" style={{ color: pathname === '/gookies' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
+            Creators
+          </Link>
+          {connected && (
+            <Link href="/profile" style={{ color: pathname === '/profile' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
+              Profile
             </Link>
-            <Link href="/gookies" className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-orange-500 dark:hover:text-orange-400 font-medium transition">
-              <span>🍪</span> Gookies
-            </Link>
-            <Link href="/learning" className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 font-medium transition">
-              <GraduationCap size={18} /> Learning
-            </Link>
-            <Link href="/docs" className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition">
-              <span>📖</span> Docs
-            </Link>
-          </div>
-
-          {/* Right Side */}
-          <div className="flex items-center gap-3">
-            <ThemeSwitch />
-            <LanguageToggle />
-            {isAdmin && (
-              <Link 
-                href="/admin" 
-                className="text-xs text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 font-medium transition"
-              >
-                Admin
-              </Link>
-            )}
-            <Link 
-              href="/profile" 
-              className="bg-transparent text-gray-700 dark:text-gray-300 px-4 py-1.5 rounded-full font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition flex items-center gap-2 text-sm"
-            >
-              {user ? (
-                <>
-                  <img
-                    src={user.avatar_url || ''}
-                    alt={user.username}
-                    className="w-6 h-6 rounded-full bg-gray-200"
-                  />
-                  <span className="hidden sm:inline">{user.username}</span>
-                </>
-              ) : (
-                <>
-                  <Users size={16} />
-                  {t('myProfile')}
-                </>
-              )}
-            </Link>
-          </div>
+          )}
+          <Link href="/docs" style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
+            Docs
+          </Link>
         </div>
+
+        {/* Right side */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {isAdmin && (
+            <Link href="/admin" className="text-xs text-slate-400 hover:text-slate-600" style={{ textDecoration: 'none' }}>
+              Admin
+            </Link>
+          )}
+          <Link href="/create" style={{
+            backgroundColor: '#2563EB',
+            color: 'white',
+            padding: '8px 16px',
+            borderRadius: '6px',
+            textDecoration: 'none',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}>
+            + Create Market
+          </Link>
+          <WalletMultiButton style={{
+            backgroundColor: 'transparent',
+            border: '1px solid #E2E8F0',
+            color: '#0F172A',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '500',
+            height: '36px'
+          }} />
+        </div>
+
       </div>
     </nav>
-  );
+  )
 }

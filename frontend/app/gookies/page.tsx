@@ -1,134 +1,101 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
-import { Search, Loader2, ArrowRight } from 'lucide-react';
-import GookieCard from '../components/GookieCard';
+import { useState, useEffect } from 'react'
+import { supabase } from '../../lib/supabaseClient'
+import { Gookie } from '../types'
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+interface CreatorCard extends Gookie {
+  market_count?: number
+}
 
 export default function GookiesPage() {
-  const [gookies, setGookies] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'closed'>('all');
+  const [creators, setCreators] = useState<CreatorCard[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchGookies();
-  }, [statusFilter]);
+    async function fetchCreators() {
+      try {
+        const { data: gookies, error } = await supabase
+          .from('gookies')
+          .select('*')
+          .in('status', ['market_active', 'completed', 'won'])
+          .order('created_at', { ascending: false })
 
-  const fetchGookies = async () => {
-    setLoading(true);
-    try {
-      let query = supabase
-        .from('gookies')
-        .select('*')
-        .order('created_at', { ascending: false });
+        if (error) throw error
+        if (!gookies || gookies.length === 0) { setCreators([]); setLoading(false); return }
 
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+        const wallets = gookies.map(g => g.winner_wallet).filter(Boolean) as string[]
+        const uniqueWallets = [...new Set(wallets)]
+
+        let marketCounts: Record<string, number> = {}
+        if (uniqueWallets.length > 0) {
+          const { data: markets } = await supabase
+            .from('markets')
+            .select('gookie_wallet')
+            .in('gookie_wallet', uniqueWallets)
+          if (markets) {
+            markets.forEach(m => {
+              if (m.gookie_wallet) marketCounts[m.gookie_wallet] = (marketCounts[m.gookie_wallet] || 0) + 1
+            })
+          }
+        }
+
+        setCreators((gookies as Gookie[]).map(g => ({
+          ...g,
+          market_count: g.winner_wallet ? marketCounts[g.winner_wallet] || 0 : 0,
+        })))
+      } catch (err) {
+        console.error('Error fetching creators:', err)
+      } finally {
+        setLoading(false)
       }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setGookies(data || []);
-    } catch (error) {
-      console.error('Error fetching gookies:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+    fetchCreators()
+  }, [])
 
-  const filteredGookies = gookies.filter(gookie => 
-    gookie.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (gookie.description && gookie.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const shortWallet = (w: string | null | undefined) => {
+    if (!w) return '—'
+    return `${w.slice(0, 4)}...${w.slice(-4)}`
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 dark:bg-[#0B0C10]">
-      {/* HEADER HERO */}
-      <div className="bg-white dark:bg-[#181A20] border-b border-gray-100 dark:border-gray-800 pt-16 pb-12">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <div className="inline-block p-3 bg-orange-100 dark:bg-orange-900/30 rounded-2xl mb-4">
-            <span className="text-4xl">🍪</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
-            Gookies <span className="text-orange-500">Auctions</span>
-          </h1>
-          <p className="text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto font-medium">
-            Bid on exclusive Gookies. Highest bidder wins when the countdown ends.
-          </p>
-        </div>
-      </div>
+    <div className="bg-white min-h-screen">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
-      {/* CONTENT */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        
-        {/* Filters & Search */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-          
-          {/* Status Filters */}
-          <div className="flex bg-white dark:bg-[#181A20] p-1.5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm w-full md:w-auto">
-            {['all', 'active', 'closed'].map((status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status as any)}
-                className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold capitalize transition-all ${
-                  statusFilter === status
-                    ? 'bg-orange-500 text-white shadow-md'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50'
-                }`}
-              >
-                {status}
-              </button>
-            ))}
-          </div>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">Verified Creators</h1>
+        <p className="text-slate-500 text-sm mb-8">Trusted market curators verified by Referandium.</p>
 
-          {/* Search Bar */}
-          <div className="relative w-full md:w-80">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search size={18} className="text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search Gookies..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white dark:bg-[#181A20] border border-gray-200 dark:border-gray-800 rounded-2xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm"
-            />
-          </div>
-        </div>
-
-        {/* Loading State */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 size={40} className="text-orange-500 animate-spin mb-4" />
-            <p className="text-gray-500 dark:text-gray-400 font-medium">Loading auctions...</p>
+          <div className="flex flex-col items-center justify-center py-24">
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+            <p className="text-slate-400 text-sm">Loading creators...</p>
           </div>
-        ) : filteredGookies.length === 0 ? (
-          /* Empty State */
-          <div className="bg-white dark:bg-[#181A20] border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-3xl p-16 text-center shadow-sm">
-            <div className="text-6xl mb-4 opacity-50">🍪</div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No Gookies Found</h3>
-            <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-              We couldn't find any auctions matching your criteria. Check back later for new exclusive drops!
-            </p>
+        ) : creators.length === 0 ? (
+          <div className="text-center py-24 border border-dashed border-slate-200 rounded-xl">
+            <p className="text-slate-900 font-medium">No verified creators yet</p>
+            <p className="text-slate-400 text-sm mt-1">Check back later as the community grows.</p>
           </div>
         ) : (
-          /* Gookies Grid */
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {filteredGookies.map((gookie) => (
-              <GookieCard key={gookie.id} gookie={gookie} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {creators.map(creator => (
+              <div key={creator.id} className="border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-slate-900 truncate">{creator.title}</h3>
+                  <span className="text-xs font-medium text-blue-600 shrink-0 ml-2">✓ Verified</span>
+                </div>
+                {creator.description && (
+                  <p className="text-xs text-slate-500 leading-relaxed mb-3 line-clamp-2">{creator.description}</p>
+                )}
+                <div className="flex items-center justify-between text-xs text-slate-400 border-t border-slate-100 pt-3">
+                  <span className="font-mono">{shortWallet(creator.winner_wallet)}</span>
+                  <span>{creator.market_count} market{creator.market_count !== 1 ? 's' : ''}</span>
+                </div>
+              </div>
             ))}
           </div>
         )}
+
       </div>
     </div>
-  );
+  )
 }
