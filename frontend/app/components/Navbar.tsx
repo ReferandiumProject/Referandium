@@ -1,7 +1,8 @@
 'use client'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import { usePathname } from 'next/navigation'
 
 const ADMIN_WALLETS = [
@@ -10,9 +11,39 @@ const ADMIN_WALLETS = [
 ]
 
 export default function Navbar() {
-  const { publicKey, connected } = useWallet()
+  const { publicKey, connected, disconnect } = useWallet()
+  const { setVisible } = useWalletModal()
   const pathname = usePathname()
   const isAdmin = connected && publicKey && ADMIN_WALLETS.includes(publicKey.toBase58())
+
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  const shortAddress = publicKey
+    ? `${publicKey.toBase58().slice(0, 4)}...${publicKey.toBase58().slice(-4)}`
+    : ''
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleCopyAddress = () => {
+    if (publicKey) {
+      navigator.clipboard.writeText(publicKey.toBase58())
+      setDropdownOpen(false)
+    }
+  }
+
+  const handleDisconnect = () => {
+    disconnect()
+    setDropdownOpen(false)
+  }
 
   return (
     <nav style={{ 
@@ -69,19 +100,110 @@ export default function Navbar() {
           }}>
             + Create Market
           </Link>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <WalletMultiButton style={{
-              backgroundColor: 'white',
-              border: '1px solid #E2E8F0',
-              color: '#0F172A',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: '500',
-              height: '36px',
-              padding: '0 12px',
-              lineHeight: '36px',
-            }} />
-          </div>
+
+          {/* Custom Wallet Button */}
+          {!connected ? (
+            <button
+              onClick={() => setVisible(true)}
+              style={{
+                backgroundColor: 'white',
+                border: '1px solid #E2E8F0',
+                color: '#0F172A',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: '500',
+                height: '36px',
+                padding: '0 12px',
+                cursor: 'pointer',
+                transition: 'background-color 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC' }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
+            >
+              Connect Wallet
+            </button>
+          ) : (
+            <div ref={dropdownRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                style={{
+                  backgroundColor: 'white',
+                  border: '1px solid #E2E8F0',
+                  color: '#0F172A',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  height: '36px',
+                  padding: '0 12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'background-color 0.15s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC' }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
+              >
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+                {shortAddress}
+              </button>
+
+              {dropdownOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: '42px',
+                  right: 0,
+                  backgroundColor: 'white',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(15,23,42,0.12)',
+                  minWidth: '160px',
+                  overflow: 'hidden',
+                  zIndex: 100,
+                }}>
+                  <button
+                    onClick={handleCopyAddress}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 14px',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      color: '#0F172A',
+                      backgroundColor: 'white',
+                      border: 'none',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid #F1F5F9',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
+                  >
+                    Copy Address
+                  </button>
+                  <button
+                    onClick={handleDisconnect}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 14px',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      color: '#DC2626',
+                      backgroundColor: 'white',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#FEF2F2' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
       </div>
