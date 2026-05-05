@@ -82,15 +82,17 @@ export default function CreateMarketPage() {
   }
 
   return (
-    <div className="bg-white min-h-screen">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="bg-[#faf8ff] text-[#191b23] antialiased min-h-screen">
+      <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 mb-20 md:mb-12">
 
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">Create a Market</h1>
-        <p className="text-slate-500 text-sm mb-8">Define a question and let the crowd signal their demand.</p>
+        <div className="mb-8">
+          <h1 className="font-semibold text-[36px] leading-[1.1] tracking-[-0.04em] text-[#191b23]">Create a Market</h1>
+          <p className="text-[15px] leading-[1.5] tracking-[-0.01em] text-[#434655] mt-2">Define the parameters for a new prescription market.</p>
+        </div>
 
         {!connected && (
-          <div className="border border-dashed border-slate-200 rounded-lg p-6 text-center mb-8">
-            <p className="text-slate-500 text-sm font-medium">Connect your wallet to create a market.</p>
+          <div className="border border-dashed border-[#e1e2ed] rounded-xl p-6 text-center mb-8">
+            <p className="text-[#434655] text-[15px] font-medium">Connect your wallet to create a market.</p>
           </div>
         )}
 
@@ -98,70 +100,73 @@ export default function CreateMarketPage() {
           <div className="space-y-6">
 
             {/* Title */}
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Title <span className="text-red-500">*</span></label>
+            <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
+              <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">Market Title</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Will X happen by Y date?"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., Will the central bank raise interest rates this quarter?"
+                className="w-full bg-white border border-[#c3c6d7] rounded-lg px-4 py-3 text-[15px] leading-[1.5] tracking-[-0.01em] text-[#191b23] placeholder:text-[#737686] focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all"
               />
             </div>
 
             {/* Description */}
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Description</label>
+            <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
+              <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Provide additional context..."
-                rows={3}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                placeholder="Provide context and details about the market..."
+                rows={4}
+                className="w-full bg-white border border-[#c3c6d7] rounded-lg px-4 py-3 text-[15px] leading-[1.5] tracking-[-0.01em] text-[#191b23] placeholder:text-[#737686] focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all resize-none"
               />
             </div>
 
-            {/* Category */}
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Category</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-              >
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+            {/* Category & Type Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Category */}
+              <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
+                <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">Category</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full appearance-none bg-white border border-[#c3c6d7] rounded-lg px-4 py-3 text-[15px] leading-[1.5] tracking-[-0.01em] text-[#191b23] focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all"
+                >
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
 
-            {/* Market Type */}
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Market Type</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMarketType('binary')}
-                  className={`py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                    marketType === 'binary' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                  }`}
-                >
-                  Binary (YES / NO)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMarketType('multiple')}
-                  className={`py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                    marketType === 'multiple' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                  }`}
-                >
-                  Multiple Choice
-                </button>
+              {/* Market Type Toggle */}
+              <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
+                <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">Market Type</label>
+                <div className="flex p-1 bg-[#e1e2ed] rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setMarketType('binary')}
+                    className={`flex-1 py-2 px-4 rounded-md text-[13px] font-medium transition-all ${
+                      marketType === 'binary' ? 'bg-white shadow-sm text-[#191b23]' : 'text-[#434655] hover:text-[#191b23]'
+                    }`}
+                  >
+                    Binary (Yes/No)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMarketType('multiple')}
+                    className={`flex-1 py-2 px-4 rounded-md text-[13px] font-medium transition-all ${
+                      marketType === 'multiple' ? 'bg-white shadow-sm text-[#191b23]' : 'text-[#434655] hover:text-[#191b23]'
+                    }`}
+                  >
+                    Multiple Choice
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Options (multiple choice) */}
             {marketType === 'multiple' && (
-              <div>
-                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Options (min 2, max 6)</label>
+              <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
+                <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">Options (min 2, max 6)</label>
                 <div className="space-y-2">
                   {options.map((opt, i) => (
                     <div key={i} className="flex gap-2">
@@ -170,16 +175,16 @@ export default function CreateMarketPage() {
                         value={opt}
                         onChange={(e) => updateOption(i, e.target.value)}
                         placeholder={`Option ${i + 1}`}
-                        className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="flex-1 border border-[#c3c6d7] rounded-lg px-4 py-2 text-[15px] text-[#191b23] placeholder:text-[#737686] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20"
                       />
                       {options.length > 2 && (
-                        <button type="button" onClick={() => removeOption(i)} className="text-slate-400 hover:text-red-500 text-sm px-2 transition">✕</button>
+                        <button type="button" onClick={() => removeOption(i)} className="text-[#737686] hover:text-[#ba1a1a] text-sm px-2 transition">✕</button>
                       )}
                     </div>
                   ))}
                 </div>
                 {options.length < 6 && (
-                  <button type="button" onClick={addOption} className="text-blue-600 text-sm font-medium mt-2 hover:underline">
+                  <button type="button" onClick={addOption} className="text-[#2563eb] text-[13px] font-medium mt-2 hover:underline">
                     + Add option
                   </button>
                 )}
@@ -187,50 +192,54 @@ export default function CreateMarketPage() {
             )}
 
             {/* End Date */}
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">End Date <span className="text-red-500">*</span></label>
+            <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
+              <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">End Date</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full bg-white border border-[#c3c6d7] rounded-lg px-4 py-3 text-[15px] leading-[1.5] tracking-[-0.01em] text-[#191b23] focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all"
               />
             </div>
 
-            {/* Resolve Criteria */}
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Resolution Criteria</label>
+            {/* Resolution Criteria */}
+            <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
+              <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">Resolution Criteria</label>
               <textarea
                 value={resolveCriteria}
                 onChange={(e) => setResolveCriteria(e.target.value)}
-                placeholder="How will this market be resolved?"
-                rows={2}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                placeholder="Explicitly state how the outcome will be determined and verified..."
+                rows={3}
+                className="w-full bg-white border border-[#c3c6d7] rounded-lg px-4 py-3 text-[15px] leading-[1.5] tracking-[-0.01em] text-[#191b23] placeholder:text-[#737686] focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all resize-none"
               />
             </div>
 
-            {/* Info box */}
-            <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
-              <p className="text-sm text-blue-700">0.01 SOL creation fee applies. Your wallet will be set as the market creator.</p>
+            {/* Info Box */}
+            <div className="bg-[#dbe1ff]/30 border border-[#dbe1ff] rounded-xl p-4 flex items-start gap-3">
+              <span className="text-[#2563eb] mt-0.5">ℹ</span>
+              <div>
+                <h4 className="text-[15px] font-semibold text-[#003ea8]">Creation Fee</h4>
+                <p className="text-[13px] text-[#003ea8]/80 mt-1">A 0.01 SOL creation fee applies to prevent spam and ensure market quality.</p>
+              </div>
             </div>
 
             {/* Error */}
             {error && (
-              <p className="text-sm text-red-600 font-medium">{error}</p>
+              <p className="text-[13px] text-[#ba1a1a] font-medium">{error}</p>
             )}
 
             {/* Submit */}
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-3 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full bg-[#2563eb] text-white font-semibold text-[18px] leading-[1.3] tracking-[-0.02em] py-4 rounded-xl shadow-[0px_1px_3px_rgba(15,23,42,0.08)] hover:bg-[#2563eb]/90 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSubmitting ? 'Creating...' : 'Create Market'}
             </button>
           </div>
         )}
-      </div>
+      </main>
     </div>
   )
 }

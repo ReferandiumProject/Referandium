@@ -53,7 +53,7 @@ export default function Navbar() {
         {/* Right side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {isAdmin && (
-            <Link href="/admin" className="text-xs text-slate-400 hover:text-slate-600" style={{ textDecoration: 'none' }}>
+            <Link href="/admin" style={{ textDecoration: 'none', fontSize: '12px', color: '#94A3B8', fontWeight: '500' }}>
               Admin
             </Link>
           )}
@@ -61,22 +61,27 @@ export default function Navbar() {
             backgroundColor: '#2563EB',
             color: 'white',
             padding: '8px 16px',
-            borderRadius: '6px',
+            borderRadius: '8px',
             textDecoration: 'none',
             fontSize: '14px',
-            fontWeight: '500'
+            fontWeight: '500',
+            lineHeight: '20px',
           }}>
             + Create Market
           </Link>
-          <WalletMultiButton style={{
-            backgroundColor: 'transparent',
-            border: '1px solid #E2E8F0',
-            color: '#0F172A',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: '500',
-            height: '36px'
-          }} />
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <WalletMultiButton style={{
+              backgroundColor: 'white',
+              border: '1px solid #E2E8F0',
+              color: '#0F172A',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: '500',
+              height: '36px',
+              padding: '0 12px',
+              lineHeight: '36px',
+            }} />
+          </div>
         </div>
 
       </div>

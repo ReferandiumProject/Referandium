@@ -41,73 +41,73 @@ export default function MarketsPage() {
   })
 
   return (
-    <div className="bg-white min-h-screen">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="bg-[#faf8ff] text-[#191b23] antialiased min-h-screen">
+      <main className="w-full max-w-[1280px] mx-auto px-6 py-6 pb-24 md:pb-10">
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Markets</h1>
-            <p className="text-slate-500 text-sm mt-1">Browse active policy prescription markets.</p>
-          </div>
-          <Link href="/create" className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors no-underline">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-10 gap-4">
+          <h1 className="font-semibold text-[36px] leading-[1.1] tracking-[-0.04em] text-[#191b23]">Markets</h1>
+          <Link href="/create" className="bg-[#2563eb] text-white text-[12px] font-semibold tracking-[0.05em] px-4 py-2 rounded-xl hover:bg-[#004ac6] transition-colors flex items-center justify-center gap-2 no-underline">
             + Create Market
           </Link>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-6">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search markets..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-          />
-        </div>
+        {/* Search & Filters Bar */}
+        <div className="flex flex-col lg:flex-row gap-4 mb-6">
+          {/* Search Input */}
+          <div className="relative w-full lg:max-w-md">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#737686]" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search markets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white border border-[#e1e2ed] rounded-xl pl-10 pr-3 py-2 text-[15px] leading-[1.5] tracking-[-0.01em] text-[#191b23] placeholder:text-[#737686] focus:border-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 transition-all"
+            />
+          </div>
 
-        {/* Category Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1 mb-8">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                selectedCategory === cat
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+          {/* Filter Pills */}
+          <div className="flex items-center gap-3 overflow-x-auto pb-2 lg:pb-0">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`whitespace-nowrap px-4 py-2 rounded-full border text-[13px] leading-[1.5] font-medium transition-colors ${
+                  selectedCategory === cat
+                    ? 'border-[#e1e2ed] bg-[#e7e7f3] text-[#191b23]'
+                    : 'border-[#e1e2ed] bg-white text-[#434655] hover:bg-[#e7e7f3] hover:text-[#191b23]'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Content */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24">
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-            <p className="text-slate-400 text-sm">Loading markets...</p>
+            <div className="w-6 h-6 border-2 border-[#2563eb] border-t-transparent rounded-full animate-spin mb-3"></div>
+            <p className="text-[#737686] text-[13px]">Loading markets...</p>
           </div>
         ) : filteredMarkets.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredMarkets.map((market) => (
               <MarketCard key={market.id} market={market} />
             ))}
           </div>
         ) : (
-          <div className="text-center py-24 border border-dashed border-slate-200 rounded-xl">
-            <p className="text-slate-900 font-medium">No markets found{selectedCategory !== 'All' ? ` in ${selectedCategory}` : ''}</p>
-            <p className="text-slate-400 text-sm mt-1">
+          <div className="text-center py-24 border border-dashed border-[#e1e2ed] rounded-xl">
+            <p className="text-[#191b23] font-semibold text-[15px]">No markets found{selectedCategory !== 'All' ? ` in ${selectedCategory}` : ''}</p>
+            <p className="text-[#737686] text-[13px] mt-1">
               {searchTerm ? 'Try adjusting your search terms.' : 'Check back later or create the first one.'}
             </p>
           </div>
         )}
 
-      </div>
+      </main>
     </div>
   )
 }

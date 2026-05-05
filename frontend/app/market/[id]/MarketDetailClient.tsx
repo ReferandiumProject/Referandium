@@ -234,63 +234,61 @@ export default function MarketDetailClient() {
   const isDraft = market.status === 'draft'
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-[#faf8ff] text-[#191b23] antialiased min-h-screen">
 
       {/* Notification toast */}
       {notification && (
-        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium text-white ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-xl shadow-lg text-[13px] font-medium text-white ${notification.type === 'success' ? 'bg-emerald-600' : 'bg-[#ba1a1a]'}`}>
           {notification.message}
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="w-full max-w-[1280px] mx-auto px-6 py-10">
 
-        {/* Back */}
-        <Link href="/markets" className="text-slate-400 text-sm font-medium hover:text-slate-600 transition no-underline mb-8 inline-block">
-          ← Back to Markets
-        </Link>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          {/* ── LEFT COLUMN (8 cols) ── */}
+          <div className="lg:col-span-8 flex flex-col gap-4">
 
-          {/* ── LEFT COLUMN (2/3) ── */}
-          <div className="lg:col-span-2 space-y-8">
-
-            {/* Title + badges */}
-            <div>
-              <div className="flex flex-wrap items-center gap-2 mb-3">
+            {/* Header */}
+            <div className="flex flex-col gap-2 mb-3">
+              <div className="flex gap-3 mb-2">
                 {market.category && (
-                  <span className="bg-slate-100 text-slate-500 text-xs font-medium px-2.5 py-0.5 rounded-full">{market.category}</span>
+                  <span className="inline-flex items-center px-2 py-1 rounded bg-[#2563eb]/5 text-[#2563eb] text-[12px] font-semibold tracking-[0.05em]">
+                    {market.category}
+                  </span>
                 )}
-                <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full capitalize ${
-                  market.status === 'active' ? 'bg-emerald-50 text-emerald-600' :
-                  market.status === 'closed' ? 'bg-slate-100 text-slate-500' :
-                  'bg-amber-50 text-amber-600'
+                <span className={`inline-flex items-center px-2 py-1 rounded text-[12px] font-semibold tracking-[0.05em] capitalize ${
+                  market.status === 'active' ? 'bg-emerald-500/10 text-emerald-700' :
+                  market.status === 'closed' ? 'bg-[#e1e2ed] text-[#434655]' :
+                  'bg-amber-500/10 text-amber-700'
                 }`}>
                   {market.status}
                 </span>
-                {market.gookie_wallet && (
-                  <span className="text-xs font-medium text-blue-600">✓ Verified Gookie</span>
-                )}
               </div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-snug">{market.title}</h1>
-              {market.description && (
-                <p className="text-slate-500 text-sm mt-3 leading-relaxed">{market.description}</p>
-              )}
+              <h1 className="font-semibold text-[36px] leading-[1.1] tracking-[-0.04em] text-[#191b23]">{market.title}</h1>
             </div>
 
-            {/* Resolve criteria */}
+            {/* Description */}
+            {market.description && (
+              <p className="text-[15px] leading-[1.5] tracking-[-0.01em] text-[#434655]">{market.description}</p>
+            )}
+
+            {/* Resolution Criteria */}
             {market.resolve_criteria && (
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">Resolution criteria</p>
-                <p className="text-sm text-slate-700 leading-relaxed">{market.resolve_criteria}</p>
+              <div className="bg-[#dbe1ff]/20 border border-[#dbe1ff] rounded-xl p-4 mt-3">
+                <h3 className="font-semibold text-[18px] leading-[1.3] tracking-[-0.02em] text-[#004ac6] mb-2 flex items-center gap-2">
+                  Resolution Criteria
+                </h3>
+                <p className="text-[13px] leading-[1.5] text-[#434655]">{market.resolve_criteria}</p>
               </div>
             )}
 
             {/* Market Options (multiple choice) */}
             {!isBinaryMarket && options.length > 0 && (
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
-                  <h2 className="text-sm font-semibold text-slate-900">Market Options</h2>
+              <div className="bg-white border border-[#e1e2ed] rounded-xl overflow-hidden mt-3 shadow-[0_1px_3px_rgba(15,23,42,0.08)]">
+                <div className="px-4 py-3 border-b border-[#e1e2ed] bg-[#f3f3fe]">
+                  <h2 className="font-semibold text-[15px] text-[#191b23]">Market Options</h2>
                 </div>
                 {options.map((option: MarketOption) => {
                   const isSelected = selectedOption?.id === option.id
@@ -302,17 +300,17 @@ export default function MarketDetailClient() {
                     <div
                       key={option.id}
                       onClick={() => { if (!hasSignaled) { setSelectedOption(option); setNotification(null) } }}
-                      className={`flex items-center justify-between px-5 py-3 border-b border-slate-100 last:border-0 transition-colors ${
-                        hasSignaled ? 'opacity-50' : `cursor-pointer ${isSelected ? 'bg-blue-50 border-l-2 border-l-blue-600' : 'hover:bg-slate-50'}`
+                      className={`flex items-center justify-between px-4 py-3 border-b border-[#e1e2ed] last:border-0 transition-colors ${
+                        hasSignaled ? 'opacity-50' : `cursor-pointer ${isSelected ? 'bg-[#2563eb]/5 border-l-2 border-l-[#2563eb]' : 'hover:bg-[#f3f3fe]'}`
                       }`}
                     >
                       <div>
-                        <p className={`text-sm font-medium ${hasSignaled ? 'text-slate-400' : 'text-slate-900'}`}>{option.title}</p>
-                        {option.description && <p className="text-xs text-slate-400 mt-0.5">{option.description}</p>}
+                        <p className={`text-[15px] font-medium ${hasSignaled ? 'text-[#737686]' : 'text-[#191b23]'}`}>{option.title}</p>
+                        {option.description && <p className="text-[13px] text-[#737686] mt-0.5">{option.description}</p>}
                       </div>
                       <div className="text-right">
-                        <span className="text-sm font-semibold text-slate-900">{optionYesPct}%</span>
-                        <p className="text-xs text-slate-400">{optionTotal} signals</p>
+                        <span className="text-[15px] font-semibold text-[#191b23]">{optionYesPct}%</span>
+                        <p className="text-[12px] text-[#737686]">{optionTotal} signals</p>
                       </div>
                     </div>
                   )
@@ -321,92 +319,103 @@ export default function MarketDetailClient() {
             )}
 
             {/* Chart */}
-            <MarketChart marketId={id} isSimpleMarket={isBinaryMarket} />
+            <div className="bg-white border border-[#e1e2ed] rounded-xl p-4 mt-3 shadow-[0_1px_3px_rgba(15,23,42,0.08)]">
+              <MarketChart marketId={id} isSimpleMarket={isBinaryMarket} />
+            </div>
 
-            {/* Comments */}
-            <div className="border border-slate-200 rounded-xl">
-              <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-900">Comments</h2>
-                <span className="text-xs text-slate-400">{comments.length}</span>
-              </div>
-              <div className="p-5">
-                {comments.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-8">No comments yet. Be the first to share your thoughts.</p>
-                ) : (
-                  <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
-                    {comments.map((comment) => {
-                      const w = comment.user_wallet || ''
-                      const short = w.length > 8 ? `${w.slice(0, 4)}...${w.slice(-4)}` : w
-                      return (
-                        <div key={comment.id} className="flex gap-3 group">
-                          <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
-                            {w.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="text-xs font-medium text-slate-500 font-mono">{short}</span>
-                            <p className="text-sm text-slate-700 mt-0.5 leading-relaxed">{comment.content}</p>
-                          </div>
-                          {connected && publicKey && (publicKey.toBase58() === ADMIN_WALLET || publicKey.toBase58() === comment.user_wallet) && (
-                            <button onClick={() => handleDeleteComment(comment.id)} className="text-slate-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100 text-xs">
-                              ✕
-                            </button>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+            {/* Comments Section */}
+            <div className="mt-10">
+              <h2 className="font-semibold text-[24px] leading-[1.2] tracking-[-0.03em] text-[#191b23] mb-4">Discussion</h2>
 
-                {/* Comment form */}
-                {!connected ? (
-                  <div className="text-center py-3 border border-dashed border-slate-200 rounded-lg">
-                    <p className="text-slate-400 text-xs">Connect your wallet to comment</p>
+              {/* Comment Input */}
+              {!connected ? (
+                <div className="text-center py-4 border border-dashed border-[#e1e2ed] rounded-xl mb-6">
+                  <p className="text-[#737686] text-[13px]">Connect your wallet to comment</p>
+                </div>
+              ) : (
+                <div className="flex gap-4 mb-6">
+                  <div className="w-10 h-10 rounded-full bg-[#e1e2ed] flex items-center justify-center flex-shrink-0">
+                    <span className="text-[#434655] text-xs font-bold">{publicKey?.toBase58().slice(0, 2).toUpperCase()}</span>
                   </div>
-                ) : (
-                  <div className="flex gap-2 border-t border-slate-100 pt-4">
-                    <input
-                      type="text"
+                  <div className="flex-grow">
+                    <textarea
                       value={commentText}
                       onChange={(e) => setCommentText(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handlePostComment()}
-                      placeholder="Write a comment..."
-                      className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePostComment() } }}
+                      placeholder="Add a comment..."
+                      rows={2}
+                      className="w-full border border-[#e1e2ed] rounded-lg p-3 text-[15px] leading-[1.5] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 outline-none resize-none bg-white"
                     />
-                    <button
-                      onClick={handlePostComment}
-                      disabled={!commentText.trim() || isPostingComment}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition disabled:opacity-40"
-                    >
-                      {isPostingComment ? '...' : 'Post'}
-                    </button>
+                    <div className="flex justify-end mt-2">
+                      <button
+                        onClick={handlePostComment}
+                        disabled={!commentText.trim() || isPostingComment}
+                        className="bg-[#2563eb] text-white text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-[#004ac6] transition disabled:opacity-40"
+                      >
+                        {isPostingComment ? '...' : 'Post'}
+                      </button>
+                    </div>
                   </div>
+                </div>
+              )}
+
+              {/* Comment List */}
+              <div className="flex flex-col gap-4">
+                {comments.length === 0 ? (
+                  <p className="text-[13px] text-[#737686] text-center py-8">No comments yet. Be the first to share your thoughts.</p>
+                ) : (
+                  comments.map((comment) => {
+                    const w = comment.user_wallet || ''
+                    const short = w.length > 8 ? `${w.slice(0, 4)}...${w.slice(-4)}` : w
+                    return (
+                      <div key={comment.id} className="flex gap-4 group">
+                        <div className="w-10 h-10 rounded-full bg-[#e1e2ed] flex items-center justify-center flex-shrink-0">
+                          <span className="text-[#434655] text-xs font-bold">{w.slice(0, 2).toUpperCase()}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-1">
+                            <span className="text-[15px] font-medium text-[#191b23]">{short}</span>
+                            <span className="text-[13px] text-[#737686]">
+                              {comment.created_at ? new Date(comment.created_at).toLocaleDateString() : ''}
+                            </span>
+                          </div>
+                          <p className="text-[13px] leading-[1.5] text-[#434655]">{comment.content}</p>
+                        </div>
+                        {connected && publicKey && (publicKey.toBase58() === ADMIN_WALLET || publicKey.toBase58() === comment.user_wallet) && (
+                          <button onClick={() => handleDeleteComment(comment.id)} className="text-[#c3c6d7] hover:text-[#ba1a1a] transition opacity-0 group-hover:opacity-100 text-xs">
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })
                 )}
               </div>
             </div>
           </div>
 
-          {/* ── RIGHT COLUMN (1/3) — Signal Panel ── */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-20 space-y-4">
+          {/* ── RIGHT COLUMN (4 cols) — Signal Panel ── */}
+          <div className="lg:col-span-4 flex flex-col gap-4">
+            <div className="sticky top-[88px]">
 
-              {/* Signal Card */}
-              <div className="border border-slate-200 rounded-xl p-5">
+              {/* Signal Panel */}
+              <div className="bg-white border border-[#e1e2ed] rounded-xl p-6 shadow-[0_4px_12px_rgba(15,23,42,0.12)] mb-4">
 
                 {hasSignaled ? (
-                  /* ── Already signaled ── */
+                  /* Already signaled */
                   <div>
                     <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4 text-center">
-                      <p className="text-emerald-600 font-semibold text-sm mb-1">Signal Submitted</p>
-                      <p className="text-slate-700 text-sm">
+                      <p className="text-emerald-700 font-semibold text-[15px] mb-1">Signal Submitted</p>
+                      <p className="text-[#191b23] text-[13px]">
                         You signaled <strong>{userSignal?.signal_direction.toUpperCase()}</strong> with <strong>{userSignal?.sol_amount} SOL</strong>
                       </p>
-                      <p className="text-slate-400 text-xs mt-2">1 wallet = 1 signal. You&apos;ll receive your SOL + yield share when the market closes.</p>
+                      <p className="text-[#737686] text-[12px] mt-2">1 wallet = 1 signal. You&apos;ll receive your SOL + yield share when the market closes.</p>
                     </div>
                     <a
                       href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I just signaled ${userSignal?.signal_direction.toUpperCase()} on "${market.title}" on @Referandium!\n\n${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-2.5 text-sm font-medium text-white hover:bg-slate-800 transition no-underline"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-[#191b23] py-2.5 text-[13px] font-medium text-white hover:bg-[#2e3039] transition no-underline"
                     >
                       <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
                       Share on X
@@ -414,67 +423,81 @@ export default function MarketDetailClient() {
                   </div>
 
                 ) : isClosed ? (
-                  /* ── Market closed ── */
+                  /* Market closed */
                   <div className="text-center py-6">
-                    <p className="text-slate-900 font-semibold mb-1">Market Closed</p>
-                    <p className="text-slate-400 text-sm">This market is no longer accepting signals.</p>
+                    <p className="text-[#191b23] font-semibold text-[18px] mb-1">Market Closed</p>
+                    <p className="text-[#737686] text-[13px]">This market is no longer accepting signals.</p>
                   </div>
 
                 ) : (
-                  /* ── Signal form ── */
+                  /* Signal form */
                   <>
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="font-semibold text-[18px] leading-[1.3] tracking-[-0.02em]">Signal Intent</span>
+                    </div>
+
                     {!isBinaryMarket && selectedOption && (
-                      <p className="text-xs text-slate-400 mb-1">Signaling on: <span className="text-slate-700 font-medium">{selectedOption.title}</span></p>
+                      <p className="text-[12px] text-[#737686] mb-2">Signaling on: <span className="text-[#191b23] font-medium">{selectedOption.title}</span></p>
                     )}
 
                     {/* YES / NO buttons */}
-                    <div className="grid grid-cols-2 gap-2 mb-4">
+                    <div className="grid grid-cols-2 gap-3 mb-4">
                       <button
                         onClick={() => setSelectedTab('yes')}
-                        className={`py-3 rounded-lg text-sm font-semibold transition-colors ${
+                        className={`flex flex-col items-center justify-center p-3 rounded-lg transition-colors ${
                           selectedTab === 'yes'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                            ? 'border-2 border-[#2563eb] bg-[#2563eb]/5'
+                            : 'border border-[#e1e2ed] hover:border-[#737686]'
                         }`}
                       >
-                        YES {yesPercent}%
+                        <span className={`font-semibold text-[18px] leading-[1.3] tracking-[-0.02em] ${selectedTab === 'yes' ? 'text-[#2563eb]' : 'text-[#191b23]'}`}>YES</span>
+                        <span className={`text-[13px] ${selectedTab === 'yes' ? 'text-[#2563eb]' : 'text-[#434655]'}`}>{yesPercent}%</span>
                       </button>
                       <button
                         onClick={() => setSelectedTab('no')}
-                        className={`py-3 rounded-lg text-sm font-semibold transition-colors ${
+                        className={`flex flex-col items-center justify-center p-3 rounded-lg transition-colors ${
                           selectedTab === 'no'
-                            ? 'bg-slate-900 text-white'
-                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                            ? 'border-2 border-[#191b23] bg-[#191b23]/5'
+                            : 'border border-[#e1e2ed] hover:border-[#737686]'
                         }`}
                       >
-                        NO {noPercent}%
+                        <span className={`font-semibold text-[18px] leading-[1.3] tracking-[-0.02em] ${selectedTab === 'no' ? 'text-[#191b23]' : 'text-[#191b23]'}`}>NO</span>
+                        <span className={`text-[13px] ${selectedTab === 'no' ? 'text-[#191b23]' : 'text-[#434655]'}`}>{noPercent}%</span>
                       </button>
                     </div>
 
-                    {/* Amount */}
+                    {/* Amount Input */}
                     <div className="mb-4">
-                      <label className="text-xs font-medium text-slate-500 mb-1.5 block">Amount (SOL) <span className="text-slate-400">min {MIN_SIGNAL_AMOUNT}</span></label>
-                      <input
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder={MIN_SIGNAL_AMOUNT.toString()}
-                        step="0.01"
-                        min={MIN_SIGNAL_AMOUNT}
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 font-semibold text-base outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <p className="text-xs text-slate-400 mt-1.5">SOL amount affects yield share, not vote weight. 1 wallet = 1 vote.</p>
+                      <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] mb-2">Amount</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={amount}
+                          onChange={(e) => setAmount(e.target.value)}
+                          placeholder="0.00"
+                          step="0.01"
+                          min={MIN_SIGNAL_AMOUNT}
+                          className="w-full border border-[#e1e2ed] rounded-lg p-3 pr-14 text-[15px] leading-[1.5] font-medium focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 outline-none bg-white"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] text-[#434655]">SOL</span>
+                      </div>
+                      <div className="flex justify-between mt-2 text-[13px] text-[#737686]">
+                        <span>Min {MIN_SIGNAL_AMOUNT} SOL</span>
+                        {amount && parseFloat(amount) > 0 && (
+                          <span className="text-emerald-600 font-medium">1 wallet = 1 vote</span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Submit */}
                     <button
                       onClick={handleSubmitSignal}
                       disabled={!connected || isSubmitting || !amount || hasSignaled || isClosed}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-3 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-full bg-[#2563eb] text-white font-semibold text-[18px] leading-[1.3] tracking-[-0.02em] py-4 rounded-lg hover:opacity-90 transition-opacity active:scale-[0.98] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? 'Submitting...' : `Signal ${selectedTab.toUpperCase()}`}
                     </button>
-                    <p className="text-xs text-slate-400 text-center mt-2">
+                    <p className="text-[12px] text-[#737686] text-center mt-2">
                       {!connected ? 'Connect wallet to signal' : 'On-chain signal via Solana escrow'}
                     </p>
                   </>
@@ -482,45 +505,46 @@ export default function MarketDetailClient() {
               </div>
 
               {/* Stats Card */}
-              <div className="border border-slate-200 rounded-xl p-5 space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Total SOL Locked</span>
-                  <span className="font-semibold text-slate-900">{Number(market.total_sol_locked).toFixed(2)} SOL</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Total Signals</span>
-                  <span className="font-semibold text-slate-900">{totalSignals} wallets</span>
-                </div>
-                {Number(market.total_yield_earned) > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Yield Earned</span>
-                    <span className="font-semibold text-emerald-600">{Number(market.total_yield_earned).toFixed(4)} SOL</span>
+              <div className="bg-white border border-[#e1e2ed] rounded-xl p-4 shadow-[0_1px_3px_rgba(15,23,42,0.08)] mb-4">
+                <h3 className="text-[12px] font-semibold tracking-[0.05em] text-[#434655] mb-4 border-b border-[#e1e2ed] pb-2">Market Details</h3>
+                <div className="flex flex-col gap-3">
+                  <div className="flex justify-between items-center py-2 border-b border-[#e1e2ed]/50">
+                    <span className="text-[13px] text-[#434655]">Total SOL Locked</span>
+                    <span className="text-[15px] font-medium">{Number(market.total_sol_locked).toFixed(2)} SOL</span>
                   </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Ends</span>
-                  <span className="font-semibold text-slate-900">{formatDate(market.end_time)}</span>
+                  <div className="flex justify-between items-center py-2 border-b border-[#e1e2ed]/50">
+                    <span className="text-[13px] text-[#434655]">Total Signals</span>
+                    <span className="text-[15px] font-medium">{totalSignals}</span>
+                  </div>
+                  {Number(market.total_yield_earned) > 0 && (
+                    <div className="flex justify-between items-center py-2 border-b border-[#e1e2ed]/50">
+                      <span className="text-[13px] text-[#434655]">Yield Earned</span>
+                      <span className="text-[15px] font-medium text-emerald-600">{Number(market.total_yield_earned).toFixed(4)} SOL</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-[13px] text-[#434655]">End Date</span>
+                    <span className="text-[15px] font-medium">{formatDate(market.end_time)}</span>
+                  </div>
                 </div>
               </div>
 
               {/* Vault Card */}
               {market.escrow_pda && (
-                <div className="border border-slate-200 rounded-xl p-5">
-                  <p className="text-xs font-semibold text-slate-900 mb-2">Vault</p>
-                  <div className="flex justify-between text-xs mb-2">
-                    <span className="text-slate-400">Escrow</span>
+                <div className="bg-white border border-[#e1e2ed] rounded-xl p-4 shadow-[0_1px_3px_rgba(15,23,42,0.08)] flex items-start gap-3">
+                  <span className="text-[#2563eb] text-xl mt-0.5">🛡</span>
+                  <div>
+                    <h4 className="text-[15px] font-medium text-[#191b23]">Secure Vault</h4>
+                    <p className="text-[13px] text-[#434655] mt-2">Funds are locked in a fully audited smart contract until resolution criteria are met.</p>
                     <a
                       href={`https://explorer.solana.com/address/${market.escrow_pda}?cluster=devnet`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-mono text-blue-600 hover:underline"
+                      className="text-[12px] font-mono text-[#2563eb] hover:underline mt-2 inline-block"
                     >
                       {market.escrow_pda.slice(0, 4)}...{market.escrow_pda.slice(-4)}
                     </a>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    SOL is held in a Solana smart contract escrow. Principal is always returned when market closes.
-                  </p>
                 </div>
               )}
 
@@ -528,7 +552,7 @@ export default function MarketDetailClient() {
           </div>
 
         </div>
-      </div>
+      </main>
     </div>
   )
 }

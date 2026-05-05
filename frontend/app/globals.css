@@ -10,3 +10,20 @@
   --border: #E2E8F0;
   --secondary: #64748B;
 }
+
+.wallet-adapter-button {
+  background-color: white !important;
+  color: #0F172A !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  height: 36px !important;
+  padding: 0 12px !important;
+}
+.wallet-adapter-button:hover {
+  background-color: #F8FAFC !important;
+}
+.wallet-adapter-button-trigger {
+  background-color: white !important;
+}

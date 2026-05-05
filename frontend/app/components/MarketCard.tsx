@@ -13,74 +13,57 @@ const formatDate = (dateString: string) => {
 };
 
 export default function MarketCard({ market }: MarketCardProps) {
-  const yesTotal = market.options?.reduce((sum, o) => sum + (o.yes_signals || 0), 0) || 0;
-  const noTotal = market.options?.reduce((sum, o) => sum + (o.no_signals || 0), 0) || 0;
-  const signalCount = yesTotal + noTotal;
-  const yesPct = signalCount > 0 ? Math.round((yesTotal / signalCount) * 100) : 0;
-  const noPct = signalCount > 0 ? 100 - yesPct : 0;
-
-  const statusBg = market.status === 'active' ? '#DCFCE7' : '#F1F5F9';
-  const statusColor = market.status === 'active' ? '#16A34A' : '#64748B';
+  const totalSignals = Number(market.total_signals) || 0;
 
   return (
-    <Link href={`/market/${market.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-      <div style={{
-        backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px',
-        padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', cursor: 'pointer',
-        transition: 'box-shadow 0.2s',
-      }}
-        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'; }}
-      >
+    <Link href={`/market/${market.id}`} className="block no-underline group">
+      <div className="bg-white border border-[#e1e2ed] rounded-xl p-5 shadow-[0_1px_3px_rgba(15,23,42,0.08)] transition-shadow hover:shadow-[0_4px_12px_rgba(15,23,42,0.12)] cursor-pointer h-full flex flex-col">
 
-        {/* 1. Top row: category + status */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ backgroundColor: '#F1F5F9', color: '#64748B', fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '9999px' }}>
+        {/* Badges */}
+        <div className="flex gap-2 mb-3">
+          <span className="inline-flex items-center px-2 py-0.5 rounded bg-[#2563eb]/5 text-[#2563eb] text-[12px] font-semibold tracking-[0.05em]">
             {market.category || 'General'}
           </span>
-          <span style={{ backgroundColor: statusBg, color: statusColor, fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '9999px', textTransform: 'capitalize' }}>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[12px] font-semibold tracking-[0.05em] capitalize ${
+            market.status === 'active' ? 'bg-emerald-500/10 text-emerald-700' :
+            market.status === 'closed' ? 'bg-[#e1e2ed] text-[#434655]' :
+            'bg-amber-500/10 text-amber-700'
+          }`}>
             {market.status}
           </span>
         </div>
 
-        {/* 2. Title */}
-        <h3 style={{
-          fontSize: '15px', fontWeight: 600, color: '#0F172A', lineHeight: 1.4,
-          marginTop: '12px', overflow: 'hidden', display: '-webkit-box',
-          WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-        }}>
+        {/* Title */}
+        <h3 className="font-semibold text-[15px] leading-[1.4] tracking-[-0.01em] text-[#191b23] mb-4 line-clamp-2">
           {market.title}
         </h3>
 
-        {/* 3. YES/NO bar */}
-        <div style={{ marginTop: '14px' }}>
-          {signalCount > 0 ? (
-            <>
-              <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 6px' }}>
-                YES {yesPct}% · NO {noPct}%
-              </p>
-              <div style={{ height: '4px', borderRadius: '2px', backgroundColor: '#E2E8F0', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${yesPct}%`, backgroundColor: '#2563EB', borderRadius: '2px' }} />
+        {/* Signal Count Indicator */}
+        <div className="mt-auto">
+          {totalSignals > 0 ? (
+            <div className="mb-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[13px] font-medium text-[#2563eb]">{totalSignals} signal{totalSignals !== 1 ? 's' : ''}</span>
               </div>
-            </>
+              <div className="h-2 rounded-full bg-[#e1e2ed] overflow-hidden">
+                <div className="h-full bg-[#2563eb] rounded-full" style={{ width: `${Math.min(totalSignals * 10, 100)}%` }} />
+              </div>
+            </div>
           ) : (
-            <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0 }}>No signals yet</p>
+            <p className="text-[13px] text-[#737686] mb-3">No signals yet</p>
           )}
-        </div>
 
-        {/* 4. Stats row */}
-        <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '12px' }}>
-          {market.total_signals} signals · {market.total_sol_locked.toFixed(2)} SOL · Ends {formatDate(market.end_time)}
-        </p>
-
-        {/* 5. Bottom row */}
-        <div style={{ marginTop: '16px', borderTop: '1px solid #F1F5F9', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {market.gookie_wallet ? (
-            <span style={{ fontSize: '11px', color: '#2563EB', fontWeight: 500 }}>✓ Verified</span>
-          ) : (
-            <span />
-          )}
-          <span style={{ fontSize: '13px', color: '#2563EB', fontWeight: 500 }}>View market →</span>
+          {/* Metadata Row */}
+          <div className="flex items-center gap-3 text-[12px] text-[#737686] border-t border-[#e1e2ed] pt-3">
+            <span className="flex items-center gap-1">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              {totalSignals}
+            </span>
+            <span className="w-0.5 h-0.5 rounded-full bg-[#c3c6d7]"></span>
+            <span>{Number(market.total_sol_locked).toFixed(2)} SOL</span>
+            <span className="w-0.5 h-0.5 rounded-full bg-[#c3c6d7]"></span>
+            <span>{formatDate(market.end_time)}</span>
+          </div>
         </div>
 
       </div>
