@@ -49,7 +49,7 @@ export default function HomeClient() {
           Signal What Should Happen.
         </h1>
         <p className="font-semibold text-[18px] leading-[1.3] tracking-[-0.02em] text-[#434655] max-w-2xl mb-10">
-          The institutional-grade prescription market on Solana. Put your capital behind policy outcomes and earn yields for accurate signaling.
+          The permissionless prescription market on Solana. Signal what should happen, deposit SOL, and earn yield while your position is active.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 mb-10">
           <Link href="/markets" className="bg-[#2563eb] text-white text-[15px] font-semibold px-6 py-3 rounded-lg shadow-[0px_1px_3px_rgba(15,23,42,0.08)] hover:bg-[#004ac6] transition-colors no-underline">
@@ -105,9 +105,9 @@ export default function HomeClient() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { num: '01', title: 'Browse or Create', desc: 'Explore existing policy proposals or establish a new market to gauge demand for a specific outcome.' },
-              { num: '02', title: 'Signal Your Demand', desc: 'Stake your SOL on \'YES\' or \'NO\' to express your conviction in the proposed policy implementation.' },
-              { num: '03', title: 'Earn While You Signal', desc: 'Receive automated yield payouts based on the accuracy of your signals as market resolutions occur.' },
+              { num: '01', title: 'Browse or Create', desc: 'Any question, any topic. Browse active markets or create your own in 60 seconds.' },
+              { num: '02', title: 'Signal Your Demand', desc: 'Deposit SOL to signal YES or NO. Your principal is always returned — you never lose your deposit.' },
+              { num: '03', title: 'Earn While You Signal', desc: 'Your SOL earns yield while locked. When the market closes, claim your deposit plus your share of the yield.' },
             ].map(({ num, title, desc }) => (
               <div key={num} className="bg-white p-6 rounded-xl border border-[#E2E8F0] shadow-[0px_1px_3px_rgba(15,23,42,0.08)] flex flex-col items-start">
                 <span className="font-semibold text-[24px] leading-[1.2] tracking-[-0.03em] text-[#b4c5ff] mb-4">{num}</span>
