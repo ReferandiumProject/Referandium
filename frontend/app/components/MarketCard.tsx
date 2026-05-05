@@ -1,6 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { supabase } from '../../lib/supabaseClient'
 import { Market } from '../types'
 
 interface MarketCardProps {
@@ -14,6 +16,20 @@ const formatDate = (dateString: string) => {
 
 export default function MarketCard({ market }: MarketCardProps) {
   const totalSignals = Number(market.total_signals) || 0;
+  const [isVerified, setIsVerified] = useState(false);
+
+  useEffect(() => {
+    if (!market.gookie_wallet) return;
+    supabase
+      .from('gookies')
+      .select('is_verified')
+      .eq('winner_wallet', market.gookie_wallet)
+      .eq('is_verified', true)
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) setIsVerified(true);
+      });
+  }, [market.gookie_wallet]);
 
   return (
     <Link href={`/market/${market.id}`} className="block no-underline group">
@@ -31,6 +47,11 @@ export default function MarketCard({ market }: MarketCardProps) {
           }`}>
             {market.status}
           </span>
+          {isVerified && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 text-[12px] font-semibold tracking-[0.05em]">
+              ✓ Verified
+            </span>
+          )}
         </div>
 
         {/* Title */}

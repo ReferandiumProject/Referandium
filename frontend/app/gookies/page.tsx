@@ -18,7 +18,7 @@ export default function GookiesPage() {
         const { data: gookies, error } = await supabase
           .from('gookies')
           .select('*')
-          .in('status', ['market_active', 'completed', 'won'])
+          .eq('is_verified', true)
           .order('created_at', { ascending: false })
 
         if (error) throw error

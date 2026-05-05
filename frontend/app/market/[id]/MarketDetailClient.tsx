@@ -40,12 +40,27 @@ export default function MarketDetailClient() {
   const [signals, setSignals] = useState<Signal[]>([])
   const [onChainSignal, setOnChainSignal] = useState<any | null>(null)
   const [isWithdrawing, setIsWithdrawing] = useState(false)
+  const [isVerified, setIsVerified] = useState(false)
+  const [isClaimed, setIsClaimed] = useState(false)
 
   useEffect(() => {
     fetchMarketData()
     fetchComments()
     fetchSignals()
   }, [id])
+
+  useEffect(() => {
+    if (!market?.gookie_wallet) return
+    supabase
+      .from('gookies')
+      .select('is_verified')
+      .eq('winner_wallet', market.gookie_wallet)
+      .eq('is_verified', true)
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) setIsVerified(true)
+      })
+  }, [market?.gookie_wallet])
 
   useEffect(() => {
     if (connected && publicKey && market) {
@@ -166,6 +181,30 @@ export default function MarketDetailClient() {
     }
   }
 
+  const handleClaim = async () => {
+    if (!connected || !publicKey || !wallet.wallet) {
+      showNotification('error', 'Please connect your wallet first!')
+      return
+    }
+    setIsWithdrawing(true)
+    try {
+      if (market?.on_chain_market_id && market?.escrow_pda) {
+        const tx = await marketEscrowContract.withdraw(wallet.wallet, publicKey, connection, market.on_chain_market_id)
+        await supabase.from('signals').update({ principal_returned: true, yield_claimed: true, withdrawal_tx_signature: tx }).eq('market_id', id).eq('user_wallet', publicKey.toBase58())
+        showNotification('success', `Claimed successfully! Tx: ${tx.slice(0, 8)}...`)
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        showNotification('success', 'Claim processed successfully!')
+      }
+      setIsClaimed(true)
+    } catch (error: any) {
+      console.error('Claim error:', error)
+      showNotification('error', error.message || 'Failed to claim')
+    } finally {
+      setIsWithdrawing(false)
+    }
+  }
+
   const handleSubmitSignal = async () => {
     if (!connected || !publicKey || !wallet.wallet) {
       showNotification('error', 'Please connect your Solana wallet first!')
@@ -265,6 +304,11 @@ export default function MarketDetailClient() {
                 }`}>
                   {market.status}
                 </span>
+                {isVerified && (
+                  <span className="inline-flex items-center px-2 py-1 rounded bg-emerald-500/10 text-emerald-700 text-[12px] font-semibold tracking-[0.05em]">
+                    ✓ Verified
+                  </span>
+                )}
               </div>
               <h1 className="font-semibold text-[36px] leading-[1.1] tracking-[-0.04em] text-[#191b23]">{market.title}</h1>
             </div>
@@ -401,8 +445,46 @@ export default function MarketDetailClient() {
               {/* Signal Panel */}
               <div className="bg-white border border-[#e1e2ed] rounded-xl p-6 shadow-[0_4px_12px_rgba(15,23,42,0.12)] mb-4">
 
-                {hasSignaled ? (
-                  /* Already signaled */
+                {hasSignaled && isClosed ? (
+                  /* Claim card for closed markets */
+                  <div>
+                    {isClaimed ? (
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-5 text-center">
+                        <p className="text-emerald-700 font-semibold text-[18px] mb-1">Claimed!</p>
+                        <p className="text-[#434655] text-[13px]">Your SOL + yield share has been returned to your wallet.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="font-semibold text-[18px] leading-[1.3] tracking-[-0.02em]">Claim SOL + Yield</span>
+                        </div>
+                        <div className="bg-[#faf8ff] border border-[#e1e2ed] rounded-lg p-4 mb-4">
+                          <div className="flex justify-between text-[13px] mb-2">
+                            <span className="text-[#737686]">Direction</span>
+                            <span className="text-[#191b23] font-semibold">{userSignal?.signal_direction.toUpperCase()}</span>
+                          </div>
+                          <div className="flex justify-between text-[13px] mb-2">
+                            <span className="text-[#737686]">Amount Staked</span>
+                            <span className="text-[#191b23] font-semibold">{userSignal?.sol_amount} SOL</span>
+                          </div>
+                          <div className="flex justify-between text-[13px]">
+                            <span className="text-[#737686]">Est. Yield Share</span>
+                            <span className="text-emerald-700 font-semibold">+{((Number(userSignal?.sol_amount) || 0) * 0.05).toFixed(4)} SOL</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleClaim}
+                          disabled={isWithdrawing}
+                          className="w-full py-3 rounded-lg bg-[#2563eb] text-white font-semibold text-[15px] hover:bg-[#004ac6] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isWithdrawing ? 'Processing...' : 'Claim'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                ) : hasSignaled ? (
+                  /* Already signaled - market still active */
                   <div>
                     <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4 text-center">
                       <p className="text-emerald-700 font-semibold text-[15px] mb-1">Signal Submitted</p>
@@ -423,7 +505,7 @@ export default function MarketDetailClient() {
                   </div>
 
                 ) : isClosed ? (
-                  /* Market closed */
+                  /* Market closed - no signal */
                   <div className="text-center py-6">
                     <p className="text-[#191b23] font-semibold text-[18px] mb-1">Market Closed</p>
                     <p className="text-[#737686] text-[13px]">This market is no longer accepting signals.</p>

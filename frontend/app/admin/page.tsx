@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { Connection, PublicKey } from '@solana/web3.js'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabaseClient'
 import { Gookie, Market } from '../types'
-import * as gookieContract from '../utils/gookieContract'
 import * as marketEscrowContract from '../utils/marketEscrowContract'
 
 const ADMIN_WALLETS = [
@@ -24,12 +22,8 @@ const formatDate = (d: string) => {
 
 const statusBadge = (status: string) => {
   const map: Record<string, string> = {
-    auction: 'bg-amber-50 text-amber-600',
-    won: 'bg-blue-50 text-blue-600',
     market_active: 'bg-emerald-50 text-emerald-600',
     market_closed: 'bg-slate-100 text-slate-500',
-    penalized: 'bg-red-50 text-red-600',
-    completed: 'bg-violet-50 text-violet-600',
     active: 'bg-emerald-50 text-emerald-600',
     closed: 'bg-slate-100 text-slate-500',
     draft: 'bg-amber-50 text-amber-600',
@@ -47,10 +41,13 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-
-  const [slashModal, setSlashModal] = useState<{ gookieId: string; gookieName: string } | null>(null)
-  const [slashReason, setSlashReason] = useState('')
   const [yieldAmounts, setYieldAmounts] = useState<Record<string, string>>({})
+  const [marketCounts, setMarketCounts] = useState<Record<string, number>>({})
+
+  // Add Creator form state
+  const [newDisplayName, setNewDisplayName] = useState('')
+  const [newWalletAddress, setNewWalletAddress] = useState('')
+  const [newDescription, setNewDescription] = useState('')
 
   const showNotif = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message })
@@ -74,7 +71,20 @@ export default function AdminPage() {
       setLoading(true)
       const { data, error } = await supabase.from('gookies').select('*').order('created_at', { ascending: false })
       if (error) throw error
-      setGookies((data || []) as Gookie[])
+      const gookieList = (data || []) as Gookie[]
+      setGookies(gookieList)
+
+      // Fetch market counts for each creator
+      const counts: Record<string, number> = {}
+      for (const g of gookieList) {
+        if (g.winner_wallet) {
+          const { count } = await supabase.from('markets').select('*', { count: 'exact', head: true }).eq('gookie_wallet', g.winner_wallet)
+          counts[g.id] = count || 0
+        } else {
+          counts[g.id] = 0
+        }
+      }
+      setMarketCounts(counts)
     } catch (error) { console.error('Error fetching gookies:', error) }
     finally { setLoading(false) }
   }
@@ -89,14 +99,38 @@ export default function AdminPage() {
     finally { setLoading(false) }
   }
 
-  const handleInitPlatform = async () => {
-    if (!isAdmin || !publicKey || !wallet.wallet) return
+  const handleAddCreator = async () => {
+    if (!newDisplayName.trim() || !newWalletAddress.trim()) {
+      showNotif('error', 'Display name and wallet address are required.')
+      return
+    }
     try {
       setIsSubmitting(true)
-      const tx = await gookieContract.initializeGookiePlatform(wallet.wallet, publicKey, connection, publicKey)
-      showNotif('success', `Gookie Platform initialized! Tx: ${tx.slice(0, 8)}...`)
-    } catch (error: any) { showNotif('error', error.message || 'Failed to init gookie platform') }
+      const { error } = await supabase.from('gookies').insert({
+        title: newDisplayName.trim(),
+        description: newDescription.trim() || null,
+        winner_wallet: newWalletAddress.trim(),
+        is_verified: true,
+        status: 'market_active',
+      })
+      if (error) throw error
+      showNotif('success', `Creator "${newDisplayName.trim()}" added successfully.`)
+      setNewDisplayName('')
+      setNewWalletAddress('')
+      setNewDescription('')
+      fetchGookies()
+    } catch (error: any) { showNotif('error', error.message || 'Failed to add creator') }
     finally { setIsSubmitting(false) }
+  }
+
+  const handleRemoveCreator = async (gookieId: string, name: string) => {
+    if (!confirm(`Remove creator "${name}"? This cannot be undone.`)) return
+    try {
+      const { error } = await supabase.from('gookies').delete().eq('id', gookieId)
+      if (error) throw error
+      showNotif('success', `Creator "${name}" removed.`)
+      fetchGookies()
+    } catch (error: any) { showNotif('error', error.message || 'Failed to remove creator') }
   }
 
   const handleInitEscrowPlatform = async () => {
@@ -107,31 +141,6 @@ export default function AdminPage() {
       showNotif('success', `Escrow Platform initialized! Tx: ${tx.slice(0, 8)}...`)
     } catch (error: any) { showNotif('error', error.message || 'Failed to init escrow platform') }
     finally { setIsSubmitting(false) }
-  }
-
-  const handleSlashGookie = async () => {
-    if (!slashModal || !slashReason.trim() || !publicKey || !wallet.wallet) return
-    try {
-      const gookie = gookies.find(g => g.id === slashModal.gookieId)
-      if (!gookie || gookie.auction_id === undefined || gookie.auction_id === null) return
-      const tx = await gookieContract.adminSlash(wallet.wallet, publicKey, connection, gookie.auction_id, slashReason)
-      await supabase.from('gookie_penalties').insert({ gookie_id: slashModal.gookieId, gookie_wallet: gookie.winner_wallet || '', penalty_type: 'platform_seizure', original_locked_rfrm: gookie.rfrm_locked_amount, penalty_amount_rfrm: gookie.rfrm_locked_amount, returned_amount_rfrm: 0, reason: slashReason, executed_by_wallet: publicKey.toBase58() })
-      await supabase.from('gookies').update({ status: 'penalized', is_slashed: true, slash_amount: gookie.rfrm_locked_amount, slash_reason: slashReason, slash_date: new Date().toISOString(), slash_tx: tx }).eq('id', slashModal.gookieId)
-      showNotif('success', `Gookie slashed! Tx: ${tx.slice(0, 8)}...`)
-      setSlashModal(null); setSlashReason(''); fetchGookies()
-    } catch (error: any) { showNotif('error', error.message || 'Failed to slash gookie') }
-  }
-
-  const handleCloseAuction = async (gookieId: string) => {
-    if (!confirm('Close this auction?') || !publicKey || !wallet.wallet) return
-    try {
-      const gookie = gookies.find(g => g.id === gookieId)
-      if (!gookie || gookie.auction_id === undefined || gookie.auction_id === null) return
-      const tx = await gookieContract.closeAuction(wallet.wallet, publicKey, connection, gookie.auction_id)
-      if (gookie.status !== 'won') await supabase.from('gookies').update({ status: 'won', close_tx: tx }).eq('id', gookieId)
-      else await supabase.from('gookies').update({ close_tx: tx }).eq('id', gookieId)
-      showNotif('success', `Auction closed! Tx: ${tx.slice(0, 8)}...`); fetchGookies()
-    } catch (error: any) { showNotif('error', error.message || 'Failed to close auction') }
   }
 
   const handleSetYield = async (marketId: string) => {
@@ -172,32 +181,11 @@ export default function AdminPage() {
     } catch (error: any) { showNotif('error', error.message || 'Failed to withdraw buyback') }
   }
 
-  const handleApproveFee = async (gookieId: string) => {
-    if (!confirm('Approve and release RFRM to winner?') || !publicKey || !wallet.wallet) return
-    try {
-      const gookie = gookies.find(g => g.id === gookieId)
-      if (!gookie || gookie.auction_id === undefined || gookie.auction_id === null) return
-      const tx = await gookieContract.releaseGookie(wallet.wallet, publicKey, connection, gookie.auction_id)
-      await supabase.from('gookies').update({ fee_paid: true, status: 'completed', release_tx: tx }).eq('id', gookieId)
-      showNotif('success', `RFRM released! Tx: ${tx.slice(0, 8)}...`); fetchGookies()
-    } catch (error: any) { showNotif('error', error.message || 'Failed to release RFRM') }
-  }
-
-  const handleWithholdFee = async (gookieId: string) => {
-    const reason = prompt('Enter reason for withholding fee:')
-    if (!reason) return
-    try {
-      await supabase.from('gookies').update({ fee_paid: false, slash_reason: `Fee withheld: ${reason}` }).eq('id', gookieId)
-      showNotif('success', 'Fee withheld'); fetchGookies()
-    } catch (error: any) { showNotif('error', error.message || 'Failed to withhold fee') }
-  }
-
   /* ── Gate screens ── */
   if (!connected) return (
     <div className="bg-white min-h-screen flex flex-col items-center justify-center gap-3">
       <p className="text-slate-900 font-semibold">Admin Access Required</p>
       <p className="text-slate-400 text-sm">Connect your wallet to access the admin panel.</p>
-      <WalletMultiButton />
     </div>
   )
   if (!isAdmin) return (
@@ -215,10 +203,7 @@ export default function AdminPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Admin Panel</h1>
-          <div className="flex items-center gap-3">
-            <button onClick={handleInitPlatform} disabled={isSubmitting} className="text-xs font-medium text-slate-500 hover:text-slate-700 transition disabled:opacity-40">Init Gookie</button>
-            <button onClick={handleInitEscrowPlatform} disabled={isSubmitting} className="text-xs font-medium text-slate-500 hover:text-slate-700 transition disabled:opacity-40">Init Escrow</button>
-          </div>
+          <button onClick={handleInitEscrowPlatform} disabled={isSubmitting} className="text-xs font-medium text-slate-500 hover:text-slate-700 transition disabled:opacity-40">Init Escrow</button>
         </div>
 
         {/* Notification */}
@@ -241,55 +226,88 @@ export default function AdminPage() {
         {/* ── CREATORS TAB ── */}
         {activeTab === 'creators' && (
           <>
+            {/* Add Verified Creator Form */}
+            <div className="border border-slate-200 rounded-xl p-5 mb-6 bg-slate-50/50">
+              <h3 className="text-sm font-semibold text-slate-900 mb-4">Add Verified Creator</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                <input
+                  type="text"
+                  value={newDisplayName}
+                  onChange={(e) => setNewDisplayName(e.target.value)}
+                  placeholder="Display Name *"
+                  className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <input
+                  type="text"
+                  value={newWalletAddress}
+                  onChange={(e) => setNewWalletAddress(e.target.value)}
+                  placeholder="Wallet Address *"
+                  className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                />
+                <input
+                  type="text"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Description (optional)"
+                  className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <button
+                onClick={handleAddCreator}
+                disabled={isSubmitting || !newDisplayName.trim() || !newWalletAddress.trim()}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'Adding...' : 'Add Creator'}
+              </button>
+            </div>
+
+            {/* Creators Table */}
             {loading ? (
               <div className="flex items-center justify-center py-24">
                 <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : gookies.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-16">No creators found.</p>
+              <p className="text-slate-400 text-sm text-center py-16">No creators found. Add one above.</p>
             ) : (
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-slate-50">
                     <tr>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Title</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Winner</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Fee Paid</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Display Name</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Wallet Address</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Verified</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Markets</th>
                       <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {gookies.map((g) => (
-                      <tr key={g.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium text-slate-900">{g.title}</td>
-                        <td className="px-4 py-3">
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusBadge(g.status)}`}>
-                            {g.status.replace('_', ' ')}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs font-mono text-slate-400">
-                          {g.winner_wallet ? `${g.winner_wallet.slice(0, 4)}...${g.winner_wallet.slice(-4)}` : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-slate-500">{g.fee_paid ? '✓ Yes' : 'No'}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1.5">
-                            {(g.status === 'auction' || g.status === 'won') && g.auction_id !== null && g.auction_id !== undefined && (
-                              <button onClick={() => handleCloseAuction(g.id)} className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded text-xs font-medium hover:bg-blue-100 transition">Close Auction</button>
+                    {gookies.map((g) => {
+                      const displayName = g.display_name || g.title || '—'
+                      const walletAddr = g.winner_wallet || ''
+                      const shortWallet = walletAddr.length > 8 ? `${walletAddr.slice(0, 4)}...${walletAddr.slice(-4)}` : walletAddr || '—'
+                      return (
+                        <tr key={g.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3 text-sm font-medium text-slate-900">{displayName}</td>
+                          <td className="px-4 py-3 text-xs font-mono text-slate-500">{shortWallet}</td>
+                          <td className="px-4 py-3">
+                            {g.is_verified ? (
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">✓ Verified</span>
+                            ) : (
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Unverified</span>
                             )}
-                            {g.status === 'market_closed' && !g.fee_paid && (
-                              <>
-                                <button onClick={() => handleApproveFee(g.id)} className="px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded text-xs font-medium hover:bg-emerald-100 transition">Approve Fee</button>
-                                <button onClick={() => handleWithholdFee(g.id)} className="px-2.5 py-1 bg-red-50 text-red-600 rounded text-xs font-medium hover:bg-red-100 transition">Withhold</button>
-                              </>
-                            )}
-                            {!g.is_slashed && g.status !== 'penalized' && (
-                              <button onClick={() => setSlashModal({ gookieId: g.id, gookieName: g.title })} className="px-2.5 py-1 bg-red-50 text-red-600 rounded text-xs font-medium hover:bg-red-100 transition">Slash</button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-900 font-medium tabular-nums">{marketCounts[g.id] ?? 0}</td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => handleRemoveCreator(g.id, displayName)}
+                              className="px-2.5 py-1 bg-red-50 text-red-600 rounded text-xs font-medium hover:bg-red-100 transition"
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -367,33 +385,6 @@ export default function AdminPage() {
           </>
         )}
       </div>
-
-      {/* Slash Modal */}
-      {slashModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full border border-slate-200">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Slash Creator</h3>
-            <p className="text-slate-500 text-sm mb-4">
-              Slash <strong className="text-slate-900">{slashModal.gookieName}</strong>. This will seize locked RFRM and penalize.
-            </p>
-            <textarea
-              rows={3}
-              value={slashReason}
-              onChange={(e) => setSlashReason(e.target.value)}
-              placeholder="Reason for slashing..."
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-red-500 resize-none mb-4"
-            />
-            <div className="flex gap-2">
-              <button onClick={() => { setSlashModal(null); setSlashReason('') }} className="flex-1 py-2.5 bg-slate-100 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-200 transition">
-                Cancel
-              </button>
-              <button onClick={handleSlashGookie} disabled={!slashReason.trim()} className="flex-1 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition disabled:opacity-40">
-                Confirm Slash
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

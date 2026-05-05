@@ -11,9 +11,19 @@ interface Stats {
   solLocked: string
 }
 
+const QUOTE_WORDS = ['Make', 'Create', 'Prescribe'] as const
+
 export default function HomeClient() {
   const [stats, setStats] = useState<Stats>({ markets: 0, signals: 0, solLocked: '0' })
   const [markets, setMarkets] = useState<Market[]>([])
+  const [activeWord, setActiveWord] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveWord((prev) => (prev + 1) % QUOTE_WORDS.length)
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     async function fetchData() {
@@ -60,6 +70,29 @@ export default function HomeClient() {
           <div className="w-1 h-1 rounded-full bg-[#c3c6d7]"></div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-[#2563eb]">{stats.solLocked} SOL</span> Locked
+          </div>
+        </div>
+      </section>
+
+      {/* Interactive Quote */}
+      <section className="flex justify-center px-6 pb-16">
+        <div className="bg-white border border-[#E2E8F0] rounded-xl shadow-[0_4px_12px_rgba(15,23,42,0.06)] px-6 py-4 max-w-2xl w-full">
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <span className="text-[17px] tracking-[-0.02em] text-[#434655] font-medium whitespace-nowrap">&ldquo;The best way to predict the future is to</span>
+            {QUOTE_WORDS.map((word, i) => (
+              <button
+                key={word}
+                onClick={() => setActiveWord(i)}
+                className={`px-3 py-1 rounded-full text-[14px] font-semibold transition-all ${
+                  activeWord === i
+                    ? 'bg-[#2563eb] text-white shadow-sm'
+                    : 'bg-[#f3f3fe] text-[#434655] hover:bg-[#e7e7f3]'
+                }`}
+              >
+                {word}
+              </button>
+            ))}
+            <span className="text-[17px] tracking-[-0.02em] text-[#434655] font-medium">it.&rdquo;</span>
           </div>
         </div>
       </section>

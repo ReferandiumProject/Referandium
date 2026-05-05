@@ -87,6 +87,8 @@ export interface Gookie {
   slash_tx?: string | null
   release_tx?: string | null
   nft_mint_tx?: string | null
+  is_verified?: boolean
+  display_name?: string | null
 }
 
 export interface GookieBid {
