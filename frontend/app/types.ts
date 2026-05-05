@@ -29,6 +29,11 @@ export interface Market {
   escrow_pda?: string | null
   market_closed_tx?: string | null
   resolve_criteria?: string | null
+  cause_token_name?: string | null
+  cause_token_symbol?: string | null
+  cause_token_address?: string | null
+  cause_token_image?: string | null
+  cause_token_enabled?: boolean | null
 }
 
 export interface MarketOption {

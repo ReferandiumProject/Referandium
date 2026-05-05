@@ -20,6 +20,11 @@ export default function CreateMarketPage() {
   const [resolveCriteria, setResolveCriteria] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [causeTokenEnabled, setCauseTokenEnabled] = useState(false)
+  const [causeTokenName, setCauseTokenName] = useState('')
+  const [causeTokenSymbol, setCauseTokenSymbol] = useState('')
+  const [causeTokenDescription, setCauseTokenDescription] = useState('')
+  const [causeTokenImage, setCauseTokenImage] = useState('')
 
   const addOption = () => { if (options.length < 6) setOptions([...options, '']) }
   const removeOption = (i: number) => { if (options.length > 2) setOptions(options.filter((_, idx) => idx !== i)) }
@@ -31,29 +36,40 @@ export default function CreateMarketPage() {
     if (!title.trim()) { setError('Title is required.'); return }
     if (!endDate) { setError('End date is required.'); return }
     if (marketType === 'multiple' && options.filter(o => o.trim()).length < 2) { setError('At least 2 options are required.'); return }
+    if (causeTokenEnabled && !causeTokenName.trim()) { setError('Token name is required when Cause Token is enabled.'); return }
+    if (causeTokenEnabled && !causeTokenSymbol.trim()) { setError('Token symbol is required when Cause Token is enabled.'); return }
 
     setIsSubmitting(true)
     try {
+      const insertData: any = {
+        title: title.trim(),
+        description: description.trim() || null,
+        category,
+        market_type: marketType,
+        end_time: new Date(endDate).toISOString(),
+        resolve_criteria: resolveCriteria.trim() || null,
+        status: 'active',
+        gookie_wallet: publicKey.toBase58(),
+        total_signals: 0,
+        total_sol_locked: 0,
+        total_yield_earned: 0,
+        platform_fee_collected: 0,
+        gookie_fee_earned: 0,
+        user_share_distributed: 0,
+        buyback_burn_amount: 0,
+        min_signal_sol: 0.05,
+      }
+
+      if (causeTokenEnabled) {
+        insertData.cause_token_enabled = true
+        insertData.cause_token_name = causeTokenName.trim()
+        insertData.cause_token_symbol = causeTokenSymbol.trim().toUpperCase()
+        insertData.cause_token_image = causeTokenImage.trim() || null
+      }
+
       const { data, error: insertErr } = await supabase
         .from('markets')
-        .insert({
-          title: title.trim(),
-          description: description.trim() || null,
-          category,
-          market_type: marketType,
-          end_time: new Date(endDate).toISOString(),
-          resolve_criteria: resolveCriteria.trim() || null,
-          status: 'active',
-          gookie_wallet: publicKey.toBase58(),
-          total_signals: 0,
-          total_sol_locked: 0,
-          total_yield_earned: 0,
-          platform_fee_collected: 0,
-          gookie_fee_earned: 0,
-          user_share_distributed: 0,
-          buyback_burn_amount: 0,
-          min_signal_sol: 0.05,
-        })
+        .insert(insertData)
         .select()
         .single()
 
@@ -213,6 +229,76 @@ export default function CreateMarketPage() {
                 rows={3}
                 className="w-full bg-white border border-[#c3c6d7] rounded-lg px-4 py-3 text-[15px] leading-[1.5] tracking-[-0.01em] text-[#191b23] placeholder:text-[#737686] focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all resize-none"
               />
+            </div>
+
+            {/* Cause Token Toggle */}
+            <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setCauseTokenEnabled(!causeTokenEnabled)}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${causeTokenEnabled ? 'bg-[#2563eb]' : 'bg-[#c3c6d7]'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${causeTokenEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                  <span className="text-[15px] font-medium text-[#191b23]">Launch a Cause Token (optional)</span>
+                </div>
+                <span className="text-[11px] font-medium text-[#737686] bg-[#e1e2ed] px-2 py-0.5 rounded">Powered by Meteora</span>
+              </div>
+
+              {causeTokenEnabled && (
+                <div className="mt-5 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-1.5">Token Name *</label>
+                      <input
+                        type="text"
+                        value={causeTokenName}
+                        onChange={(e) => setCauseTokenName(e.target.value)}
+                        placeholder="e.g., Prescribe Token"
+                        className="w-full border border-[#c3c6d7] rounded-lg px-4 py-2.5 text-[15px] text-[#191b23] placeholder:text-[#737686] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-1.5">Token Symbol *</label>
+                      <input
+                        type="text"
+                        value={causeTokenSymbol}
+                        onChange={(e) => setCauseTokenSymbol(e.target.value.toUpperCase().slice(0, 6))}
+                        placeholder="e.g., PRSCB"
+                        maxLength={6}
+                        className="w-full border border-[#c3c6d7] rounded-lg px-4 py-2.5 text-[15px] text-[#191b23] placeholder:text-[#737686] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 uppercase"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-1.5">Token Description (optional)</label>
+                    <textarea
+                      value={causeTokenDescription}
+                      onChange={(e) => setCauseTokenDescription(e.target.value)}
+                      placeholder="Describe the purpose of this cause token..."
+                      rows={2}
+                      className="w-full border border-[#c3c6d7] rounded-lg px-4 py-2.5 text-[15px] text-[#191b23] placeholder:text-[#737686] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 resize-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-1.5">Token Image URL (optional)</label>
+                    <input
+                      type="text"
+                      value={causeTokenImage}
+                      onChange={(e) => setCauseTokenImage(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full border border-[#c3c6d7] rounded-lg px-4 py-2.5 text-[15px] text-[#191b23] placeholder:text-[#737686] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20"
+                    />
+                  </div>
+                  <div className="bg-[#dbe1ff]/20 border border-[#dbe1ff] rounded-lg p-3">
+                    <p className="text-[12px] text-[#003ea8]/80 leading-relaxed">
+                      A bonding curve token will be launched on Meteora. Early supporters can buy in before graduation to a full liquidity pool.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Info Box */}

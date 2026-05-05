@@ -630,6 +630,38 @@ export default function MarketDetailClient() {
                 </div>
               )}
 
+              {/* Cause Token Card */}
+              {market.cause_token_enabled && (
+                <div className="bg-white border border-[#e1e2ed] rounded-xl p-5 shadow-[0_1px_3px_rgba(15,23,42,0.08)]">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-[15px] font-semibold text-[#191b23]">🪙 Cause Token</span>
+                    <span className="text-[11px] font-medium text-[#737686] bg-[#e1e2ed] px-2 py-0.5 rounded">Powered by Meteora</span>
+                  </div>
+                  <div className="flex items-center gap-3 mb-3">
+                    {market.cause_token_image && (
+                      <img src={market.cause_token_image} alt={market.cause_token_symbol || ''} className="w-10 h-10 rounded-full object-cover border border-[#e1e2ed]" />
+                    )}
+                    <div>
+                      <p className="text-[18px] font-bold text-[#191b23] tracking-tight">{market.cause_token_symbol}</p>
+                      <p className="text-[13px] text-[#737686]">{market.cause_token_name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span className="text-[12px] font-medium text-emerald-700">Bonding Curve Active</span>
+                  </div>
+                  <a
+                    href="https://app.meteora.ag"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full text-center bg-[#2563eb] text-white font-semibold text-[15px] py-2.5 rounded-lg hover:bg-[#004ac6] transition no-underline"
+                  >
+                    Buy Token
+                  </a>
+                  <p className="text-[11px] text-[#737686] text-center mt-2">Speculative asset. Not financial advice.</p>
+                </div>
+              )}
+
             </div>
           </div>
 
