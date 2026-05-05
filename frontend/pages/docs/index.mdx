@@ -12,7 +12,6 @@ Referandium smart contracts are now deployed and operational on Solana Devnet:
 | Contract | Address |
 |----------|----------|
 | **Learning Subscription** | `FUTVzQF86UckN9KhyuRajM4xRsYS62f24hTbJqGkZxed` |
-| **Gookie Auction** | `3VkzfA6GU6VhMdEnYRJywLLEQ454B9gmQoNh4ycVFFS5` |
 | **Market Escrow** | `Aby8pc1zLWbKUPgPzgh4ntbkTsbPaZWb6FyuxSwtkR8e` |
 
 > 💰 **RFRM Token**: `8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump`
@@ -35,102 +34,98 @@ Instead of passively predicting, users **prescribe the future** by signaling YES
 
 ## How It Works
 
-### 📊 Prescription Markets
+### 1. Create a Market
 
-Markets on Referandium represent **questions about the future**. But unlike traditional systems, users don't place bets—they **prescribe signals**.
+Anyone can create a market on any topic — politics, crypto, sports, culture, or anything else. Define a clear question, set resolution criteria, and choose an end date. Markets go live instantly.
 
-**Binary Markets:**
-- Signal YES or NO with SOL
-- Real-time aggregation of community sentiment
-- Market closes at deadline, highest signal wins consensus
+### 2. Signal YES or NO
 
-**Multiple Choice Markets:**
-- Signal support for specific options
-- Decentralized resolution mechanism
-- Community consensus determines outcome
+Deposit SOL to signal your conviction. Your principal is always returned — you never lose your deposit. 1 wallet = 1 signal per market.
 
-> 💡 **Think of it as:** Writing a collective prescription for reality, not predicting it.
+### 3. Earn Yield
+
+Your SOL earns yield while locked in the market escrow. When the market closes, claim your full deposit plus your proportional share of the yield earned.
+
+> 💡 **Key**: This is not betting. Your SOL is returned 100%. Yield is earned on top as a reward for participation.
 
 ---
 
-## 🍪 Gookies: The Web3 Bookie System
+## 🍪 Gookies: Verified Creators
 
 ### What are Gookies?
 
-Gookies are **NFT Market Managers** inspired by traditional bookies (the house in gambling). But here's the twist: **Gookies aren't sold—they're rented.**
+Gookies are **verified market creators** on Referandium — trusted curators who have been manually approved by the platform. They are identified by a blue ✓ checkmark badge.
 
-> 🍪 **Gookie Fact**: The name combines "Goo" (playful, crypto-native vibe) + "Bookie" (market operator).
+> 🍪 **Etymology**: Gookie = "Goo" (crypto slang) + "Bookie" (market operator)
 
-### How Gookie Auctions Work
+### How to Become a Verified Creator
 
-#### 1. **Auction System**
-- Platform releases themed Gookies (e.g., "Fenerbahçe 2026 Transfers")
-- Users bid SOL in a **time-limited auction**
-- Highest bidder **rents** the Gookie until the market closes
+Verified creator status is granted by the Referandium team:
 
-#### 2. **Renter Powers & Profit**
-When you rent a Gookie, you become the **Market Manager** for that theme:
-- **Set market rules**: Define YES/NO criteria or multiple choice options
-- **Promote your market**: Shill on Twitter (X), Discord, or other platforms
-- **Drive volume**: Earn prestige as trading volume increases
-- **Manage resolution**: Oversee fair market settlement
-- **💰 Earn commission**: Receive a percentage of all trading volume in your market
+1. **Apply** — Reach out to the team via Twitter or Discord
+2. **Review** — Your track record, community, and market ideas are evaluated
+3. **Approval** — If accepted, you receive verified status and the ✓ badge
+4. **Create** — Start creating markets and earning yield share
 
-> ⚠️ **Important**: You don't own the Gookie. You rent the **management rights** for a fixed period.
+### Verified Creator Benefits
 
-> 💰 **Profit Model**: Gookie renters earn **3-5% commission** on total market volume. The more signals your market attracts, the more SOL you earn—on top of your rental refund!
+- ✅ Blue checkmark badge on all markets
+- ✅ **30% of yield fees** earned from markets you create
+- ✅ Higher visibility and trust from signal providers
+- ✅ Priority support from the Referandium team
 
-#### 3. **Escrow, Refund & Commission Earnings**
-```
-Auction Flow:
-1. User bids 5 SOL for "Fenerbahçe Transfers" Gookie
-2. SOL is escrowed in platform treasury (on-chain)
-3. User manages market, attracts 100 SOL in trading volume
-4. Market closes → Platform takes rental fee (10% = 0.5 SOL)
-5. User earns volume commission (4% of 100 SOL = 4 SOL)
-6. User receives: 4.5 SOL refund + 4 SOL commission = 8.5 SOL total
-7. Net profit: 3.5 SOL (70% ROI on 5 SOL rental!)
-```
+### Responsibilities
 
-**This is not a sale. It's a refundable rental system with volume-based commission rewards.**
+- Create high-quality markets with clear resolution criteria
+- Promote markets to attract signal providers
+- Act in good faith during market resolution
+- Maintain community trust
 
 ---
 
-## Why Gookies Matter
+## 🪙 Cause Tokens
 
-### Traditional Model (Centralized Platforms):
-- ❌ Platform controls all markets
-- ❌ No user agency in market creation
-- ❌ Zero incentive for community promotion
+### What are Cause Tokens?
 
-### Referandium Model (Gookie Rentals):
-- ✅ **Decentralized market curation**: Users run markets
-- ✅ **Skin in the game**: Renters pay upfront but get refunded
-- ✅ **Viral marketing**: Renters promote to maximize participation
-- ✅ **Fair fees**: Platform only charges on volume, not ownership
-- ✅ **Profit incentive**: Renters earn commission on market volume—shilling = profit!
+When creating a market, creators can optionally launch a **Cause Token** — a bonding curve token powered by [Meteora](https://meteora.ag). This allows early supporters of a market's thesis to buy into the cause before it graduates to a full liquidity pool.
+
+### How It Works
+
+1. **Creator enables** Cause Token during market creation
+2. **Bonding curve launches** on Meteora — early buyers get tokens at lower prices
+3. **As demand grows**, the token price increases along the curve
+4. **Graduation** — when the curve fills, the token graduates to a full AMM liquidity pool
+5. **LP fees** are split between the platform and the market creator
+
+> ⚠️ **Disclaimer**: Cause Tokens are speculative assets. They are not financial advice and carry risk of loss.
+
+Learn more: [Cause Token](/docs/cause-token)
 
 ---
 
 ## Key Features
 
 ### 📈 Prescription Signaling
-- **SOL-based signals**: Use Solana's native token to signal future outcomes
+- **SOL-based signals**: Deposit SOL to signal future outcomes
 - **Real-time aggregation**: Live percentage tracking
-- **No house edge**: Pure consensus mechanism
-- **Transparent settlement**: All data on-chain
+- **Principal returned**: Your deposit is always returned in full
+- **Yield earned**: Earn proportional yield while SOL is locked
 
-### 🍪 Gookie Market Management
-- **Rent, don't buy**: Temporary management rights
-- **Refundable deposits**: Get your SOL back minus platform fee
-- **Creative control**: Define rules and options
-- **Community-driven**: Promote and grow your market
+### 🍪 Verified Creators
+- **Curated quality**: Only approved creators get the ✓ badge
+- **Yield sharing**: Creators earn 30% of yield from their markets
+- **Accountability**: Verified creators maintain high standards
+
+### 🪙 Cause Tokens
+- **Optional launch**: Creators choose whether to attach a token
+- **Bonding curve**: Powered by Meteora for fair price discovery
+- **Community alignment**: Token holders are aligned with the market's thesis
 
 ### 🔐 Solana Infrastructure
 - **Native wallet support**: Phantom, Solflare, Backpack, etc.
 - **Sub-second transactions**: Leverage Solana's 400ms block times
 - **Low fees**: ~$0.00025 per transaction
-- **Development environment**: Currently building on Solana testnet/devnet
+- **On-chain escrow**: All funds secured by audited smart contracts
 
 ---
 
@@ -138,17 +133,16 @@ Auction Flow:
 
 **Technology Stack:**
 - **Frontend**: Next.js 14 (App Router)
-- **Blockchain**: Solana (Devnet/Testnet)
+- **Blockchain**: Solana (Devnet)
 - **Database**: Supabase (PostgreSQL with RLS)
 - **Wallet**: Solana Wallet Adapter
-- **Styling**: Tailwind CSS + Dark Mode
+- **Styling**: Tailwind CSS
 
 **Smart Contracts (Live on Devnet):**
-- ✅ Escrow system for market signals
-- ✅ Gookie auction with RFRM bidding
-- ✅ Learning Hub subscription with token locking
+- ✅ Market escrow system for signal deposits
 - ✅ Automated yield distribution
-- ✅ Treasury management with volume tracking
+- ✅ Learning Hub subscription with token locking
+- ✅ Treasury management
 
 ---
 
@@ -158,24 +152,25 @@ Auction Flow:
 1. Connect your Solana wallet
 2. Browse active Prescription Markets
 3. Signal YES or NO with SOL
-4. Watch real-time consensus form
+4. Claim your deposit + yield when the market closes
 
-### For Gookie Renters
-1. Monitor upcoming Gookie auctions
-2. Bid SOL to rent management rights
-3. Set up your market rules
-4. Promote on social media
-5. Get refunded after market close
+### For Creators
+1. Apply for verified creator status
+2. Create markets on any topic
+3. Promote your markets to attract participants
+4. Earn 30% of yield from your markets
 
 ### Learn More
-- [Tokenomics](/docs/tokenomics) → Understand SOL flow and fee structure
-- [Architecture](/docs/architecture) → Deep dive into technical implementation
+- [Tokenomics](/docs/tokenomics) — Fee structure and yield distribution
+- [Gookies](/docs/gookies) — Verified creator system
+- [Cause Token](/docs/cause-token) — Bonding curve token launches
+- [Architecture](/docs/architecture) — Technical deep dive
 
 ---
 
 ## Community
 
-Join the degen community prescribing the future:
+Join the community prescribing the future:
 
 - **Twitter**: [@ReferandiumIO](https://twitter.com/referandiumio)
 - **Discord**: [Join server](https://discord.gg/referandium)
@@ -183,5 +178,5 @@ Join the degen community prescribing the future:
 
 ---
 
-> **The future isn't predicted. It's prescribed.**  
+> **The future isn't predicted. It's prescribed.**
 > *Built with 🍪 on Solana*

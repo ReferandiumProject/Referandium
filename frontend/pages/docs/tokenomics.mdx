@@ -2,274 +2,162 @@
 
 ## Overview
 
-Referandium operates on a **pure SOL economy** with a unique **refundable rental model** for Gookies. Unlike traditional NFT marketplaces or prescription markets, our system prioritizes **capital efficiency** and **sustainable revenue generation** through platform fees, not ownership sales.
+Referandium operates on a **pure SOL economy**. Users deposit SOL to signal on markets, earn yield while their SOL is locked, and receive their full principal back when the market closes.
 
-> 💰 **Core Principle**: Users don't buy assets—they rent management rights and get refunded.
+> 💰 **Core Principle**: Your deposit is always returned. Yield is earned on top as profit.
 
 > 🚀 **Live on Solana Devnet**: All smart contracts are deployed and operational. Fee distribution is automated via on-chain programs.
 
 ---
 
-## SOL Flow Architecture
+## SOL Flow
 
 ### How SOL Moves Through the System
 
-#### 1. **Prescription Market Signals**
 ```
-User → Signals YES/NO with SOL → Locked in market pool → Released at resolution
-```
-
-- Users signal future outcomes by locking SOL in markets
-- SOL remains in escrow until market closes
-- No platform fee on signaling (currently)
-- Pure consensus mechanism
-
-#### 2. **Gookie Rental System**
-```
-User → Bids SOL in auction → Escrowed in treasury → Market closes → Refund (minus fee)
+User deposits SOL → Locked in market escrow → Yield generated → Market closes → Principal + yield returned
 ```
 
-**Example Flow:**
-1. User bids **10 SOL** for "Champions League 2026" Gookie
-2. SOL transferred to treasury wallet on-chain
-3. User manages market, attracts **200 SOL trading volume**
-4. Market closes successfully
-5. Platform takes **10% rental fee (1 SOL)**
-6. User earns **4% volume commission (8 SOL)**
-7. User receives: **9 SOL refund + 8 SOL commission = 17 SOL total**
-8. **Net profit: 7 SOL (70% ROI!)**
+1. Users signal YES or NO by depositing SOL
+2. SOL is locked in an on-chain escrow smart contract
+3. While locked, the pooled SOL generates yield
+4. When the market closes, yield is distributed and principal is returned
 
-> 🍪 **Gookie Economics**: This is a **rental**, not a sale. Your capital comes back—plus commission earnings!
+> 🔒 **No loss of principal**: Your deposit is returned 100% regardless of signal direction.
+
+---
+
+## Yield Distribution
+
+Markets generate yield while SOL is locked in escrow. When a market closes, the accumulated yield is distributed:
+
+| Stakeholder | Share | Description |
+|-------------|-------|-------------|
+| **Platform** | 20% | Operations, development, treasury |
+| **Gookie (Creator)** | 30% | Reward for the verified market creator |
+| **Signal Providers** | 45% | Distributed proportional to SOL deposited |
+| **Buyback & Burn** | 5% | RFRM bought from market and burned |
+
+### Example: Market generates 10 SOL in yield
+
+| Stakeholder | Share | Amount |
+|-------------|-------|--------|
+| Platform | 20% | 2.0 SOL |
+| Gookie (Creator) | 30% | 3.0 SOL |
+| Signal Providers | 45% | 4.5 SOL (split proportionally) |
+| Buyback & Burn | 5% | 0.5 SOL → RFRM burned |
+| **Total** | **100%** | **10.0 SOL** |
+
+> **Important**: Your principal is ALWAYS returned 100%. The 45% user share is pure profit on top of your deposit.
 
 ---
 
 ## Revenue Model
 
-### Platform Fee Structure
+### Platform Revenue Sources
 
-Referandium generates revenue through **two revenue streams**: rental fees and platform volume fees.
+1. **Yield fees (20%)** — Platform share of yield from all markets
+2. **Market creation fee** — 0.01 SOL per market created (spam prevention)
+3. **Cause Token LP fees** — Share of liquidity pool fees from graduated tokens
 
-#### Rental Fees
+### For Verified Creators (Gookies)
 
-| Fee Type | Rate | Applies To | When Charged |
-|----------|------|------------|--------------|
-| **Gookie Rental Fee** | 10% | Auction winners | At market close |
-| **Early Exit Penalty** | 25% | Renters who abandon | On early termination |
-| **Volume Incentive** | -2% discount | High-volume renters | Per successful close |
+Verified creators earn **30% of yield** from every market they create:
 
-#### Yield Distribution Model
+| Market SOL Locked | Duration | Est. Yield | Creator's 30% |
+|-------------------|----------|------------|----------------|
+| 50 SOL | 30 days | ~0.2 SOL | ~0.06 SOL |
+| 500 SOL | 30 days | ~2.0 SOL | ~0.60 SOL |
+| 5,000 SOL | 30 days | ~20.0 SOL | ~6.00 SOL |
 
-**Markets generate yield while SOL is locked. When a market closes, the accumulated yield is distributed as follows:**
-
-| Stakeholder | Share | Payment Method | Description |
-|-------------|-------|----------------|-------------|
-| **Platform** | 20% | SOL | Platform operations, development, treasury |
-| **Gookie Manager** | 30% | RFRM | Market manager reward (swapped via Jupiter) |
-| **Signal Providers** | 45% | SOL | Distributed proportional to SOL amount |
-| **Buyback & Burn** | 5% | RFRM | RFRM bought from market and burned |
-
-> **Key Insight**: Users get their principal back 100% + 45% of yield earned. Gookies earn 30% in RFRM tokens. 5% creates deflationary pressure through buyback & burn.
-
-### Yield Distribution Example
-
-**Scenario: Market generates 10 SOL in yield**
-
-| Stakeholder | Share | Amount | Notes |
-|-------------|-------|--------|-------|
-| Platform | 20% | 2.0 SOL | Direct to treasury |
-| Gookie Manager | 30% | 3.0 SOL → RFRM | Auto-swapped via Jupiter |
-| Signal Providers | 45% | 4.5 SOL | Split proportionally |
-| Buyback & Burn | 5% | 0.5 SOL → RFRM | Burned permanently |
-| **Total** | **100%** | **10.0 SOL** | **Fully distributed** |
-
-> **Important**: Your principal is ALWAYS returned 100%. This 45% is pure profit on top of your deposit.
-
-### Fee Breakdown Example
-
-**Scenario: User rents Gookie for 5 SOL**
-
-| Item | Amount (SOL) |
-|------|--------------|
-| Initial Bid | 5.00 |
-| Escrowed | 5.00 |
-| Platform Fee (10%) | -0.50 |
-| **Refund to User** | **4.50** |
-| **Platform Revenue** | **0.50** |
-
-> **Important**: Fees are only charged on **successful market completion**. If the market fails to launch or is canceled by admin, users receive a **100% refund**.
+> 💡 The more participants your market attracts, the more yield is generated, and the more you earn.
 
 ---
 
-## Gookie Rental Economics
+## Cause Token Economics
 
-### Why Rentals Work
+### Bonding Curve Mechanics
 
-Traditional NFT auctions suffer from:
-- ❌ High capital requirements (permanent purchase)
-- ❌ Illiquid secondary markets
-- ❌ Zero utility after purchase
+When a creator launches a Cause Token with their market:
 
-Referandium's rental model solves this:
-- ✅ **Lower barrier to entry**: Rent for 1 SOL, get 0.9 SOL back
-- ✅ **Active utility period**: Manage and promote your market
-- ✅ **Predictable costs**: Fixed 10% fee, no surprises
-- ✅ **Capital efficiency**: Your SOL isn't permanently locked
+1. **Launch** — Token starts on a Meteora bonding curve
+2. **Price discovery** — Early buyers get lower prices, price rises with demand
+3. **Graduation** — When the curve fills (~$69K market cap), token graduates to a full AMM liquidity pool
+4. **LP fees** — Trading fees from the liquidity pool are split:
 
-### Renter Incentives
+| Recipient | LP Fee Share |
+|-----------|-------------|
+| Market Creator | 50% |
+| Platform | 50% |
 
-**What renters gain:**
-- Market management rights for themed questions
-- Branding opportunity (e.g., "Powered by @YourTwitter")
-- **3-5% commission on all market volume** 💰
-- Prestige and leaderboard ranking
-- Community engagement and followers
+### Token Lifecycle
 
-**What renters pay:**
-- 10% platform fee on rental amount (refunded if market succeeds)
-- Opportunity cost during lock period
-- Time investment in market promotion
+```
+Creation → Bonding Curve (early buyers) → Graduation → Full LP → Ongoing LP fees
+```
 
-> 💡 **Strategic Play**: Successful renters often **profit more from volume commission** than the rental fee costs. A market with 500 SOL volume earns you 15-25 SOL in commission alone!
-
-**ROI Examples:**
-
-| Rental Bid | Market Volume | Renter Commission (4%) | Rental Refund | Total Return | Net Profit | ROI |
-|------------|---------------|------------------------|---------------|--------------|------------|-----|
-| 5 SOL | 50 SOL | 2 SOL | 4.5 SOL | 6.5 SOL | 1.5 SOL | +30% |
-| 10 SOL | 200 SOL | 8 SOL | 9 SOL | 17 SOL | 7 SOL | +70% |
-| 20 SOL | 1000 SOL | 40 SOL | 18 SOL | 58 SOL | 38 SOL | +190% |
+> ⚠️ **Risk**: Cause Tokens are speculative. They can lose value. Not financial advice.
 
 ---
 
 ## Treasury Management
 
-### Treasury Wallet Functions
+### Treasury Wallet
 
-The treasury wallet (`5vJggeRkrFSZBJw6rZvWNzuRbKTe4g44pQEwaBcyZVBP`) holds:
+The treasury wallet (`5vJggeRkrFSZBJw6rZvWNzuRbKTe4g44pQEwaBcyZVBP`) manages:
 
-1. **Escrowed Gookie rental deposits**
-2. **Platform fee accumulation**
-3. **Market signal pools** (future implementation)
+1. **Platform yield share (20%)**
+2. **Buyback & Burn execution (5%)**
+3. **Market creation fees**
 
 ### Treasury Allocation
 
-Platform fees are distributed as follows:
-
 ```
-Fee Revenue Distribution:
+Platform Revenue Distribution:
 ├─ 50% Development & Operations
-├─ 25% Community Rewards Pool
+├─ 25% Community Rewards
 ├─ 15% Marketing & Growth
 └─ 10% Emergency Reserve
 ```
 
 **Transparency:**
-- All treasury transactions are on-chain and auditable
-- Monthly reports published to community
-- Multi-sig security (planned for Q2 2026)
+- All transactions are on-chain and auditable
+- Public treasury address for verification
+- Multi-sig security (planned)
 
 ---
 
-## Economic Incentives
+## Buyback & Burn
 
-### For Gookie Renters
+5% of all market yield is used to buy RFRM tokens from the open market and burn them permanently.
 
-**Volume-based Discounts:**
-- Rent 1-3 Gookies: 10% fee
-- Rent 4-9 Gookies: 8% fee
-- Rent 10+ Gookies: 6% fee
+```
+Market yield → 5% allocated → Buy RFRM on DEX → Burn permanently → Supply decreases
+```
 
-**Leaderboard Rewards:**
-- Top renters by volume earn special badges
-- Exclusive access to rare Gookie auctions
-- Featured placement on homepage
-
-### For Signal Providers
-
-**Early Signaling Advantage:**
-- First 100 signals in a market get 2x visibility
-- Early consensus formers earn reputation points
-- Historical accuracy tracking (future governance weight)
-
-**Volume Milestones:**
-- Signal 10+ SOL total: Bronze tier
-- Signal 50+ SOL total: Silver tier
-- Signal 200+ SOL total: Gold tier (future governance access)
+This creates:
+- Consistent buying pressure on RFRM
+- Deflationary tokenomics
+- Alignment between platform growth and token value
 
 ---
 
-## Refund Mechanics
+## For Signal Providers
 
-### Standard Refund Flow
+### How You Earn
 
-```
-Market Close → Fee Calculation → Automatic Refund → Wallet Credit (< 5 seconds)
-```
+1. Deposit SOL into any active market
+2. Your SOL generates yield while locked
+3. When market closes, receive: **Full deposit + 45% of yield (proportional)**
 
-**Refund Triggers:**
-1. Market reaches end date
-2. All signals are resolved
-3. Admin verifies outcome (if required)
-4. Smart contract executes refund
+### Example
 
-### Refund Scenarios
+- You deposit **10 SOL** into a market with **100 SOL total locked**
+- Market generates **2 SOL** in yield over 30 days
+- Your share: 10/100 = 10% of the 45% user pool = **0.09 SOL profit**
+- You receive: **10.09 SOL** (principal + yield)
 
-| Scenario | User Deposit | Fee | Refund | Timeline |
-|----------|--------------|-----|--------|----------|
-| **Successful Market** | 10 SOL | 10% (1 SOL) | 9 SOL | Instant |
-| **Early Exit (by user)** | 10 SOL | 25% (2.5 SOL) | 7.5 SOL | Instant |
-| **Admin Cancellation** | 10 SOL | 0% (0 SOL) | 10 SOL | Instant |
-| **Market Failure** | 10 SOL | 0% (0 SOL) | 10 SOL | Within 24h |
-
-> 🔒 **Safety Net**: If a market is canceled due to platform error, users receive **110% refund** (10% bonus as apology).
-
----
-
-## Fee Burning (Future)
-
-### Deflationary Mechanism (Planned for Q3 2026)
-
-Once a governance token is launched:
-- 50% of platform fees will be used to **buy back and burn** tokens
-- Creates deflationary pressure
-- Rewards long-term holders
-- Aligns platform growth with token value
-
-**Example:**
-```
-Monthly Fee Revenue: 100 SOL
-→ 50 SOL used to buy governance tokens
-→ Tokens burned permanently
-→ Supply decreases, value increases
-```
-
----
-
-## Roadmap
-
-### Phase 1: Current (Development - Pure SOL)
-- 🚧 Gookie rental auctions (in development)
-- 🚧 Prescription market signals (testnet)
-- 🚧 10% rental fee + volume commission model
-- 🚧 Automatic refund + commission distribution system
-
-### Phase 2: Enhanced Incentives (Q2 2026)
-- Volume-based fee discounts
-- Leaderboard rewards
-- Multi-sig treasury security
-- Advanced analytics dashboard
-
-### Phase 3: Governance Token (Q3 2026)
-- Launch $PRES governance token
-- Fee burning mechanism
-- Staking for voting power
-- Token-gated premium features
-
-### Phase 4: Cross-chain Expansion (Q4 2026)
-- Bridge to other L1s (Ethereum, Arbitrum)
-- Multi-token support (USDC, USDT)
-- Institutional Gookie rentals
-- DAO governance transition
+> Your SOL is never at risk. You always get your full deposit back.
 
 ---
 
@@ -277,74 +165,39 @@ Monthly Fee Revenue: 100 SOL
 
 ### User Protections
 
-**Against Rug Pulls:**
-- ✅ All rental deposits will be escrowed on-chain (smart contracts in development)
-- ✅ Automated refund contracts (no admin discretion)
+- ✅ All deposits escrowed in audited on-chain smart contracts
+- ✅ Principal always returned regardless of signal direction
+- ✅ Emergency withdraw function if platform goes offline
 - ✅ Public treasury address for auditing
+- ✅ 1 wallet = 1 signal per market (Sybil resistance)
 
-**Against Market Manipulation:**
+### Against Market Manipulation
+
 - ✅ Maximum signal caps per wallet
-- ✅ Sybil resistance through SOL lock requirements
 - ✅ Admin oversight for resolution disputes
-
-**Against Platform Failure:**
-- ✅ Emergency withdraw function (if platform goes offline)
-- ✅ 10% reserve fund for unexpected refunds
-- ✅ Insurance partnership (planned)
+- ✅ Verified creator accountability
 
 ---
 
 ## FAQ
 
-### Why 10% fee?
+### Do I lose SOL if I signal wrong?
 
-We benchmarked against traditional platforms:
-- **Polymarket**: 2% + spread manipulation
-- **Kalshi**: 7% + withdrawal fees
-- **Traditional casinos**: 5-10% house edge
+No. Your deposit is always returned in full. Yield distribution is proportional to deposit size, not signal accuracy.
 
-Our 10% rental fee + commission model is superior because:
-- You get 90% back as refund (it's a rental, not a loss)
-- You earn 3-5% commission on market volume (profit potential!)
-- No hidden fees or spreads
-- 100% transparent on-chain (once deployed)
+### How is yield generated?
+
+Pooled SOL in market escrows is deployed into yield-generating strategies. The specific yield source depends on market conditions.
 
 ### Can fees change?
 
-Yes, but only through **community governance** (once token launches). Current fee structure is locked for Phase 1.
+Fee structure is fixed for the current phase. Future changes require community governance.
 
 ### What if I lose my private key?
 
-Refunds are sent to the wallet that placed the bid. **Always secure your seed phrase.** We cannot recover lost wallets.
+Funds are returned to the depositing wallet. **Always secure your seed phrase.** We cannot recover lost wallets.
 
 ---
 
-> **The future isn't sold. It's rented—and it pays dividends.**  
+> **Deposit. Signal. Earn. Repeat.**
 > *Smart economics on Solana 🍪*
-
----
-
-## Volume Commission Examples
-
-### Scenario 1: Small Market
-- Rental bid: 3 SOL
-- Market volume: 30 SOL
-- Renter commission (4%): 1.2 SOL
-- Rental refund (90%): 2.7 SOL
-- **Total return: 3.9 SOL (30% profit)**
-
-### Scenario 2: Medium Market
-- Rental bid: 10 SOL
-- Market volume: 300 SOL
-- Renter commission (4%): 12 SOL
-- Rental refund (90%): 9 SOL
-- **Total return: 21 SOL (110% profit)**
-
-### Scenario 3: Viral Market
-- Rental bid: 50 SOL
-- Market volume: 5,000 SOL
-- Renter commission (4%): 200 SOL
-- Rental refund (90%): 45 SOL
-- **Total return: 245 SOL (390% profit)**
-
-> 🚀 **The incentive is clear**: Rent a Gookie, shill your market, earn commission. The better your marketing, the higher your profit.
