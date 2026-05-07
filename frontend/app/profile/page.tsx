@@ -101,7 +101,7 @@ export default function ProfilePage() {
 
               {signals.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-slate-200 rounded-xl">
-                  <p className="text-slate-500 text-sm font-medium">No signals yet</p>
+                  <p className="text-slate-500 text-sm font-medium">No prescriptions yet</p>
                   <Link href="/markets" className="text-blue-600 text-sm font-medium hover:underline mt-1 inline-block">Browse markets →</Link>
                 </div>
               ) : (

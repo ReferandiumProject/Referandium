@@ -46,10 +46,10 @@ export default function HomeClient() {
       {/* Hero Section */}
       <section className="flex flex-col items-center text-center px-6 py-24">
         <h1 className="font-semibold text-[36px] leading-[1.1] tracking-[-0.04em] text-[#191b23] mb-4 max-w-3xl">
-          Signal What Should Happen.
+          Prescribe What Should Happen.
         </h1>
         <p className="font-semibold text-[18px] leading-[1.3] tracking-[-0.02em] text-[#434655] max-w-2xl mb-10">
-          The permissionless prescription market on Solana. Signal what should happen, deposit SOL, and earn yield while your position is active.
+          The permissionless prescription market on Solana. Prescribe what should happen, deposit SOL, and earn yield while your position is active.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 mb-10">
           <Link href="/markets" className="bg-[#2563eb] text-white text-[15px] font-semibold px-6 py-3 rounded-lg shadow-[0px_1px_3px_rgba(15,23,42,0.08)] hover:bg-[#004ac6] transition-colors no-underline">
@@ -106,13 +106,14 @@ export default function HomeClient() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               { num: '01', title: 'Browse or Create', desc: 'Any question, any topic. Browse active markets or create your own in 60 seconds.' },
-              { num: '02', title: 'Signal Your Demand', desc: 'Deposit SOL to signal YES or NO. Your principal is always returned — you never lose your deposit.' },
-              { num: '03', title: 'Earn While You Signal', desc: 'Your SOL earns yield while locked. When the market closes, claim your deposit plus your share of the yield.' },
-            ].map(({ num, title, desc }) => (
+              { num: '02', title: 'Prescribe Your Demand', desc: 'Deposit SOL to prescribe YES or NO. Your principal is always returned — you never lose your deposit.', sub: '1 wallet = 1 vote. SOL amount affects your yield share, not your voting weight.' },
+              { num: '03', title: 'Earn While You Prescribe', desc: 'Your SOL earns yield while locked. When the market closes, claim your deposit plus your share of the yield.' },
+            ].map(({ num, title, desc, sub }: { num: string; title: string; desc: string; sub?: string }) => (
               <div key={num} className="bg-white p-6 rounded-xl border border-[#E2E8F0] shadow-[0px_1px_3px_rgba(15,23,42,0.08)] flex flex-col items-start">
                 <span className="font-semibold text-[24px] leading-[1.2] tracking-[-0.03em] text-[#b4c5ff] mb-4">{num}</span>
                 <h3 className="font-semibold text-[18px] leading-[1.3] tracking-[-0.02em] text-[#191b23] mb-3">{title}</h3>
                 <p className="text-[13px] leading-[1.5] text-[#434655]">{desc}</p>
+                {sub && <p className="text-[11px] leading-[1.5] text-[#737686] mt-2">{sub}</p>}
               </div>
             ))}
           </div>

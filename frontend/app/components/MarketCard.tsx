@@ -71,7 +71,7 @@ export default function MarketCard({ market }: MarketCardProps) {
               </div>
             </div>
           ) : (
-            <p className="text-[13px] text-[#737686] mb-3">No signals yet</p>
+            <p className="text-[13px] text-[#737686] mb-3">No prescriptions yet</p>
           )}
 
           {/* Metadata Row */}

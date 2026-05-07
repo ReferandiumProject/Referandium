@@ -135,8 +135,8 @@ export default function MarketChart({ marketId, isSimpleMarket, selectedOptionId
       <div className="h-[350px] w-full bg-gray-50 dark:bg-[#13141B] border border-gray-200 dark:border-gray-800 rounded-2xl flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-3">📊</div>
-          <p className="text-gray-500 dark:text-gray-400 font-medium">No signals yet</p>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Chart will appear after first signal</p>
+          <p className="text-gray-500 dark:text-gray-400 font-medium">No prescriptions yet</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Chart will appear after first prescription</p>
         </div>
       </div>
     );

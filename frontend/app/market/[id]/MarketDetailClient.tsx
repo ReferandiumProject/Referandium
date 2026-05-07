@@ -234,7 +234,7 @@ export default function MarketDetailClient() {
       }
       setHasSignaled(true)
       const txMsg = depositTx ? ` Tx: ${depositTx.slice(0, 8)}...` : ''
-      showNotification('success', `Signal ${selectedTab.toUpperCase()} submitted on-chain!${txMsg}`)
+      showNotification('success', `Prescription ${selectedTab.toUpperCase()} submitted on-chain!${txMsg}`)
       setAmount('')
       await Promise.all([fetchMarketData(), fetchSignals(), checkIfUserSignaled(), checkOnChainSignal()])
     } catch (error: any) {
@@ -487,11 +487,11 @@ export default function MarketDetailClient() {
                   /* Already signaled - market still active */
                   <div>
                     <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4 text-center">
-                      <p className="text-emerald-700 font-semibold text-[15px] mb-1">Signal Submitted</p>
+                      <p className="text-emerald-700 font-semibold text-[15px] mb-1">Prescription Submitted!</p>
                       <p className="text-[#191b23] text-[13px]">
                         You signaled <strong>{userSignal?.signal_direction.toUpperCase()}</strong> with <strong>{userSignal?.sol_amount} SOL</strong>
                       </p>
-                      <p className="text-[#737686] text-[12px] mt-2">1 wallet = 1 signal. You&apos;ll receive your SOL + yield share when the market closes.</p>
+                      <p className="text-[#737686] text-[12px] mt-2">1 wallet = 1 vote. You&apos;ll receive your SOL + yield share when the market closes.</p>
                     </div>
                     <a
                       href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I just signaled ${userSignal?.signal_direction.toUpperCase()} on "${market.title}" on @Referandium!\n\n${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
@@ -565,9 +565,10 @@ export default function MarketDetailClient() {
                       </div>
                       <div className="flex justify-between mt-2 text-[13px] text-[#737686]">
                         <span>Min {MIN_SIGNAL_AMOUNT} SOL</span>
-                        {amount && parseFloat(amount) > 0 && (
-                          <span className="text-emerald-600 font-medium">1 wallet = 1 vote</span>
-                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-3 bg-[#f0f1fa] rounded-lg px-3 py-2">
+                        <span className="text-[#2563eb] text-[13px]">ℹ</span>
+                        <span className="text-[12px] text-[#434655]">1 wallet = 1 vote. SOL amount affects your yield share, not your voting weight.</span>
                       </div>
                     </div>
 
@@ -577,7 +578,7 @@ export default function MarketDetailClient() {
                       disabled={!connected || isSubmitting || !amount || hasSignaled || isClosed}
                       className="w-full bg-[#2563eb] text-white font-semibold text-[18px] leading-[1.3] tracking-[-0.02em] py-4 rounded-lg hover:opacity-90 transition-opacity active:scale-[0.98] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {isSubmitting ? 'Submitting...' : `Signal ${selectedTab.toUpperCase()}`}
+                      {isSubmitting ? 'Submitting...' : `Prescribe ${selectedTab.toUpperCase()}`}
                     </button>
                     <p className="text-[12px] text-[#737686] text-center mt-2">
                       {!connected ? 'Connect wallet to signal' : 'On-chain signal via Solana escrow'}
@@ -595,7 +596,7 @@ export default function MarketDetailClient() {
                     <span className="text-[15px] font-medium">{Number(market.total_sol_locked).toFixed(2)} SOL</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-[#e1e2ed]/50">
-                    <span className="text-[13px] text-[#434655]">Total Signals</span>
+                    <span className="text-[13px] text-[#434655]">Prescriptions</span>
                     <span className="text-[15px] font-medium">{totalSignals}</span>
                   </div>
                   {Number(market.total_yield_earned) > 0 && (

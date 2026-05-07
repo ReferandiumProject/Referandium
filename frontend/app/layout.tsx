@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Referandium | Policy Prescription Market',
-  description: 'Signal what should happen. The permissionless policy prescription market on Solana.',
+  description: 'Prescribe what should happen. The permissionless policy prescription market on Solana.',
 }
 
 export default function RootLayout({
