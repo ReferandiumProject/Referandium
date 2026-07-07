@@ -16,6 +16,11 @@ const nextConfig = {
     if (dev) {
       config.cache = false;
     }
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      '@stripe/crypto': false,
+      '@farcaster/mini-app-solana': false,
+    };
     return config;
   },
 }

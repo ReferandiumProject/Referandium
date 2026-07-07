@@ -1,114 +1,92 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { supabase } from '@/lib/supabaseClient';
+import { usePrivy } from '@privy-io/react-auth';
 
 export interface AppUser {
   id: string;
-  wallet_address: string;
-  username: string;
-  bio: string | null;
-  avatar_url: string | null;
-  created_at: string;
+  privy_id: string;
+  email: string | null;
+  wallet_address: string | null;
 }
 
 interface UserContextType {
-  user: AppUser | null;
+  dbUser: AppUser | null;
   loading: boolean;
-  refreshUser: () => Promise<void>;
+  authenticated: boolean;
+  logout: () => Promise<void>;
+  syncError: string | null;
 }
 
 const UserContext = createContext<UserContextType>({
-  user: null,
+  dbUser: null,
   loading: false,
-  refreshUser: async () => {},
+  authenticated: false,
+  logout: async () => {},
+  syncError: null,
 });
 
-const AVATAR_COLORS = [
-  '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981',
-  '#6366F1', '#EF4444', '#14B8A6', '#F97316', '#06B6D4',
-];
-
-function getAvatarColor(wallet: string): string {
-  let hash = 0;
-  for (let i = 0; i < wallet.length; i++) {
-    hash = wallet.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
 export function UserProvider({ children }: { children: ReactNode }) {
-  const { publicKey, connected } = useWallet();
-  const [user, setUser] = useState<AppUser | null>(null);
+  const { authenticated, ready, logout, getAccessToken } = usePrivy();
+  const [dbUser, setDbUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
-  const fetchOrCreateUser = async () => {
-    if (!publicKey) {
-      setUser(null);
+  useEffect(() => {
+    if (!ready) return;
+
+    if (!authenticated) {
+      setDbUser(null);
+      setSyncError(null);
       return;
     }
 
-    const walletAddress = publicKey.toBase58();
-    setLoading(true);
+    const syncUser = async () => {
+      setLoading(true);
+      setSyncError(null);
 
-    try {
-      // Check if user exists
-      const { data: existing, error: fetchError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('wallet_address', walletAddress)
-        .single();
+      try {
+        const token = await getAccessToken();
+        if (!token) {
+          throw new Error('No access token available');
+        }
 
-      if (existing && !fetchError) {
-        setUser(existing as AppUser);
-        return;
+        console.log('[UserContext] syncing user with /api/auth/sync');
+        const res = await fetch('/api/auth/sync', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `Sync failed with status ${res.status}`);
+        }
+
+        const data = await res.json();
+        console.log('[UserContext] user synced, id:', data.id);
+
+        setDbUser({
+          id: data.id,
+          privy_id: data.privy_id,
+          email: data.email,
+          wallet_address: data.wallet_address,
+        });
+      } catch (err: any) {
+        console.error('[UserContext] sync error:', err);
+        setSyncError(err.message || 'Failed to sync user');
+        setDbUser(null);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // User doesn't exist — create one
-      const username = 'User_' + walletAddress.slice(0, 6);
-      const avatarColor = getAvatarColor(walletAddress);
-      const avatarUrl = `https://api.dicebear.com/7.x/shapes/svg?seed=${walletAddress}&backgroundColor=${avatarColor.replace('#', '')}`;
-
-      const { data: newUser, error: insertError } = await supabase
-        .from('users')
-        .insert({
-          wallet_address: walletAddress,
-          username,
-          avatar_url: avatarUrl,
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('Error creating user:', insertError.message);
-        // Try fetching again in case of race condition (another tab created it)
-        const { data: retry } = await supabase
-          .from('users')
-          .select('*')
-          .eq('wallet_address', walletAddress)
-          .single();
-        if (retry) setUser(retry as AppUser);
-      } else if (newUser) {
-        setUser(newUser as AppUser);
-      }
-    } catch (err) {
-      console.error('User fetch/create error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (connected && publicKey) {
-      fetchOrCreateUser();
-    } else {
-      setUser(null);
-    }
-  }, [connected, publicKey]);
+    syncUser();
+  }, [authenticated, ready, getAccessToken]);
 
   return (
-    <UserContext.Provider value={{ user, loading, refreshUser: fetchOrCreateUser }}>
+    <UserContext.Provider value={{ dbUser, loading, authenticated, logout, syncError }}>
       {children}
     </UserContext.Provider>
   );

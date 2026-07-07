@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useEffect } from 'react'
+import { PrivyProvider } from '@privy-io/react-auth'
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react'
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets'
@@ -44,21 +45,36 @@ export default function AppWalletProvider({ children }: { children: React.ReactN
   )
 
   return (
-    <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider
-        wallets={wallets}
-        autoConnect
-        onError={(error) => {
-          const msg = error?.message?.toLowerCase() || '';
-          // Suppress non-Solana wallet errors (MetaMask, Ethereum, injected provider detection)
-          if (msg.includes('metamask') || msg.includes('ethereum') || msg.includes('eth_')) return;
-          console.error('Wallet error:', error.message);
-        }}
-      >
-        <WalletModalProvider>
-          {children}
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
+    <PrivyProvider
+      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
+      config={{
+        appearance: {
+          walletChainType: 'solana-only',
+        },
+        embeddedWallets: {
+          solana: {
+            createOnLogin: 'users-without-wallets',
+          },
+        },
+        loginMethods: ['google', 'wallet'],
+      }}
+    >
+      <ConnectionProvider endpoint={endpoint}>
+        <WalletProvider
+          wallets={wallets}
+          autoConnect
+          onError={(error) => {
+            const msg = error?.message?.toLowerCase() || '';
+            // Suppress non-Solana wallet errors (MetaMask, Ethereum, injected provider detection)
+            if (msg.includes('metamask') || msg.includes('ethereum') || msg.includes('eth_')) return;
+            console.error('Wallet error:', error.message);
+          }}
+        >
+          <WalletModalProvider>
+            {children}
+          </WalletModalProvider>
+        </WalletProvider>
+      </ConnectionProvider>
+    </PrivyProvider>
   )
 }

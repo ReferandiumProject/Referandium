@@ -1,8 +1,8 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { useWallet } from '@solana/wallet-adapter-react'
-import { useWalletModal } from '@solana/wallet-adapter-react-ui'
+import { usePrivy } from '@privy-io/react-auth'
+import { useUser } from '../context/UserContext'
 import { usePathname } from 'next/navigation'
 
 const ADMIN_WALLETS = [
@@ -11,17 +11,19 @@ const ADMIN_WALLETS = [
 ]
 
 export default function Navbar() {
-  const { publicKey, connected, disconnect } = useWallet()
-  const { setVisible } = useWalletModal()
+  const { login, logout, authenticated } = usePrivy()
+  const { dbUser } = useUser()
   const pathname = usePathname()
-  const isAdmin = connected && publicKey && ADMIN_WALLETS.includes(publicKey.toBase58())
+  const isAdmin = authenticated && dbUser?.wallet_address && ADMIN_WALLETS.includes(dbUser.wallet_address)
 
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const shortAddress = publicKey
-    ? `${publicKey.toBase58().slice(0, 4)}...${publicKey.toBase58().slice(-4)}`
-    : ''
+  const displayLabel = dbUser?.email
+    ? dbUser.email
+    : dbUser?.wallet_address
+      ? `${dbUser.wallet_address.slice(0, 4)}...${dbUser.wallet_address.slice(-4)}`
+      : ''
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -34,14 +36,14 @@ export default function Navbar() {
   }, [])
 
   const handleCopyAddress = () => {
-    if (publicKey) {
-      navigator.clipboard.writeText(publicKey.toBase58())
+    if (dbUser?.wallet_address) {
+      navigator.clipboard.writeText(dbUser.wallet_address)
       setDropdownOpen(false)
     }
   }
 
   const handleDisconnect = () => {
-    disconnect()
+    logout()
     setDropdownOpen(false)
   }
 
@@ -71,7 +73,7 @@ export default function Navbar() {
           <Link href="/gookies" style={{ color: pathname === '/gookies' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
             Creators
           </Link>
-          {connected && (
+          {authenticated && (
             <Link href="/profile" style={{ color: pathname === '/profile' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
               Profile
             </Link>
@@ -102,9 +104,9 @@ export default function Navbar() {
           </Link>
 
           {/* Custom Wallet Button */}
-          {!connected ? (
+          {!authenticated ? (
             <button
-              onClick={() => setVisible(true)}
+              onClick={() => login()}
               style={{
                 backgroundColor: 'white',
                 border: '1px solid #E2E8F0',
@@ -120,7 +122,7 @@ export default function Navbar() {
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC' }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
             >
-              Connect Wallet
+              Sign In
             </button>
           ) : (
             <div ref={dropdownRef} style={{ position: 'relative' }}>
@@ -145,7 +147,7 @@ export default function Navbar() {
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
               >
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981' }} />
-                {shortAddress}
+                {displayLabel}
               </button>
 
               {dropdownOpen && (
@@ -198,7 +200,7 @@ export default function Navbar() {
                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#FEF2F2' }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
                   >
-                    Disconnect
+                    Sign Out
                   </button>
                 </div>
               )}
