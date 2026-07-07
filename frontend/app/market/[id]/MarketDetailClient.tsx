@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useWallet, useConnection } from '@solana/wallet-adapter-react'
+import { usePrivy } from '@privy-io/react-auth'
 import { supabase } from '../../../lib/supabaseClient'
 import { Market, MarketOption, Signal, Comment } from '@/app/types'
 import * as marketEscrowContract from '@/app/utils/marketEscrowContract'
 import MarketChart from '../../components/MarketChart'
 
 const ADMIN_WALLET = 'PanbgtcTiZ2HasCT9CC94nUBwUx55uH8YDmZk6587da'
-const MIN_SIGNAL_AMOUNT = 0.05
+const MIN_SIGNAL_AMOUNT = 5
 
 const formatDate = (dateString: string) => {
   const d = new Date(dateString)
@@ -23,6 +24,7 @@ export default function MarketDetailClient() {
   const wallet = useWallet()
   const { publicKey, connected } = wallet
   const { connection } = useConnection()
+  const { getAccessToken } = usePrivy()
 
   const [market, setMarket] = useState<Market | null>(null)
   const [options, setOptions] = useState<MarketOption[]>([])
@@ -65,7 +67,6 @@ export default function MarketDetailClient() {
   useEffect(() => {
     if (connected && publicKey && market) {
       checkIfUserSignaled()
-      checkOnChainSignal()
     }
   }, [connected, publicKey, market])
 
@@ -136,18 +137,6 @@ export default function MarketDetailClient() {
     }
   }
 
-  const checkOnChainSignal = async () => {
-    if (!publicKey || !market?.on_chain_market_id) return
-    try {
-      const signal = await marketEscrowContract.getUserSignal(connection, market.on_chain_market_id, publicKey)
-      setOnChainSignal(signal)
-      if (signal && !signal.withdrawn) setHasSignaled(true)
-    } catch (error) {
-      console.error('Error fetching on-chain signal:', error)
-      setOnChainSignal(null)
-    }
-  }
-
   const checkIfUserSignaled = async () => {
     if (!publicKey) return
     try {
@@ -171,7 +160,6 @@ export default function MarketDetailClient() {
       const tx = await marketEscrowContract.withdraw(wallet.wallet, publicKey, connection, market.on_chain_market_id)
       await supabase.from('signals').update({ principal_returned: true, yield_claimed: true, withdrawal_tx_signature: tx }).eq('market_id', id).eq('user_wallet', publicKey.toBase58())
       showNotification('success', `Withdrawal successful! Tx: ${tx.slice(0, 8)}...`)
-      await checkOnChainSignal()
       await checkIfUserSignaled()
     } catch (error: any) {
       console.error('Withdraw error:', error)
@@ -213,30 +201,34 @@ export default function MarketDetailClient() {
     if (hasSignaled) { showNotification('error', 'You have already signaled on this market'); return }
     const signalAmount = parseFloat(amount)
     if (!signalAmount || signalAmount < MIN_SIGNAL_AMOUNT) {
-      showNotification('error', `Minimum signal amount is ${MIN_SIGNAL_AMOUNT} SOL`)
+      showNotification('error', `Minimum signal amount is ${MIN_SIGNAL_AMOUNT} USDC`)
       return
     }
     setIsSubmitting(true)
     try {
-      let depositTx = null
-      if (market?.on_chain_market_id) {
-        const signalDirection = selectedTab === 'yes' ? 1 : 0
-        depositTx = await marketEscrowContract.depositSignal(wallet.wallet, publicKey, connection, market.on_chain_market_id, signalAmount, signalDirection)
-      }
-      const signalData: any = { market_id: market!.id, user_wallet: publicKey.toBase58(), signal_direction: selectedTab, sol_amount: signalAmount, deposit_tx_signature: depositTx }
-      if (!isBinaryMarket && selectedOption) signalData.option_id = selectedOption.id
-      const { error: signalError } = await supabase.from('signals').insert(signalData)
-      if (signalError) {
-        if (signalError.code === '23505' || signalError.message.includes('duplicate') || signalError.message.includes('unique')) throw new Error('You have already signaled on this market')
-        else if (signalError.message.includes('violates foreign key')) throw new Error('Invalid market or option')
-        else if (signalError.message.includes('permission denied') || signalError.message.includes('policy')) throw new Error('Permission denied. Please check authentication.')
-        else throw new Error(signalError.message || 'Failed to submit signal')
-      }
+      const token = await getAccessToken()
+      if (!token) throw new Error('Not authenticated')
+
+      const res = await fetch('/api/signal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          market_id: market!.id,
+          signal_direction: selectedTab,
+          usdc_amount: signalAmount,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Signal submission failed')
+
       setHasSignaled(true)
-      const txMsg = depositTx ? ` Tx: ${depositTx.slice(0, 8)}...` : ''
-      showNotification('success', `Prescription ${selectedTab.toUpperCase()} submitted on-chain!${txMsg}`)
+      showNotification('success', `Prescription ${selectedTab.toUpperCase()} submitted!`)
       setAmount('')
-      await Promise.all([fetchMarketData(), fetchSignals(), checkIfUserSignaled(), checkOnChainSignal()])
+      await Promise.all([fetchMarketData(), fetchSignals(), checkIfUserSignaled()])
     } catch (error: any) {
       console.error('Signal submission error:', error)
       showNotification('error', error.message || 'Failed to submit signal. Please try again.')
@@ -451,12 +443,12 @@ export default function MarketDetailClient() {
                     {isClaimed ? (
                       <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-5 text-center">
                         <p className="text-emerald-700 font-semibold text-[18px] mb-1">Claimed!</p>
-                        <p className="text-[#434655] text-[13px]">Your SOL + yield share has been returned to your wallet.</p>
+                        <p className="text-[#434655] text-[13px]">Your USDC + yield share has been returned to your wallet.</p>
                       </div>
                     ) : (
                       <>
                         <div className="flex justify-between items-center mb-4">
-                          <span className="font-semibold text-[18px] leading-[1.3] tracking-[-0.02em]">Claim SOL + Yield</span>
+                          <span className="font-semibold text-[18px] leading-[1.3] tracking-[-0.02em]">Claim USDC + Yield</span>
                         </div>
                         <div className="bg-[#faf8ff] border border-[#e1e2ed] rounded-lg p-4 mb-4">
                           <div className="flex justify-between text-[13px] mb-2">
@@ -465,11 +457,11 @@ export default function MarketDetailClient() {
                           </div>
                           <div className="flex justify-between text-[13px] mb-2">
                             <span className="text-[#737686]">Amount Staked</span>
-                            <span className="text-[#191b23] font-semibold">{userSignal?.sol_amount} SOL</span>
+                            <span className="text-[#191b23] font-semibold">{userSignal?.usdc_amount} USDC</span>
                           </div>
                           <div className="flex justify-between text-[13px]">
                             <span className="text-[#737686]">Est. Yield Share</span>
-                            <span className="text-emerald-700 font-semibold">+{((Number(userSignal?.sol_amount) || 0) * 0.05).toFixed(4)} SOL</span>
+                            <span className="text-emerald-700 font-semibold">+{((Number(userSignal?.usdc_amount) || 0) * 0.05).toFixed(4)} USDC</span>
                           </div>
                         </div>
                         <button
@@ -489,9 +481,9 @@ export default function MarketDetailClient() {
                     <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4 text-center">
                       <p className="text-emerald-700 font-semibold text-[15px] mb-1">Prescription Submitted!</p>
                       <p className="text-[#191b23] text-[13px]">
-                        You signaled <strong>{userSignal?.signal_direction.toUpperCase()}</strong> with <strong>{userSignal?.sol_amount} SOL</strong>
+                        You signaled <strong>{userSignal?.signal_direction.toUpperCase()}</strong> with <strong>{userSignal?.usdc_amount} USDC</strong>
                       </p>
-                      <p className="text-[#737686] text-[12px] mt-2">1 wallet = 1 vote. You&apos;ll receive your SOL + yield share when the market closes.</p>
+                      <p className="text-[#737686] text-[12px] mt-2">1 wallet = 1 vote. You&apos;ll receive your USDC + yield share when the market closes.</p>
                     </div>
                     <a
                       href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I just signaled ${userSignal?.signal_direction.toUpperCase()} on "${market.title}" on @Referandium!\n\n${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
@@ -561,14 +553,14 @@ export default function MarketDetailClient() {
                           min={MIN_SIGNAL_AMOUNT}
                           className="w-full border border-[#e1e2ed] rounded-lg p-3 pr-14 text-[15px] leading-[1.5] font-medium focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 outline-none bg-white"
                         />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] text-[#434655]">SOL</span>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] text-[#434655]">USDC</span>
                       </div>
                       <div className="flex justify-between mt-2 text-[13px] text-[#737686]">
-                        <span>Min {MIN_SIGNAL_AMOUNT} SOL</span>
+                        <span>Min {MIN_SIGNAL_AMOUNT} USDC</span>
                       </div>
                       <div className="flex items-center gap-1.5 mt-3 bg-[#f0f1fa] rounded-lg px-3 py-2">
                         <span className="text-[#2563eb] text-[13px]">ℹ</span>
-                        <span className="text-[12px] text-[#434655]">1 wallet = 1 vote. SOL amount affects your yield share, not your voting weight.</span>
+                        <span className="text-[12px] text-[#434655]">1 wallet = 1 vote. USDC amount affects your yield share, not your voting weight.</span>
                       </div>
                     </div>
 
@@ -581,7 +573,7 @@ export default function MarketDetailClient() {
                       {isSubmitting ? 'Submitting...' : `Prescribe ${selectedTab.toUpperCase()}`}
                     </button>
                     <p className="text-[12px] text-[#737686] text-center mt-2">
-                      {!connected ? 'Connect wallet to signal' : 'On-chain signal via Solana escrow'}
+                      {!connected ? 'Connect wallet to signal' : 'Off-chain signal in Phase 1'}
                     </p>
                   </>
                 )}
@@ -592,8 +584,8 @@ export default function MarketDetailClient() {
                 <h3 className="text-[12px] font-semibold tracking-[0.05em] text-[#434655] mb-4 border-b border-[#e1e2ed] pb-2">Market Details</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex justify-between items-center py-2 border-b border-[#e1e2ed]/50">
-                    <span className="text-[13px] text-[#434655]">Total SOL Locked</span>
-                    <span className="text-[15px] font-medium">{Number(market.total_sol_locked).toFixed(2)} SOL</span>
+                    <span className="text-[13px] text-[#434655]">Total USDC Locked</span>
+                    <span className="text-[15px] font-medium">{Number(market.total_usdc_locked).toFixed(2)} USDC</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-[#e1e2ed]/50">
                     <span className="text-[13px] text-[#434655]">Prescriptions</span>
@@ -602,7 +594,7 @@ export default function MarketDetailClient() {
                   {Number(market.total_yield_earned) > 0 && (
                     <div className="flex justify-between items-center py-2 border-b border-[#e1e2ed]/50">
                       <span className="text-[13px] text-[#434655]">Yield Earned</span>
-                      <span className="text-[15px] font-medium text-emerald-600">{Number(market.total_yield_earned).toFixed(4)} SOL</span>
+                      <span className="text-[15px] font-medium text-emerald-600">{Number(market.total_yield_earned).toFixed(4)} USDC</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center py-2">

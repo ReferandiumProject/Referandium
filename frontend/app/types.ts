@@ -15,13 +15,13 @@ export interface Market {
   end_time: string
   status: 'draft' | 'active' | 'closed'
   total_signals: number
-  total_sol_locked: number
+  total_usdc_locked: number
   total_yield_earned: number
   platform_fee_collected: number
   gookie_fee_earned: number
   user_share_distributed: number
   buyback_burn_amount: number
-  min_signal_sol: number
+  min_signal_usdc: number
   created_at?: string
   updated_at?: string
   options?: MarketOption[]
@@ -53,7 +53,7 @@ export interface Signal {
   option_id?: string | null
   user_wallet: string
   signal_direction: 'yes' | 'no'
-  sol_amount: number
+  usdc_amount: number
   yield_earned: number
   principal_returned: boolean
   yield_claimed: boolean

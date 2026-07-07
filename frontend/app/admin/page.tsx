@@ -332,7 +332,7 @@ export default function AdminPage() {
                       <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Title</th>
                       <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
                       <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Signals</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">SOL</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">USDC</th>
                       <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Ends</th>
                       <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Yield</th>
                       <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Actions</th>
@@ -348,7 +348,7 @@ export default function AdminPage() {
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusBadge(m.status)}`}>{m.status}</span>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-900 font-medium tabular-nums">{m.total_signals}</td>
-                        <td className="px-4 py-3 text-sm text-slate-900 font-medium tabular-nums">{Number(m.total_sol_locked).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-sm text-slate-900 font-medium tabular-nums">{Number(m.total_usdc_locked).toFixed(2)}</td>
                         <td className="px-4 py-3 text-xs text-slate-400">{formatDate(m.end_time)}</td>
                         <td className="px-4 py-3">
                           {m.on_chain_market_id && m.status === 'active' && (

@@ -8,13 +8,13 @@ import { Market } from '../types'
 interface Stats {
   markets: number
   signals: number
-  solLocked: string
+  usdcLocked: string
 }
 
 const QUOTE_WORDS = ['Make', 'Create', 'Prescribe'] as const
 
 export default function HomeClient() {
-  const [stats, setStats] = useState<Stats>({ markets: 0, signals: 0, solLocked: '0' })
+  const [stats, setStats] = useState<Stats>({ markets: 0, signals: 0, usdcLocked: '0' })
   const [markets, setMarkets] = useState<Market[]>([])
   const [activeWord, setActiveWord] = useState(0)
 
@@ -30,11 +30,11 @@ export default function HomeClient() {
       const [{ count: marketCount }, { count: signalCount }, { data: solData }, { data: marketData }] = await Promise.all([
         supabase.from('markets').select('*', { count: 'exact', head: true }).eq('status', 'active'),
         supabase.from('signals').select('*', { count: 'exact', head: true }),
-        supabase.from('markets').select('total_sol_locked'),
+        supabase.from('markets').select('total_usdc_locked'),
         supabase.from('markets').select('*, options:market_options(*)').eq('status', 'active').order('created_at', { ascending: false }).limit(3)
       ])
-      const totalSol = solData?.reduce((sum, m) => sum + Number(m.total_sol_locked || 0), 0) || 0
-      setStats({ markets: marketCount || 0, signals: signalCount || 0, solLocked: totalSol.toFixed(1) })
+      const totalUsdc = solData?.reduce((sum, m) => sum + Number(m.total_usdc_locked || 0), 0) || 0
+      setStats({ markets: marketCount || 0, signals: signalCount || 0, usdcLocked: totalUsdc.toFixed(1) })
       setMarkets(marketData as Market[] || [])
     }
     fetchData()
@@ -69,7 +69,7 @@ export default function HomeClient() {
           </div>
           <div className="w-1 h-1 rounded-full bg-[#c3c6d7]"></div>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-[#2563eb]">{stats.solLocked} SOL</span> Locked
+            <span className="font-bold text-[#2563eb]">{stats.usdcLocked} USDC</span> Locked
           </div>
         </div>
       </section>

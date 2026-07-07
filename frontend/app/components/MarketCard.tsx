@@ -81,7 +81,7 @@ export default function MarketCard({ market }: MarketCardProps) {
               {totalSignals}
             </span>
             <span className="w-0.5 h-0.5 rounded-full bg-[#c3c6d7]"></span>
-            <span>{Number(market.total_sol_locked).toFixed(2)} SOL</span>
+            <span>{Number(market.total_usdc_locked).toFixed(2)} USDC</span>
             <span className="w-0.5 h-0.5 rounded-full bg-[#c3c6d7]"></span>
             <span>{formatDate(market.end_time)}</span>
           </div>

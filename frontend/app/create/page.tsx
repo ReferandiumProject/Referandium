@@ -51,13 +51,13 @@ export default function CreateMarketPage() {
         status: 'active',
         gookie_wallet: publicKey.toBase58(),
         total_signals: 0,
-        total_sol_locked: 0,
+        total_usdc_locked: 0,
         total_yield_earned: 0,
         platform_fee_collected: 0,
         gookie_fee_earned: 0,
         user_share_distributed: 0,
         buyback_burn_amount: 0,
-        min_signal_sol: 0.05,
+        min_signal_usdc: 5,
       }
 
       if (causeTokenEnabled) {
@@ -306,7 +306,7 @@ export default function CreateMarketPage() {
               <span className="text-[#2563eb] mt-0.5">ℹ</span>
               <div>
                 <h4 className="text-[15px] font-semibold text-[#003ea8]">Creation Fee</h4>
-                <p className="text-[13px] text-[#003ea8]/80 mt-1">A 0.01 SOL creation fee applies to prevent spam and ensure market quality.</p>
+                <p className="text-[13px] text-[#003ea8]/80 mt-1">A 5 USDC creation fee applies to prevent spam and ensure market quality.</p>
               </div>
             </div>
 
