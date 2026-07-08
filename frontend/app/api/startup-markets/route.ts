@@ -6,7 +6,7 @@ export async function GET() {
     // All markets joined with their startup, sorted by 24h volume desc
     const { data: markets, error } = await supabaseAdmin
       .from("startup_markets")
-      .select("id, current_price, total_supply, volume_24h, created_at, graduated_at, startups:startup_startups(name, logo_url)")
+      .select("id, current_price, total_supply, volume_24h, created_at, graduated_at, startups:startup_startups(name, logo_url, description)")
       .order("volume_24h", { ascending: false });
 
     if (error) {
@@ -20,30 +20,32 @@ export async function GET() {
         const startup = m.startups as unknown as {
           name: string;
           logo_url: string | null;
+          description: string | null;
         } | null;
         const currentPrice = Number(m.current_price);
 
-        // Earliest snapshot within the last 24h → baseline for % change
+        // Latest snapshot from at least 24h ago → baseline for % change
         const { data: baseline } = await supabaseAdmin
           .from("startup_price_snapshots")
           .select("price")
           .eq("market_id", m.id)
-          .gte("recorded_at", since)
-          .order("recorded_at", { ascending: true })
+          .lte("recorded_at", since)
+          .order("recorded_at", { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        const basePrice = baseline ? Number(baseline.price) : currentPrice;
-        const change24h =
-          basePrice > 0 ? ((currentPrice - basePrice) / basePrice) * 100 : 0;
+        const price_change_24h = baseline
+          ? ((currentPrice - Number(baseline.price)) / Number(baseline.price)) * 100
+          : null;
 
         return {
           id: m.id,
           name: startup?.name ?? "Unknown",
           logo_url: startup?.logo_url ?? null,
+          description: startup?.description ?? null,
           current_price: currentPrice,
           volume_24h: Number(m.volume_24h),
-          change_24h: change24h,
+          price_change_24h,
           graduated_at: m.graduated_at,
         };
       })

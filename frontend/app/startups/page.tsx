@@ -6,10 +6,11 @@ import { useEffect, useState } from "react";
 type Market = {
   id: string;
   name: string;
+  description: string | null;
   logo_url: string | null;
   current_price: number;
   volume_24h: number;
-  change_24h: number;
+  price_change_24h: number | null;
   graduated_at: string | null;
 };
 
@@ -24,7 +25,8 @@ function initials(name: string): string {
 }
 
 function MarketCard({ market }: { market: Market }) {
-  const positive = market.change_24h >= 0;
+  const change = market.price_change_24h;
+  const positive = change !== null && change >= 0;
   return (
     <Link
       href={`/startups/market/${market.id}`}
@@ -51,16 +53,26 @@ function MarketCard({ market }: { market: Market }) {
         )}
       </div>
 
+      {market.description && (
+        <p className="mt-1 line-clamp-2 text-sm" style={{ color: '#6B6B6B' }}>
+          {market.description}
+        </p>
+      )}
+
       <div className="mt-5 flex items-end justify-between">
         <div>
           <span className="text-xs uppercase tracking-wide text-muted">Price</span>
           <p className="mt-0.5 text-xl font-semibold text-ink">${market.current_price.toFixed(4)}</p>
         </div>
         <span
-          className={`text-sm font-semibold ${positive ? "text-long" : "text-short"}`}
+          className="text-sm font-semibold"
+          style={{
+            color: change === null ? '#6B6B6B' : positive ? '#16A34A' : '#DC2626',
+          }}
         >
-          {positive ? "+" : ""}
-          {market.change_24h.toFixed(2)}%
+          {change === null
+            ? "—"
+            : `${positive ? "+" : ""}${change.toFixed(2)}%`}
         </span>
       </div>
 

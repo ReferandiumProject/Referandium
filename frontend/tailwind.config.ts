@@ -14,6 +14,11 @@ const config: Config = {
         primary: '#2563eb',
         yes: '#2563eb',
         no: '#f97316',
+        startup: {
+          DEFAULT: '#0D9488',
+          light: '#CCFBF1',
+          dark: '#0F766E',
+        },
       },
       keyframes: {
         'fade-in': {

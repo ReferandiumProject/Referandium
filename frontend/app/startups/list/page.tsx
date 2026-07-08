@@ -359,7 +359,7 @@ export default function StartupListPage() {
             <button
               onClick={handleLaunch}
               disabled={loading}
-              className="btn btn-primary w-full"
+              className="btn btn-primary w-full bg-startup text-white hover:bg-startup-dark"
             >
               {loading && <Spinner />}
               {loading ? "Launching..." : `Pay $${LISTING_FEE} and Launch Market`}

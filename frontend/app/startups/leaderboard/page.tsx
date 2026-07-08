@@ -41,7 +41,7 @@ function RankBadge({ rank }: { rank: number }) {
     <div
       className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full font-bold ${
         top3
-          ? "bg-ink text-white"
+          ? "bg-startup text-white"
           : "border border-line bg-surface text-muted"
       }`}
     >
@@ -109,7 +109,7 @@ export default function StartupLeaderboardPage() {
           </p>
           <Link
             href="/startups/list"
-            className="mt-8 inline-flex items-center justify-center rounded-full bg-ink px-6 py-3 text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
+            className="mt-8 inline-flex items-center justify-center rounded-full bg-startup px-6 py-3 text-[15px] font-semibold text-white transition-opacity hover:bg-startup-dark"
           >
             List Your Startup
           </Link>
@@ -140,7 +140,7 @@ export default function StartupLeaderboardPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-lg font-semibold text-ink">{entry.name}</h3>
                     {entry.graduated_at && (
-                      <span className="rounded-full border border-long bg-long/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-long">
+                      <span className="rounded-full border border-startup bg-startup/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-startup">
                         Graduated
                       </span>
                     )}

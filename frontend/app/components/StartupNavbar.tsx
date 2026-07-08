@@ -10,6 +10,7 @@ const navLinks = [
   { href: '/', label: 'Markets' },
   { href: '/leaderboard', label: 'Leaderboard' },
   { href: '/list', label: 'List a Startup' },
+  { href: '/profile', label: 'Portfolio' },
 ]
 
 function isActive(pathname: string, href: string): boolean {
@@ -89,13 +90,7 @@ export default function StartupNavbar() {
             <Link
               key={link.href}
               href={link.href}
-              style={{
-                color: isActive(pathname, link.href) ? '#0A0A0A' : '#6B6B6B',
-                textDecoration: 'none',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'color 0.15s',
-              }}
+              className={`text-[14px] font-medium no-underline transition-colors duration-150 ${isActive(pathname, link.href) ? 'text-startup' : 'text-[#6B6B6B]'}`}
             >
               {link.label}
             </Link>
@@ -107,20 +102,7 @@ export default function StartupNavbar() {
           {!authenticated ? (
             <button
               onClick={() => login()}
-              style={{
-                backgroundColor: '#0A0A0A',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: '500',
-                height: '36px',
-                padding: '0 16px',
-                cursor: 'pointer',
-                transition: 'background-color 0.15s',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#262626' }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#0A0A0A' }}
+              className="bg-startup text-white border-none rounded-lg text-[13px] font-medium h-9 px-4 cursor-pointer transition-colors duration-150 hover:bg-startup-dark"
             >
               Sign In
             </button>
@@ -128,23 +110,7 @@ export default function StartupNavbar() {
             <div ref={dropdownRef} style={{ position: 'relative' }}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                style={{
-                  backgroundColor: 'white',
-                  border: '1px solid #E5E5E5',
-                  color: '#0A0A0A',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  height: '36px',
-                  padding: '0 12px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'background-color 0.15s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#FAFAFA' }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
+                className="bg-white border border-startup text-[#0A0A0A] rounded-lg text-[13px] font-medium h-9 px-3 cursor-pointer flex items-center gap-1.5 transition-colors duration-150 hover:bg-[#FAFAFA]"
               >
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#16A34A' }} />
                 {displayLabel}

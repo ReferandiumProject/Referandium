@@ -131,7 +131,7 @@ export function TradingPanel({ marketId, totalSupply, authenticated, onTraded }:
           <button
             onClick={handleTrade}
             disabled={loading || collateral <= 0}
-            className={`btn w-full text-white ${direction === "long" ? "bg-long" : "bg-short"} hover:opacity-90 disabled:opacity-50`}
+            className="btn w-full bg-startup text-white hover:opacity-90 disabled:opacity-50"
           >
             {loading && <Spinner />}
             {loading ? "Processing..." : direction === "long" ? "Open Long" : "Open Short"}

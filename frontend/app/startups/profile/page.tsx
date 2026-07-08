@@ -321,7 +321,7 @@ export default function StartupProfilePage() {
                   <button
                     onClick={handleAddFunds}
                     disabled={addFundsSubmitting || !depositAmount}
-                    className="w-full bg-blue-600 text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full bg-startup text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-startup-dark transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {addFundsSubmitting ? 'Adding...' : 'Add Funds'}
                   </button>
@@ -386,7 +386,7 @@ export default function StartupProfilePage() {
                 <button
                   onClick={handleWithdraw}
                   disabled={withdrawSubmitting || !withdrawAmount || !withdrawWallet}
-                  className="w-full bg-blue-600 text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full bg-startup text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-startup-dark transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {withdrawSubmitting ? 'Processing...' : 'Withdraw'}
                 </button>
