@@ -70,9 +70,9 @@ export default function Navbar() {
           <Link href="/markets" style={{ color: pathname === '/markets' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
             Markets
           </Link>
-          <Link href="/startups" style={{ color: pathname === '/startups' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
+          <a href="https://startup.referandium.com" target="_blank" rel="noopener noreferrer" style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
             Startups
-          </Link>
+          </a>
           <Link href="/gookies" style={{ color: pathname === '/gookies' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
             Creators
           </Link>
