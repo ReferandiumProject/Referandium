@@ -40,6 +40,21 @@ export default function ProfilePage() {
   const [withdrawResult, setWithdrawResult] = useState<{ signature: string; new_balance: number } | null>(null)
   const [withdrawError, setWithdrawError] = useState<string | null>(null)
 
+  type StartupPosition = {
+    id: string
+    market_id: string
+    startup_name: string
+    direction: 'long' | 'short'
+    collateral_usdc: number
+    entry_price: number
+    current_price: number
+    unrealised_pnl: number
+    opened_at: string
+  }
+
+  const [startupPositions, setStartupPositions] = useState<StartupPosition[]>([])
+  const [startupPositionsLoading, setStartupPositionsLoading] = useState(false)
+
   useEffect(() => {
     if (connected && publicKey) {
       fetchData()
@@ -97,6 +112,32 @@ export default function ProfilePage() {
     }
     fetchDepositInfo()
   }, [authenticated])
+
+  useEffect(() => {
+    if (!authenticated) return
+    async function fetchStartupPositions() {
+      setStartupPositionsLoading(true)
+      try {
+        const token = await getAccessToken()
+        if (!token) throw new Error('Not authenticated')
+        const res = await fetch('/api/startup-portfolio', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        })
+        const json = await res.json()
+        if (res.ok && json.data?.positions) {
+          setStartupPositions(json.data.positions)
+        } else {
+          setStartupPositions([])
+        }
+      } catch (err: any) {
+        console.error('Error fetching startup positions:', err)
+        setStartupPositions([])
+      } finally {
+        setStartupPositionsLoading(false)
+      }
+    }
+    fetchStartupPositions()
+  }, [authenticated, getAccessToken])
 
   const fetchData = async () => {
     if (!publicKey) return
@@ -456,6 +497,72 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
+
+            {/* ── Startup Positions ── */}
+            {authenticated && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold text-slate-900">Startup Positions</h2>
+                  <span className="text-xs text-slate-400">{startupPositions.length} open</span>
+                </div>
+
+                {startupPositionsLoading ? (
+                  <div className="flex items-center justify-center py-12 border border-dashed border-slate-200 rounded-xl">
+                    <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    <p className="text-slate-500 text-sm font-medium">Loading positions...</p>
+                  </div>
+                ) : startupPositions.length === 0 ? (
+                  <div className="text-center py-12 border border-dashed border-slate-200 rounded-xl">
+                    <p className="text-slate-500 text-sm font-medium">No open positions</p>
+                    <Link href="/startups" className="text-blue-600 text-sm font-medium hover:underline mt-1 inline-block">Browse startup markets →</Link>
+                  </div>
+                ) : (
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Startup</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Direction</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Entry</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Current</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">PnL</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {startupPositions.map((p) => (
+                          <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3">
+                              <Link href={`/startups/market/${p.market_id}`} className="text-sm font-medium text-slate-900 hover:text-blue-600 transition no-underline">
+                                {p.startup_name}
+                              </Link>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                                style={{
+                                  backgroundColor: p.direction === 'long' ? '#DCFCE7' : '#FEE2E2',
+                                  color: p.direction === 'long' ? '#16A34A' : '#DC2626',
+                                }}
+                              >
+                                {p.direction === 'long' ? 'Long' : 'Short'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm font-medium text-slate-900 tabular-nums">${p.entry_price.toFixed(4)}</td>
+                            <td className="px-4 py-3 text-sm font-medium text-slate-900 tabular-nums">${p.current_price.toFixed(4)}</td>
+                            <td
+                              className="px-4 py-3 text-sm font-semibold tabular-nums"
+                              style={{ color: p.unrealised_pnl >= 0 ? '#16A34A' : '#DC2626' }}
+                            >
+                              {p.unrealised_pnl >= 0 ? '+' : ''}${p.unrealised_pnl.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── My Markets ── */}
             <div>
