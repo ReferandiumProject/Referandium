@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { usePrivy } from '@privy-io/react-auth';
+import { useUser } from '../context/UserContext';
 import {
   GraduationCap,
   Lock,
@@ -73,6 +75,8 @@ const YOUTUBE_CONTENT = [
 export default function LearningPage() {
   const { publicKey, connected, wallet } = useWallet();
   const { connection } = useConnection();
+  const { authenticated } = useUser();
+  const { login } = usePrivy();
 
   const [subscription, setSubscription] = useState<UserSubscriptionData | null>(null);
   const [rfrmPrice, setRfrmPrice] = useState<number>(0);
@@ -122,12 +126,12 @@ export default function LearningPage() {
   }, [fetchPrice]);
 
   useEffect(() => {
-    if (connected && publicKey) {
+    if (authenticated && publicKey) {
       fetchSubscription();
     } else {
       setSubscription(null);
     }
-  }, [connected, publicKey, fetchSubscription]);
+  }, [authenticated, publicKey, fetchSubscription]);
 
   const handleLockRFRM = async () => {
     if (!wallet || !publicKey || !connection || rfrmRequired <= 0) return;
@@ -194,7 +198,7 @@ export default function LearningPage() {
     }
   };
 
-  const isAdmin = publicKey?.toBase58() === ADMIN_WALLET;
+  const isAdmin = publicKey?.toBase58() === ADMIN_WALLET && authenticated;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
@@ -212,22 +216,27 @@ export default function LearningPage() {
         </p>
       </div>
 
-      {/* Wallet not connected */}
-      {!connected && (
+      {/* Not signed in */}
+      {!authenticated && (
         <div className="max-w-md mx-auto text-center bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 shadow-sm">
           <Lock size={48} className="mx-auto text-gray-400 dark:text-gray-500 mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Connect Your Wallet</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Sign In</h2>
           <p className="text-gray-500 dark:text-gray-400 mb-6">
-            Connect your Solana wallet to subscribe and access learning content.
+            Sign in to subscribe and access learning content.
           </p>
           <div className="flex justify-center">
-            <WalletMultiButton className="!bg-purple-600 hover:!bg-purple-700 !rounded-lg !font-semibold" />
+            <button
+              onClick={() => login()}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg px-6 py-3 transition"
+            >
+              Sign In
+            </button>
           </div>
         </div>
       )}
 
-      {/* Connected but not subscribed */}
-      {connected && !isSubscribed && (
+      {/* Signed in but not subscribed */}
+      {authenticated && !isSubscribed && (
         <div className="grid md:grid-cols-2 gap-8 mb-12">
           {/* Subscription Card */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
@@ -357,7 +366,7 @@ export default function LearningPage() {
       )}
 
       {/* Subscribed */}
-      {connected && isSubscribed && subscription && (
+      {authenticated && isSubscribed && subscription && (
         <>
           {/* Subscription Status Bar */}
           <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 mb-8 text-white">
@@ -498,8 +507,8 @@ export default function LearningPage() {
         </>
       )}
 
-      {/* Connected but subscription expired */}
-      {connected && subscription && !subscription.isActive && (
+      {/* Signed in but subscription expired */}
+      {authenticated && subscription && !subscription.isActive && (
         <div className="max-w-md mx-auto text-center bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 shadow-sm">
           <Clock size={48} className="mx-auto text-yellow-500 mb-4" />
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Subscription Ended</h2>
@@ -520,7 +529,7 @@ export default function LearningPage() {
       )}
 
       {/* Loading subscription */}
-      {connected && subLoading && !subscription && (
+      {authenticated && subLoading && !subscription && (
         <div className="flex items-center justify-center py-16">
           <RefreshCw size={32} className="animate-spin text-purple-600" />
         </div>

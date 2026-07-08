@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { Connection, PublicKey } from '@solana/web3.js'
 import Link from 'next/link'
+import { usePrivy } from '@privy-io/react-auth'
+import { useUser } from '../context/UserContext'
 import { supabase } from '../../lib/supabaseClient'
 import { Gookie, Market } from '../types'
 import * as marketEscrowContract from '../utils/marketEscrowContract'
@@ -34,6 +36,8 @@ const statusBadge = (status: string) => {
 export default function AdminPage() {
   const wallet = useWallet()
   const { connected, publicKey } = wallet
+  const { authenticated, dbUser } = useUser()
+  const { login } = usePrivy()
   const [activeTab, setActiveTab] = useState<'creators' | 'markets'>('creators')
   const [isAdmin, setIsAdmin] = useState(false)
   const [gookies, setGookies] = useState<Gookie[]>([])
@@ -55,9 +59,9 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    if (connected && publicKey) setIsAdmin(ADMIN_WALLETS.includes(publicKey.toBase58()))
+    if (authenticated && dbUser?.wallet_address) setIsAdmin(ADMIN_WALLETS.includes(dbUser.wallet_address))
     else setIsAdmin(false)
-  }, [connected, publicKey])
+  }, [authenticated, dbUser?.wallet_address])
 
   useEffect(() => {
     if (isAdmin) {
@@ -182,17 +186,23 @@ export default function AdminPage() {
   }
 
   /* ── Gate screens ── */
-  if (!connected) return (
+  if (!authenticated) return (
     <div className="bg-white min-h-screen flex flex-col items-center justify-center gap-3">
       <p className="text-slate-900 font-semibold">Admin Access Required</p>
-      <p className="text-slate-400 text-sm">Connect your wallet to access the admin panel.</p>
+      <p className="text-slate-400 text-sm">Sign in to access the admin panel.</p>
+      <button
+        onClick={() => login()}
+        className="mt-2 bg-blue-600 text-white font-semibold text-sm py-2.5 px-6 rounded-lg hover:bg-blue-700 transition"
+      >
+        Sign In
+      </button>
     </div>
   )
   if (!isAdmin) return (
     <div className="bg-white min-h-screen flex flex-col items-center justify-center gap-2">
       <p className="text-slate-900 font-semibold">Access Denied</p>
-      <p className="text-slate-400 text-sm">Your wallet is not authorized.</p>
-      <p className="text-slate-300 text-xs font-mono mt-1">{publicKey?.toBase58()}</p>
+      <p className="text-slate-400 text-sm">Your account is not authorized.</p>
+      <p className="text-slate-300 text-xs font-mono mt-1">{dbUser?.wallet_address ?? publicKey?.toBase58()}</p>
     </div>
   )
 

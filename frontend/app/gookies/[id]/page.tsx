@@ -8,6 +8,8 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { ArrowLeft, Clock, AlertCircle, Loader2, Trophy, ArrowRight, Wallet, ShieldCheck, CheckCircle, Plus, Trash2, Sparkles, Calendar } from 'lucide-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { usePrivy } from '@privy-io/react-auth';
+import { useUser } from '@/app/context/UserContext';
 import { Gookie, GookieBid } from '@/app/types';
 import * as gookieContract from '@/app/utils/gookieContract';
 import * as marketEscrowContract from '@/app/utils/marketEscrowContract';
@@ -31,6 +33,8 @@ export default function GookieDetailPage() {
   const wallet = useWallet();
   const { publicKey, connected } = wallet;
   const { connection } = useConnection();
+  const { authenticated } = useUser();
+  const { login } = usePrivy();
 
   const [gookie, setGookie] = useState<Gookie | null>(null);
   const [bids, setBids] = useState<GookieBid[]>([]);
@@ -164,8 +168,13 @@ export default function GookieDetailPage() {
   };
 
   const handleDeployMarket = async () => {
+    if (!authenticated) {
+      setNotification({ type: 'error', message: 'Please sign in first!' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
     if (!connected || !publicKey || !wallet.wallet) {
-      setNotification({ type: 'error', message: 'Please connect your wallet first!' });
+      setNotification({ type: 'error', message: 'Wallet required for this action.' });
       setTimeout(() => setNotification(null), 3000);
       return;
     }
@@ -299,8 +308,13 @@ export default function GookieDetailPage() {
   };
 
   const handlePlaceBid = async () => {
+    if (!authenticated) {
+      setNotification({ type: 'error', message: 'Please sign in first!' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
     if (!connected || !publicKey || !wallet.wallet) {
-      setNotification({ type: 'error', message: 'Please connect your wallet first!' });
+      setNotification({ type: 'error', message: 'Wallet required for this action.' });
       setTimeout(() => setNotification(null), 3000);
       return;
     }
@@ -743,11 +757,16 @@ export default function GookieDetailPage() {
                 )
               ) : (
                 <div className="space-y-4">
-                  {!connected ? (
+                  {!authenticated ? (
                     <div className="text-center space-y-4">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Connect your wallet to place a bid</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Sign in to place a bid</p>
                       <div className="flex justify-center">
-                        <WalletMultiButton className="!bg-orange-500 hover:!bg-orange-600 !rounded-xl !h-12 !px-8 !font-bold !transition-colors w-full flex justify-center" />
+                        <button
+                          onClick={() => login()}
+                          className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl h-12 px-8 font-bold transition-colors w-full flex justify-center items-center"
+                        >
+                          Sign In
+                        </button>
                       </div>
                     </div>
                   ) : (

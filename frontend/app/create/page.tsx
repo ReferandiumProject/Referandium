@@ -3,13 +3,17 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { usePrivy } from '@privy-io/react-auth'
+import { useUser } from '../../app/context/UserContext'
 import { supabase } from '../../lib/supabaseClient'
 
 const categories = ['Politics', 'Sports', 'Crypto', 'Pop Culture', 'Business', 'Other']
 
 export default function CreateMarketPage() {
   const router = useRouter()
-  const { publicKey, connected } = useWallet()
+  const { publicKey } = useWallet()
+  const { authenticated } = useUser()
+  const { login } = usePrivy()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -32,7 +36,9 @@ export default function CreateMarketPage() {
 
   const handleSubmit = async () => {
     setError('')
-    if (!connected || !publicKey) { setError('Please connect your wallet first.'); return }
+    if (!authenticated) { setError('Please sign in first.'); return }
+    const creatorWallet = publicKey?.toBase58()
+    if (!creatorWallet) { setError('No wallet address available.'); return }
     if (!title.trim()) { setError('Title is required.'); return }
     if (!endDate) { setError('End date is required.'); return }
     if (marketType === 'multiple' && options.filter(o => o.trim()).length < 2) { setError('At least 2 options are required.'); return }
@@ -49,7 +55,7 @@ export default function CreateMarketPage() {
         end_time: new Date(endDate).toISOString(),
         resolve_criteria: resolveCriteria.trim() || null,
         status: 'active',
-        gookie_wallet: publicKey.toBase58(),
+        gookie_wallet: creatorWallet,
         total_signals: 0,
         total_usdc_locked: 0,
         total_yield_earned: 0,
@@ -106,13 +112,19 @@ export default function CreateMarketPage() {
           <p className="text-[15px] leading-[1.5] tracking-[-0.01em] text-[#434655] mt-2">Define the parameters for a new prescription market.</p>
         </div>
 
-        {!connected && (
+        {!authenticated && (
           <div className="border border-dashed border-[#e1e2ed] rounded-xl p-6 text-center mb-8">
-            <p className="text-[#434655] text-[15px] font-medium">Connect your wallet to create a market.</p>
+            <p className="text-[#434655] text-[15px] font-medium mb-4">Sign in to create a market.</p>
+            <button
+              onClick={() => login()}
+              className="bg-[#2563eb] text-white font-medium text-sm px-5 py-2.5 rounded-lg hover:bg-[#1d4ed8] transition"
+            >
+              Sign In
+            </button>
           </div>
         )}
 
-        {connected && (
+        {authenticated && (
           <div className="space-y-6">
 
             {/* Title */}

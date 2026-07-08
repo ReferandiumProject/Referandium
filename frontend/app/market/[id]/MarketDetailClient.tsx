@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { usePrivy } from '@privy-io/react-auth'
+import { useUser } from '../../context/UserContext'
 import { supabase } from '../../../lib/supabaseClient'
 import { Market, MarketOption, Signal, Comment } from '@/app/types'
 import * as marketEscrowContract from '@/app/utils/marketEscrowContract'
@@ -25,6 +26,7 @@ export default function MarketDetailClient() {
   const { publicKey, connected } = wallet
   const { connection } = useConnection()
   const { getAccessToken } = usePrivy()
+  const { authenticated, dbUser } = useUser()
 
   const [market, setMarket] = useState<Market | null>(null)
   const [options, setOptions] = useState<MarketOption[]>([])
@@ -65,10 +67,10 @@ export default function MarketDetailClient() {
   }, [market?.gookie_wallet])
 
   useEffect(() => {
-    if (connected && publicKey && market) {
+    if (authenticated && market) {
       checkIfUserSignaled()
     }
-  }, [connected, publicKey, market])
+  }, [authenticated, market])
 
   const isBinaryMarket = market?.market_type === 'binary'
 
@@ -110,10 +112,15 @@ export default function MarketDetailClient() {
   }
 
   const handlePostComment = async () => {
-    if (!commentText.trim() || !connected || !publicKey || !id) return
+    if (!commentText.trim() || !authenticated || !id) return
+    const wallet = dbUser?.wallet_address || publicKey?.toBase58()
+    if (!wallet) {
+      showNotification('error', 'No wallet address available for comment.')
+      return
+    }
     setIsPostingComment(true)
     try {
-      const { data, error } = await supabase.from('comments').insert({ market_id: id, user_wallet: publicKey.toBase58(), content: commentText.trim() }).select().single()
+      const { data, error } = await supabase.from('comments').insert({ market_id: id, user_wallet: wallet, content: commentText.trim() }).select().single()
       if (error) throw error
       if (data) setComments(prev => [...prev, data])
       setCommentText('')
@@ -138,17 +145,22 @@ export default function MarketDetailClient() {
   }
 
   const checkIfUserSignaled = async () => {
-    if (!publicKey) return
+    const wallet = dbUser?.wallet_address || publicKey?.toBase58()
+    if (!wallet) return
     try {
-      const { data } = await supabase.from('signals').select('*').eq('market_id', id).eq('user_wallet', publicKey.toBase58()).single()
+      const { data } = await supabase.from('signals').select('*').eq('market_id', id).eq('user_wallet', wallet).single()
       if (data) { setHasSignaled(true); setUserSignal(data as Signal) }
       else { setHasSignaled(false); setUserSignal(null) }
     } catch { setHasSignaled(false); setUserSignal(null) }
   }
 
   const handleWithdraw = async () => {
+    if (!authenticated) {
+      showNotification('error', 'Please sign in first!')
+      return
+    }
     if (!connected || !publicKey || !wallet.wallet || !market?.on_chain_market_id) {
-      showNotification('error', 'Please connect your wallet first!')
+      showNotification('error', 'Wallet required for this action.')
       return
     }
     if (!onChainSignal || onChainSignal.withdrawn) {
@@ -170,8 +182,12 @@ export default function MarketDetailClient() {
   }
 
   const handleClaim = async () => {
+    if (!authenticated) {
+      showNotification('error', 'Please sign in first!')
+      return
+    }
     if (!connected || !publicKey || !wallet.wallet) {
-      showNotification('error', 'Please connect your wallet first!')
+      showNotification('error', 'Wallet required for this action.')
       return
     }
     setIsWithdrawing(true)
@@ -194,8 +210,8 @@ export default function MarketDetailClient() {
   }
 
   const handleSubmitSignal = async () => {
-    if (!connected || !publicKey || !wallet.wallet) {
-      showNotification('error', 'Please connect your Solana wallet first!')
+    if (!authenticated) {
+      showNotification('error', 'Please sign in first!')
       return
     }
     if (hasSignaled) { showNotification('error', 'You have already signaled on this market'); return }
@@ -364,9 +380,9 @@ export default function MarketDetailClient() {
               <h2 className="font-semibold text-[24px] leading-[1.2] tracking-[-0.03em] text-[#191b23] mb-4">Discussion</h2>
 
               {/* Comment Input */}
-              {!connected ? (
+              {!authenticated ? (
                 <div className="text-center py-4 border border-dashed border-[#e1e2ed] rounded-xl mb-6">
-                  <p className="text-[#737686] text-[13px]">Connect your wallet to comment</p>
+                  <p className="text-[#737686] text-[13px]">Sign in to comment</p>
                 </div>
               ) : (
                 <div className="flex gap-4 mb-6">

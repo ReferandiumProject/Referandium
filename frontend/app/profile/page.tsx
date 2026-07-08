@@ -56,14 +56,14 @@ export default function ProfilePage() {
   const [startupPositionsLoading, setStartupPositionsLoading] = useState(false)
 
   useEffect(() => {
-    if (authenticated && dbUser?.wallet_address) {
+    if (authenticated) {
       fetchData()
     } else {
       setSignals([])
       setMyMarkets([])
       setLoading(false)
     }
-  }, [authenticated, dbUser?.wallet_address])
+  }, [authenticated])
 
   useEffect(() => {
     if (dbUser?.wallet_address) {
