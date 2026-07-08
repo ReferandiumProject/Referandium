@@ -14,9 +14,9 @@ const formatDate = (d: string) => {
 }
 
 export default function ProfilePage() {
-  const { publicKey, connected } = useWallet()
-  const { authenticated, getAccessToken } = usePrivy()
-  const { dbUser } = useUser()
+  const { publicKey } = useWallet()
+  const { getAccessToken, login } = usePrivy()
+  const { authenticated, dbUser } = useUser()
 
   const [signals, setSignals] = useState<any[]>([])
   const [myMarkets, setMyMarkets] = useState<Market[]>([])
@@ -56,14 +56,14 @@ export default function ProfilePage() {
   const [startupPositionsLoading, setStartupPositionsLoading] = useState(false)
 
   useEffect(() => {
-    if (connected && publicKey) {
+    if (authenticated && dbUser?.wallet_address) {
       fetchData()
     } else {
       setSignals([])
       setMyMarkets([])
       setLoading(false)
     }
-  }, [connected, publicKey])
+  }, [authenticated, dbUser?.wallet_address])
 
   useEffect(() => {
     if (dbUser?.wallet_address) {
@@ -140,9 +140,9 @@ export default function ProfilePage() {
   }, [authenticated, getAccessToken])
 
   const fetchData = async () => {
-    if (!publicKey) return
+    if (!dbUser?.wallet_address) return
     setLoading(true)
-    const wallet = publicKey.toBase58()
+    const wallet = dbUser.wallet_address
 
     try {
       // Fetch signals with market titles
@@ -267,11 +267,17 @@ export default function ProfilePage() {
     }
   }
 
-  if (!connected) {
+  if (!authenticated) {
     return (
-      <div className="bg-white min-h-screen flex flex-col items-center justify-center gap-2">
-        <p className="text-slate-900 font-medium">Connect your wallet to view your profile</p>
-        <p className="text-slate-400 text-sm">Your signals and created markets will appear here.</p>
+      <div className="bg-white min-h-screen flex flex-col items-center justify-center gap-3">
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Profile</h1>
+        <p className="text-slate-500 text-sm font-medium">Sign in to view your profile</p>
+        <button
+          onClick={() => login()}
+          className="mt-2 bg-blue-600 text-white font-semibold text-sm py-2.5 px-6 rounded-lg hover:bg-blue-700 transition"
+        >
+          Sign In
+        </button>
       </div>
     )
   }
