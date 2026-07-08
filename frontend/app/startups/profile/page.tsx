@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
 import { useUser } from '@/app/context/UserContext'
-import { supabase } from '@/lib/supabaseClient'
 
 const formatDate = (d: string) => {
   const dt = new Date(d)
@@ -55,30 +54,33 @@ export default function StartupProfilePage() {
   }, [dbUser?.wallet_address])
 
   useEffect(() => {
-    if (!dbUser?.id) return
+    if (!authenticated) return
     async function fetchBalance() {
       setBalanceLoading(true)
       try {
-        const { data, error } = await supabase
-          .from('balances')
-          .select('available_usdc, locked_usdc')
-          .eq('user_id', dbUser!.id)
-          .single()
-        if (error) {
-          console.error('Error fetching balance:', error)
-          setBalance(null)
-        } else {
+        const token = await getAccessToken()
+        if (!token) throw new Error('Not authenticated')
+        const res = await fetch('/api/balance', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        })
+        const json = await res.json()
+        if (res.ok && json.data) {
           setBalance({
-            available_usdc: data?.available_usdc ?? 0,
-            locked_usdc: data?.locked_usdc ?? 0,
+            available_usdc: json.data.available_usdc ?? 0,
+            locked_usdc: json.data.locked_usdc ?? 0,
           })
+        } else {
+          setBalance(null)
         }
+      } catch (err: any) {
+        console.error('Error fetching balance:', err)
+        setBalance(null)
       } finally {
         setBalanceLoading(false)
       }
     }
     fetchBalance()
-  }, [dbUser?.id])
+  }, [authenticated, getAccessToken])
 
   useEffect(() => {
     if (!authenticated) return
@@ -130,16 +132,22 @@ export default function StartupProfilePage() {
   }
 
   const refreshBalance = async () => {
-    if (!dbUser?.id) return
-    const { data } = await supabase
-      .from('balances')
-      .select('available_usdc, locked_usdc')
-      .eq('user_id', dbUser.id)
-      .single()
-    setBalance({
-      available_usdc: data?.available_usdc ?? 0,
-      locked_usdc: data?.locked_usdc ?? 0,
-    })
+    try {
+      const token = await getAccessToken()
+      if (!token) throw new Error('Not authenticated')
+      const res = await fetch('/api/balance', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+      const json = await res.json()
+      if (res.ok && json.data) {
+        setBalance({
+          available_usdc: json.data.available_usdc ?? 0,
+          locked_usdc: json.data.locked_usdc ?? 0,
+        })
+      }
+    } catch (err: any) {
+      console.error('Error refreshing balance:', err)
+    }
   }
 
   const handleAddFunds = async () => {
