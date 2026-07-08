@@ -30,7 +30,7 @@ export default function RootLayout({
           <UserProvider>
             {isStartup ? <StartupNavbar /> : <Navbar />}
             <main>{children}</main>
-            <Footer />
+            {!isStartup && <Footer />}
           </UserProvider>
         </AppWalletProvider>
       </body>
