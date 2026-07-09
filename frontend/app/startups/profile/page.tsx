@@ -143,6 +143,28 @@ export default function StartupProfilePage() {
     navigator.clipboard.writeText(text)
   }
 
+  const handleClosePosition = async (positionId: string) => {
+    const token = await getAccessToken()
+    if (!token) throw new Error('Not authenticated')
+
+    const res = await fetch('/api/trade/close', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ position_id: positionId }),
+    })
+
+    const json = await res.json()
+    if (!res.ok || json.error) {
+      throw new Error(json.error || 'Failed to close position')
+    }
+
+    setStartupPositions((prev) => prev.filter((p) => p.id !== positionId))
+    await refreshBalance()
+  }
+
   const refreshBalance = async () => {
     try {
       const token = await getAccessToken()
@@ -457,6 +479,7 @@ export default function StartupProfilePage() {
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Current</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">PnL</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Opened</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Close</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Share</th>
                   </tr>
                 </thead>
@@ -489,6 +512,9 @@ export default function StartupProfilePage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-400">{formatDate(p.opened_at)}</td>
                       <td className="px-4 py-3">
+                        <CloseButton positionId={p.id} onClose={handleClosePosition} />
+                      </td>
+                      <td className="px-4 py-3">
                         <button
                           onClick={() => window.open(buildShareUrl(p), '_blank', 'noopener,noreferrer')}
                           className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
@@ -505,6 +531,53 @@ export default function StartupProfilePage() {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function CloseButton({
+  positionId,
+  onClose,
+}: {
+  positionId: string
+  onClose: (positionId: string) => Promise<void>
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleClick = async () => {
+    if (!confirming) {
+      setConfirming(true)
+      setError(null)
+      return
+    }
+
+    setLoading(true)
+    try {
+      await onClose(positionId)
+    } catch (err: any) {
+      setError(err.message || 'Failed to close')
+    } finally {
+      setLoading(false)
+      setConfirming(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        className={`inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
+          confirming
+            ? 'bg-red-50 text-[#DC2626] hover:bg-red-100'
+            : 'text-slate-400 hover:bg-slate-100 hover:text-[#DC2626]'
+        }`}
+      >
+        {loading ? 'Closing...' : confirming ? 'Confirm?' : 'Close'}
+      </button>
+      {error && <span className="text-[10px] text-[#DC2626]">{error}</span>}
     </div>
   )
 }
