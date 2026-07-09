@@ -76,20 +76,20 @@ export function TradingPanel({ marketId, totalSupply, authenticated, onTraded }:
       <div className="mt-4 grid grid-cols-2 gap-2">
         <button
           onClick={() => setDirection("long")}
-          className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+          className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
             direction === "long"
-              ? "bg-long text-white"
-              : "bg-surface text-muted hover:text-ink"
+              ? "border-startup bg-startup text-white"
+              : "border-[#E5E5E5] bg-white text-[#0A0A0A] hover:bg-[#FAFAFA]"
           }`}
         >
           Long
         </button>
         <button
           onClick={() => setDirection("short")}
-          className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+          className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
             direction === "short"
-              ? "bg-short text-white"
-              : "bg-surface text-muted hover:text-ink"
+              ? "border-startup bg-startup text-white"
+              : "border-[#E5E5E5] bg-white text-[#0A0A0A] hover:bg-[#FAFAFA]"
           }`}
         >
           Short
@@ -109,19 +109,19 @@ export function TradingPanel({ marketId, totalSupply, authenticated, onTraded }:
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="0.00"
-          className="input mt-1"
+          className="mt-1 block w-full rounded-md border border-[#E5E5E5] bg-white px-3 py-2 text-sm text-[#0A0A0A] outline-none transition-colors placeholder:text-[#6B6B6B] focus:border-startup focus:ring-2 focus:ring-startup/20"
         />
       </div>
 
       {/* Estimate preview */}
-      <div className="mt-4 space-y-1 rounded-md bg-surface p-3 text-sm">
+      <div className="mt-4 space-y-2 rounded-md bg-surface p-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-muted">Position Size</span>
-          <span className="font-medium text-ink">{estimate.sizeTokens.toFixed(4)}</span>
+          <span className="text-[#6B6B6B]">Position Size</span>
+          <span className="font-semibold text-[#0A0A0A]">{estimate.sizeTokens.toFixed(4)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted">Estimated Entry Price</span>
-          <span className="font-medium text-ink">${estimate.entryPrice.toFixed(4)}</span>
+          <span className="text-[#6B6B6B]">Estimated Entry Price</span>
+          <span className="font-semibold text-[#0A0A0A]">${estimate.entryPrice.toFixed(4)}</span>
         </div>
       </div>
 
@@ -131,13 +131,16 @@ export function TradingPanel({ marketId, totalSupply, authenticated, onTraded }:
           <button
             onClick={handleTrade}
             disabled={loading || collateral <= 0}
-            className="btn w-full bg-startup text-white hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-md bg-startup px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-startup-dark disabled:opacity-50"
           >
             {loading && <Spinner />}
             {loading ? "Processing..." : direction === "long" ? "Open Long" : "Open Short"}
           </button>
         ) : (
-          <a href="/signin" className="btn btn-primary w-full">
+          <a
+            href="/signin"
+            className="inline-flex w-full items-center justify-center rounded-md bg-startup px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-startup-dark"
+          >
             Sign in to take a position
           </a>
         )}
