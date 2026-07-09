@@ -27,10 +27,21 @@ function initials(name: string): string {
 function MarketCard({ market }: { market: Market }) {
   const change = market.price_change_24h;
   const positive = change !== null && change >= 0;
+
+  const badgeClasses =
+    change === null
+      ? "rounded-full bg-[#F3F4F6] px-2 py-0.5 text-xs font-semibold text-[#6B6B6B]"
+      : positive
+        ? "rounded-full bg-[#DCFCE7] px-2 py-0.5 text-xs font-semibold text-[#16A34A]"
+        : "rounded-full bg-[#FEE2E2] px-2 py-0.5 text-xs font-semibold text-[#DC2626]";
+
+  const changeText =
+    change === null ? "—" : `${positive ? "+" : ""}${change.toFixed(2)}%`;
+
   return (
     <Link
       href={`/startups/market/${market.id}`}
-      className="card group transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(10,10,10,0.10)]"
+      className="group flex flex-col cursor-pointer rounded-lg border border-[#E5E5E5] bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md"
     >
       <div className="flex items-center gap-3">
         {market.logo_url ? (
@@ -41,11 +52,11 @@ function MarketCard({ market }: { market: Market }) {
             className="h-12 w-12 rounded-lg object-cover"
           />
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-surface text-sm font-semibold text-muted">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-startup text-sm font-bold text-white">
             {initials(market.name)}
           </div>
         )}
-        <h3 className="text-[1.05rem] font-semibold text-ink">{market.name}</h3>
+        <h3 className="text-[1.05rem] font-semibold text-[#0A0A0A]">{market.name}</h3>
         {market.graduated_at && (
           <span className="rounded-full border border-long bg-long/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-long">
             Graduated
@@ -54,32 +65,23 @@ function MarketCard({ market }: { market: Market }) {
       </div>
 
       {market.description && (
-        <p className="mt-1 line-clamp-2 text-sm" style={{ color: '#6B6B6B' }}>
+        <p className="mt-2 line-clamp-2 text-sm text-[#6B6B6B]">
           {market.description}
         </p>
       )}
 
-      <div className="mt-5 flex items-end justify-between">
-        <div>
-          <span className="text-xs uppercase tracking-wide text-muted">Price</span>
-          <p className="mt-0.5 text-xl font-semibold text-ink">${market.current_price.toFixed(4)}</p>
-        </div>
-        <span
-          className="text-sm font-semibold"
-          style={{
-            color: change === null ? '#6B6B6B' : positive ? '#16A34A' : '#DC2626',
-          }}
-        >
-          {change === null
-            ? "—"
-            : `${positive ? "+" : ""}${change.toFixed(2)}%`}
-        </span>
+      <div className="my-4 h-px w-full bg-[#E5E5E5]" />
+
+      <div className="flex items-center justify-between">
+        <p className="text-xl font-bold text-[#0A0A0A]">
+          ${market.current_price.toFixed(4)}
+        </p>
+        <span className={badgeClasses}>{changeText}</span>
       </div>
 
-      <div className="mt-4 border-t border-line pt-4">
-        <span className="text-xs uppercase tracking-wide text-muted">24h Volume</span>
-        <p className="mt-0.5 text-sm font-medium text-ink">${market.volume_24h.toFixed(2)}</p>
-      </div>
+      <p className="mt-2 text-xs text-[#6B6B6B]">
+        Vol ${market.volume_24h.toFixed(2)}
+      </p>
     </Link>
   );
 }
