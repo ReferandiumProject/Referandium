@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
 import { useUser } from '@/app/context/UserContext'
+import { ExternalLink } from 'lucide-react'
 
 const formatDate = (d: string) => {
   const dt = new Date(d)
@@ -126,6 +127,16 @@ export default function StartupProfilePage() {
     }
     fetchStartupPositions()
   }, [authenticated, getAccessToken])
+
+  const buildShareUrl = (p: StartupPosition) => {
+    const pnl = p.unrealised_pnl
+    const pnlPercent = p.collateral_usdc > 0 ? (pnl / p.collateral_usdc) * 100 : 0
+    const pnlSign = pnl >= 0 ? '+' : '-'
+    const percentSign = pnlPercent >= 0 ? '+' : '-'
+    const direction = p.direction === 'long' ? 'Long' : 'Short'
+    const text = `I'm ${direction} on ${p.startup_name} at $${p.current_price.toFixed(4)} (entry $${p.entry_price.toFixed(4)}) · ${pnlSign}$${Math.abs(pnl).toFixed(4)} (${percentSign}${Math.abs(pnlPercent).toFixed(2)}%) on Startup Sentiment 🚀 https://startup.referandium.com/market/${p.market_id}`
+    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
+  }
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -445,6 +456,7 @@ export default function StartupProfilePage() {
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Current</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">PnL</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Opened</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase">Share</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -475,6 +487,15 @@ export default function StartupProfilePage() {
                         {p.unrealised_pnl >= 0 ? '+' : ''}${p.unrealised_pnl.toFixed(2)}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-400">{formatDate(p.opened_at)}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => window.open(buildShareUrl(p), '_blank', 'noopener,noreferrer')}
+                          className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                          aria-label="Share on X"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
