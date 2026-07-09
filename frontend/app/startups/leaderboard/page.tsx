@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type LeaderboardEntry = {
@@ -36,21 +37,24 @@ function formatCurrency(value: number): string {
 }
 
 function RankBadge({ rank }: { rank: number }) {
-  const top3 = rank <= 3;
+  const colors =
+    rank === 1
+      ? "bg-[#F59E0B] text-white"
+      : rank === 2
+        ? "bg-[#9CA3AF] text-white"
+        : rank === 3
+          ? "bg-[#B45309] text-white"
+          : "border border-[#E5E5E5] bg-white text-[#6B6B6B]";
   return (
     <div
-      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full font-bold ${
-        top3
-          ? "bg-startup text-white"
-          : "border border-line bg-surface text-muted"
-      }`}
+      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full font-bold ${colors}`}
     >
       #{rank}
     </div>
   );
 }
 
-function RatioBar({ long, short, hasPositions }: { long: number; short: number; hasPositions: boolean }) {
+function RatioBar({ long, short, hasPositions, marketId }: { long: number; short: number; hasPositions: boolean; marketId: string }) {
   const longPct = Math.round(long * 100);
   const shortPct = Math.round(short * 100);
   return (
@@ -72,7 +76,13 @@ function RatioBar({ long, short, hasPositions }: { long: number; short: number; 
             <span className="text-short">Short {shortPct}%</span>
           </>
         ) : (
-          <span className="w-full text-center">No positions yet</span>
+          <Link
+            href={`/market/${marketId}`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center justify-center rounded-full bg-startup px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-startup-dark"
+          >
+            Trade
+          </Link>
         )}
       </div>
     </div>
@@ -80,6 +90,7 @@ function RatioBar({ long, short, hasPositions }: { long: number; short: number; 
 }
 
 export default function StartupLeaderboardPage() {
+  const router = useRouter();
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
 
   useEffect(() => {
@@ -117,10 +128,10 @@ export default function StartupLeaderboardPage() {
       ) : (
         <div className="mt-10 space-y-4">
           {entries.map((entry, index) => (
-            <Link
+            <div
               key={entry.id}
-              href={`/startups/market/${entry.id}`}
-              className="card group flex flex-col gap-4 p-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(10,10,10,0.10)] sm:flex-row sm:items-center"
+              onClick={() => router.push(`/startups/market/${entry.id}`)}
+              className="group flex cursor-pointer flex-col gap-4 rounded-lg border border-[#E5E5E5] bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md sm:flex-row sm:items-center"
             >
               <RankBadge rank={index + 1} />
 
@@ -132,7 +143,7 @@ export default function StartupLeaderboardPage() {
                     className="h-14 w-14 rounded-xl object-cover"
                   />
                 ) : (
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-surface text-sm font-semibold text-muted">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-startup text-sm font-bold text-white">
                     {initials(entry.name)}
                   </div>
                 )}
@@ -145,7 +156,7 @@ export default function StartupLeaderboardPage() {
                       </span>
                     )}
                     {entry.stage && (
-                      <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">
+                      <span className="rounded-full bg-[#F3F4F6] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#6B6B6B]">
                         {entry.stage}
                       </span>
                     )}
@@ -158,22 +169,23 @@ export default function StartupLeaderboardPage() {
 
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6">
                 <div className="text-left sm:text-right">
-                  <p className="text-xs uppercase tracking-wide text-muted">Market Cap</p>
-                  <p className="text-lg font-semibold text-ink">{formatCurrency(entry.market_cap)}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-[#6B6B6B]">Market Cap</p>
+                  <p className="text-lg font-semibold text-[#0A0A0A]">{formatCurrency(entry.market_cap)}</p>
                 </div>
                 <div className="text-left sm:text-right">
-                  <p className="text-xs uppercase tracking-wide text-muted">Price</p>
-                  <p className="text-lg font-semibold text-ink">{formatCurrency(entry.current_price)}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-[#6B6B6B]">Price</p>
+                  <p className="text-lg font-semibold text-[#0A0A0A]">{formatCurrency(entry.current_price)}</p>
                 </div>
                 <div className="col-span-2 sm:w-40">
                   <RatioBar
                     long={entry.long_ratio}
                     short={entry.short_ratio}
                     hasPositions={entry.long_count + entry.short_count > 0}
+                    marketId={entry.id}
                   />
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}
