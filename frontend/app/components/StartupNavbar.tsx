@@ -7,7 +7,7 @@ import { useUser } from '../context/UserContext'
 import { usePathname } from 'next/navigation'
 
 const navLinks = [
-  { href: '/', label: 'Markets' },
+  { href: '/markets', label: 'Markets' },
   { href: '/leaderboard', label: 'Leaderboard' },
   { href: '/list', label: 'List a Startup' },
   { href: '/profile', label: 'Portfolio' },

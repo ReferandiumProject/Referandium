@@ -29,8 +29,10 @@ export function middleware(request: NextRequest) {
 
   let newPathname = pathname;
 
-  if (pathname === "/" || pathname === "/markets") {
+  if (pathname === "/") {
     newPathname = "/startups";
+  } else if (pathname === "/markets") {
+    newPathname = "/startups/markets";
   } else if (pathname === "/leaderboard") {
     newPathname = "/startups/leaderboard";
   } else if (pathname === "/list") {
