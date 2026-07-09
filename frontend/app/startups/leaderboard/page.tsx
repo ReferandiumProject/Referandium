@@ -8,6 +8,7 @@ type LeaderboardEntry = {
   id: string;
   startup_id: string | null;
   name: string;
+  slug: string | null;
   logo_url: string | null;
   stage: string | null;
   description: string | null;
@@ -54,7 +55,7 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-function RatioBar({ long, short, hasPositions, marketId }: { long: number; short: number; hasPositions: boolean; marketId: string }) {
+function RatioBar({ long, short, hasPositions, marketSlug }: { long: number; short: number; hasPositions: boolean; marketSlug: string }) {
   const longPct = Math.round(long * 100);
   const shortPct = Math.round(short * 100);
   return (
@@ -77,7 +78,7 @@ function RatioBar({ long, short, hasPositions, marketId }: { long: number; short
           </>
         ) : (
           <Link
-            href={`/market/${marketId}`}
+            href={`/market/${marketSlug}`}
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center justify-center rounded-full bg-startup px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-startup-dark"
           >
@@ -130,7 +131,7 @@ export default function StartupLeaderboardPage() {
           {entries.map((entry, index) => (
             <div
               key={entry.id}
-              onClick={() => router.push(`/startups/market/${entry.id}`)}
+              onClick={() => router.push(`/startups/market/${entry.slug ?? entry.id}`)}
               className="group flex cursor-pointer flex-col gap-4 rounded-lg border border-[#E5E5E5] bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md sm:flex-row sm:items-center"
             >
               <RankBadge rank={index + 1} />
@@ -181,7 +182,7 @@ export default function StartupLeaderboardPage() {
                     long={entry.long_ratio}
                     short={entry.short_ratio}
                     hasPositions={entry.long_count + entry.short_count > 0}
-                    marketId={entry.id}
+                    marketSlug={entry.slug ?? entry.id}
                   />
                 </div>
               </div>

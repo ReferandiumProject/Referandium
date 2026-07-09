@@ -15,6 +15,7 @@ type StartupPosition = {
   id: string
   market_id: string
   startup_name: string
+  startup_slug: string
   direction: 'long' | 'short'
   collateral_usdc: number
   entry_price: number
@@ -134,7 +135,7 @@ export default function StartupProfilePage() {
     const pnlSign = pnl >= 0 ? '+' : '-'
     const percentSign = pnlPercent >= 0 ? '+' : '-'
     const direction = p.direction === 'long' ? 'Long' : 'Short'
-    const text = `I'm ${direction} on ${p.startup_name} at $${p.current_price.toFixed(4)} (entry $${p.entry_price.toFixed(4)}) · ${pnlSign}$${Math.abs(pnl).toFixed(4)} (${percentSign}${Math.abs(pnlPercent).toFixed(2)}%) on Startup Sentiment 🚀 https://startup.referandium.com/market/${p.market_id}`
+    const text = `I'm ${direction} on ${p.startup_name} at $${p.current_price.toFixed(4)} (entry $${p.entry_price.toFixed(4)}) · ${pnlSign}$${Math.abs(pnl).toFixed(4)} (${percentSign}${Math.abs(pnlPercent).toFixed(2)}%) on Startup Sentiment 🚀 https://startup.referandium.com/market/${p.startup_slug}`
     return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
   }
 
@@ -463,7 +464,7 @@ export default function StartupProfilePage() {
                   {startupPositions.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3">
-                        <Link href={`/market/${p.market_id}`} className="text-sm font-medium text-slate-900 hover:text-blue-600 transition no-underline">
+                        <Link href={`/market/${p.startup_slug}`} className="text-sm font-medium text-slate-900 hover:text-blue-600 transition no-underline">
                           {p.startup_name}
                         </Link>
                       </td>

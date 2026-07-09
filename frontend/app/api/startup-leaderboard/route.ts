@@ -6,7 +6,7 @@ export async function GET() {
     const { data: markets, error: marketsError } = await supabaseAdmin
       .from("startup_markets")
       .select(
-        "id, current_price, total_supply, volume_24h, graduated_at, startups:startup_startups(id, name, logo_url, stage, description)"
+        "id, current_price, total_supply, volume_24h, graduated_at, startups:startup_startups(id, name, slug, logo_url, stage, description)"
       )
       .order("current_price", { ascending: false });
 
@@ -41,6 +41,7 @@ export async function GET() {
       const startup = m.startups as unknown as {
         id: string;
         name: string;
+        slug: string | null;
         logo_url: string | null;
         stage: string | null;
         description: string | null;
@@ -57,6 +58,7 @@ export async function GET() {
         id: m.id,
         startup_id: startup?.id ?? null,
         name: startup?.name ?? "Unknown",
+        slug: startup?.slug ?? null,
         logo_url: startup?.logo_url ?? null,
         stage: startup?.stage ?? null,
         description: startup?.description ?? null,

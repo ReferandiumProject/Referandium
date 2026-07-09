@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 type Market = {
   id: string;
   name: string;
+  slug: string | null;
   description: string | null;
   logo_url: string | null;
   current_price: number;
@@ -40,7 +41,7 @@ function MarketCard({ market }: { market: Market }) {
 
   return (
     <Link
-      href={`/startups/market/${market.id}`}
+      href={`/startups/market/${market.slug ?? market.id}`}
       className="group flex flex-col cursor-pointer rounded-lg border border-[#E5E5E5] bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md"
     >
       <div className="flex items-center gap-3">

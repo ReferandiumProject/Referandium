@@ -7,8 +7,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: marketId } = await params;
-    console.log("[api/startup-markets/[id]] received id param:", marketId);
+    const { id: rawId } = await params;
+    console.log("[api/startup-markets/[id]] received id param:", rawId);
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId);
 
     // Identify the current user (optional — positions only shown if logged in)
     let user: { id: string } | null = null;
@@ -21,12 +23,37 @@ export async function GET(
       // Not authenticated or auth verification timed out — continue without user (public market data)
     }
 
-    // Market
-    const { data: market, error: mktError } = await supabaseAdmin
-      .from("startup_markets")
-      .select("id, current_price, total_supply, volume_24h, created_at, graduated_at, startup_id")
-      .eq("id", marketId)
-      .single();
+    // Market: look up by UUID or by startup slug
+    let market: { id: string; current_price: number | string; total_supply: number | string; volume_24h: number | string; created_at: string; graduated_at: string | null; startup_id: string } | null = null;
+    let mktError: any = null;
+
+    if (isUuid) {
+      const result = await supabaseAdmin
+        .from("startup_markets")
+        .select("id, current_price, total_supply, volume_24h, created_at, graduated_at, startup_id")
+        .eq("id", rawId)
+        .single();
+      market = result.data;
+      mktError = result.error;
+    } else {
+      const { data: startupBySlug, error: startupSlugError } = await supabaseAdmin
+        .from("startup_startups")
+        .select("id")
+        .eq("slug", rawId)
+        .single();
+
+      if (startupSlugError || !startupBySlug) {
+        return NextResponse.json({ data: null, error: "Market not found" }, { status: 404 });
+      }
+
+      const result = await supabaseAdmin
+        .from("startup_markets")
+        .select("id, current_price, total_supply, volume_24h, created_at, graduated_at, startup_id")
+        .eq("startup_id", startupBySlug.id)
+        .single();
+      market = result.data;
+      mktError = result.error;
+    }
 
     console.log("[api/startup-markets/[id]] Supabase market result:", { market, mktError });
 
@@ -37,7 +64,7 @@ export async function GET(
     // Associated startup
     const { data: startup, error: startupError } = await supabaseAdmin
       .from("startup_startups")
-      .select("id, name, description, logo_url, pitch, website, twitter, stage, user_id")
+      .select("id, slug, name, description, logo_url, pitch, website, twitter, stage, user_id")
       .eq("id", market.startup_id)
       .single();
 
@@ -49,7 +76,7 @@ export async function GET(
     const { data: snapshots } = await supabaseAdmin
       .from("startup_price_snapshots")
       .select("price, recorded_at")
-      .eq("market_id", marketId)
+      .eq("market_id", market.id)
       .order("recorded_at", { ascending: false })
       .limit(100);
 
@@ -59,7 +86,7 @@ export async function GET(
     const { data: openPositions } = await supabaseAdmin
       .from("startup_positions")
       .select("direction")
-      .eq("market_id", marketId)
+      .eq("market_id", market.id)
       .eq("status", "open");
 
     const totalOpen = openPositions?.length ?? 0;
@@ -75,7 +102,7 @@ export async function GET(
       const { data: positions } = await supabaseAdmin
         .from("startup_positions")
         .select("id, direction, collateral_usdc, size_tokens, entry_price, opened_at")
-        .eq("market_id", marketId)
+        .eq("market_id", market.id)
         .eq("user_id", user.id)
         .eq("status", "open")
         .order("opened_at", { ascending: false });

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const { data: rawPositions, error: positionsError } = await supabaseAdmin
       .from("startup_positions")
       .select(
-        "id, direction, collateral_usdc, size_tokens, entry_price, opened_at, market_id, markets:startup_markets(current_price, startups:startup_startups(name))"
+        "id, direction, collateral_usdc, size_tokens, entry_price, opened_at, market_id, markets:startup_markets(current_price, startups:startup_startups(name, slug))"
       )
       .eq("user_id", user.id)
       .eq("status", "open")
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const positions = (rawPositions ?? []).map((p) => {
       const market = p.markets as unknown as {
         current_price: number;
-        startups: { name: string } | null;
+        startups: { name: string; slug: string | null } | null;
       } | null;
       const currentPrice = market ? Number(market.current_price) : 0;
       const entryPrice = Number(p.entry_price);
@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
         id: p.id,
         market_id: p.market_id,
         startup_name: market?.startups?.name ?? "Unknown",
+        startup_slug: market?.startups?.slug ?? p.market_id,
         direction: p.direction,
         collateral_usdc: Number(p.collateral_usdc),
         entry_price: entryPrice,

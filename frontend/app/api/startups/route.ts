@@ -86,12 +86,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to deduct listing fee" }, { status: 500 });
     }
 
+    const slug = name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "startup";
+
     // Create startup record
     const { data: startup, error: startupError } = await supabaseAdmin
       .from("startup_startups")
       .insert({
         user_id: user.id,
         name: name.trim(),
+        slug,
         description: description.trim(),
         logo_url: logo_url || null,
         pitch: pitch || null,
@@ -99,7 +106,7 @@ export async function POST(request: NextRequest) {
         twitter: twitter || null,
         stage: stage || null,
       })
-      .select("id")
+      .select("id, slug")
       .single();
 
     if (startupError || !startup) {
@@ -157,6 +164,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       data: {
         startup_id: startup.id,
+        startup_slug: startup.slug,
         market_id: market.id,
         available_usdc: newAvailable,
       },

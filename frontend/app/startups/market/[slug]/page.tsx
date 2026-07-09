@@ -58,7 +58,7 @@ type MarketData = {
 
 export default function StartupMarketPage() {
   const params = useParams();
-  const marketId = typeof params?.id === "string" ? params.id : "";
+  const slug = typeof params?.slug === "string" ? params.slug : "";
   const { getAccessToken } = usePrivy();
 
   const [data, setData] = useState<MarketData | null>(null);
@@ -68,13 +68,13 @@ export default function StartupMarketPage() {
   const [closeError, setCloseError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    console.log("[startup market page] fetching /api/startup-markets/" + marketId);
+    console.log("[startup market page] fetching /api/startup-markets/" + slug);
     try {
       const token = await getAccessToken();
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const res = await fetch(`/api/startup-markets/${marketId}`, { headers });
+      const res = await fetch(`/api/startup-markets/${slug}`, { headers });
       const json = await res.json();
       console.log("[startup market page] API response:", { ok: res.ok, status: res.status, data: json });
       if (!res.ok || !json.data) {
@@ -88,12 +88,12 @@ export default function StartupMarketPage() {
     } finally {
       setLoading(false);
     }
-  }, [marketId, getAccessToken]);
+  }, [slug, getAccessToken]);
 
   useEffect(() => {
-    if (!marketId) return;
+    if (!slug) return;
     fetchData();
-  }, [fetchData, marketId]);
+  }, [fetchData, slug]);
 
   const handleClose = async (positionId: string) => {
     setClosingId(positionId);

@@ -153,11 +153,11 @@ export default function StartupListPage() {
       const data = await res.json();
 
       if (res.ok && data.data?.market_id) {
-        const marketId = data.data.market_id;
+        const marketSlug = data.data.startup_slug ?? data.data.market_id;
         // Brief success confirmation before redirecting
         setSuccess(true);
         setTimeout(() => {
-          router.push(`/startups/market/${marketId}`);
+          router.push(`/startups/market/${marketSlug}`);
         }, 1500);
       } else {
         setError(data.error || "Failed to launch market");

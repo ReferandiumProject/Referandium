@@ -6,7 +6,7 @@ export async function GET() {
     // All markets joined with their startup, sorted by 24h volume desc
     const { data: markets, error } = await supabaseAdmin
       .from("startup_markets")
-      .select("id, current_price, total_supply, volume_24h, created_at, graduated_at, startups:startup_startups(name, logo_url, description)")
+      .select("id, current_price, total_supply, volume_24h, created_at, graduated_at, startups:startup_startups(name, slug, logo_url, description)")
       .order("volume_24h", { ascending: false });
 
     if (error) {
@@ -19,6 +19,7 @@ export async function GET() {
       (markets ?? []).map(async (m) => {
         const startup = m.startups as unknown as {
           name: string;
+          slug: string | null;
           logo_url: string | null;
           description: string | null;
         } | null;
@@ -41,6 +42,7 @@ export async function GET() {
         return {
           id: m.id,
           name: startup?.name ?? "Unknown",
+          slug: startup?.slug ?? null,
           logo_url: startup?.logo_url ?? null,
           description: startup?.description ?? null,
           current_price: currentPrice,
