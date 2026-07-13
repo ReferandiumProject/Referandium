@@ -69,8 +69,8 @@ export function TradingPanel({ marketId, totalSupply, authenticated, onTraded }:
   const isError = message !== null && !message.startsWith("Opened");
 
   return (
-    <div className="card">
-      <h2 className="text-lg font-semibold text-ink">Take a Position</h2>
+    <div className="rounded-xl border border-[#E5E5E5] bg-white p-5 shadow-sm">
+      <h2 className="text-lg font-semibold text-[#0A0A0A]">Take a Position</h2>
 
       {/* Long / Short toggle */}
       <div className="mt-4 grid grid-cols-2 gap-2">
@@ -131,7 +131,7 @@ export function TradingPanel({ marketId, totalSupply, authenticated, onTraded }:
           <button
             onClick={handleTrade}
             disabled={loading || collateral <= 0}
-            className="w-full rounded-md bg-startup px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-startup-dark disabled:opacity-50"
+            className="w-full rounded-md bg-[#0D9488] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0F766E] disabled:opacity-50"
           >
             {loading && <Spinner />}
             {loading ? "Processing..." : direction === "long" ? "Open Long" : "Open Short"}
@@ -139,7 +139,7 @@ export function TradingPanel({ marketId, totalSupply, authenticated, onTraded }:
         ) : (
           <a
             href="/signin"
-            className="inline-flex w-full items-center justify-center rounded-md bg-startup px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-startup-dark"
+            className="inline-flex w-full items-center justify-center rounded-md bg-[#0D9488] px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-[#0F766E]"
           >
             Sign in to take a position
           </a>

@@ -11,6 +11,8 @@ const formatDate = (d: string) => {
   return `${dt.getDate().toString().padStart(2, '0')}.${(dt.getMonth() + 1).toString().padStart(2, '0')}.${dt.getFullYear()}`
 }
 
+const truncateAddress = (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-4)}`
+
 type StartupPosition = {
   id: string
   market_id: string
@@ -284,24 +286,24 @@ export default function StartupProfilePage() {
           style={{ border: '1px solid #E5E5E5' }}
         >
           <div className="flex items-center justify-between mb-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</p>
+            <p className="text-[11px] font-medium text-[#6B6B6B] uppercase tracking-wider">Balance</p>
             <button
               onClick={refreshBalance}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+              className="text-sm font-medium text-[#0D9488] hover:text-[#0F766E] hover:underline"
             >
               Refresh
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <p className="text-xs text-slate-500 mb-1">Available USDC</p>
+              <p className="text-xs text-[#6B6B6B] mb-1">Available USDC</p>
               <p className="text-3xl font-bold text-slate-900">
                 {balanceLoading ? '—' : `${balance?.available_usdc.toFixed(2) ?? '0.00'} USDC`}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Locked USDC</p>
-              <p className="text-3xl font-bold text-slate-900">
+              <p className="text-xs text-[#6B6B6B] mb-1">Locked USDC</p>
+              <p className="text-xl font-semibold text-[#6B6B6B]">
                 {balanceLoading ? '—' : `${balance?.locked_usdc.toFixed(2) ?? '0.00'} USDC`}
               </p>
             </div>
@@ -312,7 +314,7 @@ export default function StartupProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
           {/* Deposit Card */}
           <div
-            className="rounded-xl p-5 shadow-sm h-full flex flex-col bg-white"
+            className="rounded-xl p-4 shadow-sm h-full flex flex-col bg-white"
             style={{ border: '1px solid #E5E5E5' }}
           >
             <h2 className="text-sm font-semibold text-slate-900 mb-4">Deposit USDC</h2>
@@ -324,10 +326,10 @@ export default function StartupProfilePage() {
             ) : depositInfo ? (
               <div className="flex-1 flex flex-col">
                 <div className="space-y-3 flex-1">
-                  <div className="bg-slate-50 p-3 rounded-lg">
-                    <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1">Platform Wallet Address</p>
+                  <div className="bg-slate-50 p-2.5 rounded-lg">
+                    <p className="text-xs font-medium text-[#6B6B6B] mb-1">Platform wallet address</p>
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-mono text-slate-900 break-all">{depositInfo.platform_address}</p>
+                      <p className="text-xs font-mono text-slate-900">{truncateAddress(depositInfo.platform_address)}</p>
                       <button
                         onClick={() => handleCopy(depositInfo.platform_address)}
                         className="shrink-0 px-2 py-1 bg-white border border-slate-200 rounded text-[11px] font-medium text-slate-600 hover:bg-slate-50 transition"
@@ -338,7 +340,7 @@ export default function StartupProfilePage() {
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Amount (USDC)</label>
+                    <label className="block text-xs font-medium text-[#6B6B6B] mb-1">Amount (USDC)</label>
                     <input
                       type="number"
                       value={depositAmount}
@@ -346,7 +348,7 @@ export default function StartupProfilePage() {
                       placeholder="0.00"
                       min="0"
                       step="0.01"
-                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-medium focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 outline-none bg-white"
+                      className="w-full border border-[#E5E5E5] rounded-lg p-2.5 text-sm font-medium focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 outline-none bg-white"
                     />
                   </div>
                 </div>
@@ -355,7 +357,7 @@ export default function StartupProfilePage() {
                   <button
                     onClick={handleAddFunds}
                     disabled={addFundsSubmitting || !depositAmount}
-                    className="w-full bg-startup text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-startup-dark transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full bg-[#0D9488] text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-[#0F766E] transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {addFundsSubmitting ? 'Adding...' : 'Add Funds'}
                   </button>
@@ -384,7 +386,7 @@ export default function StartupProfilePage() {
 
           {/* Withdraw Card */}
           <div
-            className="rounded-xl p-5 shadow-sm h-full flex flex-col bg-white"
+            className="rounded-xl p-4 shadow-sm h-full flex flex-col bg-white"
             style={{ border: '1px solid #E5E5E5' }}
           >
             <h2 className="text-sm font-semibold text-slate-900 mb-4">Withdraw USDC</h2>
@@ -392,7 +394,7 @@ export default function StartupProfilePage() {
             <div className="flex-1 flex flex-col">
               <div className="space-y-3 flex-1">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Amount (USDC)</label>
+                  <label className="block text-xs font-medium text-[#6B6B6B] mb-1">Amount (USDC)</label>
                   <input
                     type="number"
                     value={withdrawAmount}
@@ -400,18 +402,18 @@ export default function StartupProfilePage() {
                     placeholder="0.00"
                     min="0"
                     step="0.01"
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-medium focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 outline-none bg-white"
+                    className="w-full border border-[#E5E5E5] rounded-lg p-2.5 text-sm font-medium focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 outline-none bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Destination Wallet Address</label>
+                  <label className="block text-xs font-medium text-[#6B6B6B] mb-1">Destination wallet address</label>
                   <input
                     type="text"
                     value={withdrawWallet}
                     onChange={(e) => setWithdrawWallet(e.target.value)}
                     placeholder="Solana wallet address"
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-medium focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 outline-none bg-white"
+                    className="w-full border border-[#E5E5E5] rounded-lg p-2.5 text-sm font-medium focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 outline-none bg-white"
                   />
                 </div>
               </div>
@@ -420,7 +422,7 @@ export default function StartupProfilePage() {
                 <button
                   onClick={handleWithdraw}
                   disabled={withdrawSubmitting || !withdrawAmount || !withdrawWallet}
-                  className="w-full bg-startup text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-startup-dark transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full bg-[#0D9488] text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-[#0F766E] transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {withdrawSubmitting ? 'Processing...' : 'Withdraw'}
                 </button>
@@ -466,7 +468,7 @@ export default function StartupProfilePage() {
           ) : startupPositions.length === 0 ? (
             <div className="text-center py-12" style={{ border: '1px dashed #E5E5E5', borderRadius: '0.75rem' }}>
               <p className="text-slate-500 text-sm font-medium">No open positions yet.</p>
-              <Link href="/" className="text-blue-600 text-sm font-medium hover:underline mt-1 inline-block">Browse markets →</Link>
+              <Link href="/" className="text-[#0D9488] text-sm font-medium hover:underline mt-1 inline-block">Browse markets →</Link>
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl" style={{ border: '1px solid #E5E5E5' }}>

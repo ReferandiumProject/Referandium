@@ -23,14 +23,14 @@ export function PriceChart({ data }: { data: Snapshot[] }) {
 
   if (chartData.length === 0) {
     return (
-      <div className="card flex h-64 items-center justify-center text-sm text-muted">
+      <div className="flex h-64 items-center justify-center rounded-xl border border-[#E5E5E5] bg-white p-4 text-sm text-[#6B6B6B] shadow-sm">
         No price history yet
       </div>
     );
   }
 
   return (
-    <div className="card h-64 w-full">
+    <div className="h-64 w-full rounded-xl border border-[#E5E5E5] bg-white p-4 shadow-sm">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
@@ -52,7 +52,7 @@ export function PriceChart({ data }: { data: Snapshot[] }) {
           <Line
             type="monotone"
             dataKey="price"
-            stroke="#0a0a0a"
+            stroke="#0D9488"
             strokeWidth={2}
             dot={false}
           />

@@ -172,7 +172,7 @@ function MarketContent({
         {/* Left side */}
         <div className="space-y-8 lg:col-span-2">
           {/* Profile card */}
-          <div className="card">
+          <div className="rounded-xl border border-[#E5E5E5] bg-white p-5 shadow-sm">
             <div className="flex items-start gap-4">
               {startup?.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -182,22 +182,22 @@ function MarketContent({
                   className="h-16 w-16 flex-shrink-0 rounded-lg object-cover"
                 />
               ) : (
-                <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-surface text-xl font-bold text-muted">
+                <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-startup text-xl font-bold text-white">
                   {startup?.name?.charAt(0).toUpperCase() ?? "?"}
                 </div>
               )}
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-bold tracking-tight text-ink">
+                  <h1 className="text-2xl font-bold tracking-tight text-[#0A0A0A]">
                     {startup?.name}
                   </h1>
                   {market.graduated_at && (
-                    <span className="rounded-full border border-long bg-long/10 px-2.5 py-0.5 text-xs font-medium text-long">
+                    <span className="rounded-full bg-[#CCFBF1] px-2.5 py-0.5 text-xs font-medium text-[#0D9488]">
                       Graduated
                     </span>
                   )}
                   {startup?.stage && (
-                    <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 text-xs font-medium text-ink">
+                    <span className="rounded-full bg-[#F3F4F6] px-2.5 py-0.5 text-xs font-medium text-[#6B6B6B]">
                       {startup.stage}
                     </span>
                   )}
@@ -248,18 +248,20 @@ function MarketContent({
           </div>
 
           {/* Stat chips */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="card text-center">
-              <span className="text-xs text-muted">Current Price</span>
-              <p className="mt-1 text-lg font-semibold text-ink">${market.current_price.toFixed(4)}</p>
-            </div>
-            <div className="card text-center">
-              <span className="text-xs text-muted">Market Cap</span>
-              <p className="mt-1 text-lg font-semibold text-ink">${market.market_cap.toFixed(2)}</p>
-            </div>
-            <div className="card text-center">
-              <span className="text-xs text-muted">24h Volume</span>
-              <p className="mt-1 text-lg font-semibold text-ink">${market.volume_24h.toFixed(2)}</p>
+          <div className="rounded-xl border border-[#E5E5E5] bg-[#F9FAFB] p-5 shadow-sm">
+            <div className="grid grid-cols-3 divide-x divide-[#E5E5E5]">
+              <div className="text-center px-4">
+                <span className="text-xs text-[#6B6B6B]">Current Price</span>
+                <p className="mt-1 text-lg font-bold text-[#0A0A0A]">${market.current_price.toFixed(4)}</p>
+              </div>
+              <div className="text-center px-4">
+                <span className="text-xs text-[#6B6B6B]">Market Cap</span>
+                <p className="mt-1 text-lg font-bold text-[#0A0A0A]">${market.market_cap.toFixed(2)}</p>
+              </div>
+              <div className="text-center px-4">
+                <span className="text-xs text-[#6B6B6B]">24h Volume</span>
+                <p className="mt-1 text-lg font-bold text-[#0A0A0A]">${market.volume_24h.toFixed(2)}</p>
+              </div>
             </div>
           </div>
 
@@ -267,29 +269,29 @@ function MarketContent({
           <PriceChart data={chart} />
 
           {/* Long/short ratio bar */}
-          <div className="card">
-            <div className="flex justify-between text-xs text-muted">
-              <span>Long {ratio.long_pct.toFixed(0)}%</span>
-              <span>Short {ratio.short_pct.toFixed(0)}%</span>
+          <div className="rounded-xl border border-[#E5E5E5] bg-white p-5 shadow-sm">
+            <div className="flex justify-between text-xs font-medium">
+              <span className="text-[#16A34A]">Long {ratio.long_pct.toFixed(0)}%</span>
+              <span className="text-[#DC2626]">Short {ratio.short_pct.toFixed(0)}%</span>
             </div>
-            <div className="mt-2 flex h-3 overflow-hidden rounded-full bg-surface">
-              <div className="bg-long" style={{ width: `${ratio.long_pct}%` }} />
-              <div className="bg-short" style={{ width: `${ratio.short_pct}%` }} />
+            <div className="mt-2 flex h-2 w-full overflow-hidden rounded-full bg-[#E5E5E5]">
+              <div className="bg-[#16A34A]" style={{ width: `${ratio.long_pct}%` }} />
+              <div className="bg-[#DC2626]" style={{ width: `${ratio.short_pct}%` }} />
             </div>
-            <p className="mt-1 text-xs text-muted">{ratio.total} open positions</p>
+            <p className="mt-2 text-xs text-[#6B6B6B]">{ratio.total} open positions</p>
           </div>
 
           {/* User's open positions */}
           {authenticated && (
-            <div className="card !p-0">
-              <h2 className="border-b border-line px-6 py-4 text-sm font-semibold text-ink">
+            <div className="rounded-xl border border-[#E5E5E5] bg-white shadow-sm overflow-hidden">
+              <h2 className="border-b border-[#E5E5E5] px-6 py-4 text-sm font-semibold text-[#0A0A0A]">
                 Your Open Positions
               </h2>
               {closeError && (
-                <p className="px-6 py-3 text-sm text-short">{closeError}</p>
+                <p className="px-6 py-3 text-sm text-[#DC2626]">{closeError}</p>
               )}
               {positions.length === 0 ? (
-                <p className="px-6 py-6 text-sm text-muted">No open positions</p>
+                <p className="px-6 py-6 text-sm text-[#6B6B6B] text-center">No open positions</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
