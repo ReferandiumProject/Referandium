@@ -172,7 +172,7 @@ export default function MarketDetailClient() {
                 />
               </div>
 
-              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              <h1 className="break-words text-xl font-bold tracking-tight text-white sm:text-2xl lg:text-3xl">
                 {market.title}
               </h1>
 
@@ -227,8 +227,8 @@ export default function MarketDetailClient() {
               {trades.length === 0 ? (
                 <p className="text-sm text-[#9CA3AF]">No trades yet.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                <div>
+                  <table className="w-full table-fixed text-sm">
                     <thead>
                       <tr className="border-b border-[#2A2A2A] text-left text-[#9CA3AF]">
                         <th className="pb-2 font-medium">Side</th>
@@ -240,7 +240,7 @@ export default function MarketDetailClient() {
                       {trades.map((trade) => (
                         <tr key={trade.id}>
                           <td
-                            className={`py-3 font-medium ${
+                            className={`py-3 pr-2 font-medium ${
                               trade.direction === 'yes'
                                 ? 'text-[#10B981]'
                                 : 'text-[#EF4444]'
@@ -248,10 +248,10 @@ export default function MarketDetailClient() {
                           >
                             {trade.direction.toUpperCase()}
                           </td>
-                          <td className="py-3 text-white">
+                          <td className="min-w-0 break-words py-3 pr-2 text-white">
                             ${Number(trade.usdc_amount).toLocaleString()}
                           </td>
-                          <td className="py-3 text-[#9CA3AF]">
+                          <td className="min-w-0 break-words py-3 text-[#9CA3AF]">
                             {new Date(trade.created_at).toLocaleString()}
                           </td>
                         </tr>
@@ -265,7 +265,7 @@ export default function MarketDetailClient() {
 
           {/* Right column - Buy panel */}
           <div className="lg:col-span-4">
-            <div className="sticky top-24 rounded-2xl border border-[#2A2A2A] bg-[#161616] p-6">
+            <div className="rounded-2xl border border-[#2A2A2A] bg-[#161616] p-6 lg:sticky lg:top-24">
               <h3 className="mb-4 text-lg font-semibold text-white">Buy Shares</h3>
 
               <div className="grid grid-cols-2 gap-3 mb-4">

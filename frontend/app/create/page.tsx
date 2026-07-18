@@ -1,123 +1,121 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useState, FormEvent } from 'react'
+import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
-import { useUser } from '../../app/context/UserContext'
-import { supabase } from '../../lib/supabaseClient'
 
-const categories = ['Politics', 'Sports', 'Crypto', 'Pop Culture', 'Business', 'Other']
+const categories = ['Other', 'Politics', 'Sports', 'Crypto', 'Business', 'Pop Culture']
 
 export default function CreateMarketPage() {
-  const router = useRouter()
-  const { publicKey } = useWallet()
-  const { authenticated } = useUser()
-  const { login } = usePrivy()
-
+  const { authenticated, login, getAccessToken } = usePrivy()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [category, setCategory] = useState('Politics')
-  const [marketType, setMarketType] = useState<'binary' | 'multiple'>('binary')
-  const [options, setOptions] = useState(['', ''])
+  const [category, setCategory] = useState('Other')
   const [endDate, setEndDate] = useState('')
-  const [resolveCriteria, setResolveCriteria] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [causeTokenEnabled, setCauseTokenEnabled] = useState(false)
-  const [causeTokenName, setCauseTokenName] = useState('')
-  const [causeTokenSymbol, setCauseTokenSymbol] = useState('')
-  const [causeTokenDescription, setCauseTokenDescription] = useState('')
-  const [causeTokenImage, setCauseTokenImage] = useState('')
+  const [resolutionCriteria, setResolutionCriteria] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<{ id: string; title: string } | null>(null)
 
-  const addOption = () => { if (options.length < 6) setOptions([...options, '']) }
-  const removeOption = (i: number) => { if (options.length > 2) setOptions(options.filter((_, idx) => idx !== i)) }
-  const updateOption = (i: number, val: string) => { const copy = [...options]; copy[i] = val; setOptions(copy) }
+  const minDate = new Date().toISOString().slice(0, 16)
 
-  const handleSubmit = async () => {
-    setError('')
-    if (!authenticated) { setError('Please sign in first.'); return }
-    const creatorWallet = publicKey?.toBase58()
-    if (!creatorWallet) { setError('No wallet address available.'); return }
-    if (!title.trim()) { setError('Title is required.'); return }
-    if (!endDate) { setError('End date is required.'); return }
-    if (marketType === 'multiple' && options.filter(o => o.trim()).length < 2) { setError('At least 2 options are required.'); return }
-    if (causeTokenEnabled && !causeTokenName.trim()) { setError('Token name is required when Cause Token is enabled.'); return }
-    if (causeTokenEnabled && !causeTokenSymbol.trim()) { setError('Token symbol is required when Cause Token is enabled.'); return }
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSuccess(null)
 
-    setIsSubmitting(true)
+    if (!authenticated) {
+      setError('Please sign in to create a market.')
+      return
+    }
+
+    if (!title.trim()) {
+      setError('Title is required.')
+      return
+    }
+
+    const parsedEnd = new Date(endDate)
+    if (!endDate || Number.isNaN(parsedEnd.getTime())) {
+      setError('Please select a valid end date.')
+      return
+    }
+
+    if (parsedEnd.getTime() <= Date.now()) {
+      setError('End date must be in the future.')
+      return
+    }
+
+    let token: string | null
     try {
-      const insertData: any = {
-        title: title.trim(),
-        description: description.trim() || null,
-        category,
-        market_type: marketType,
-        end_time: new Date(endDate).toISOString(),
-        resolve_criteria: resolveCriteria.trim() || null,
-        status: 'active',
-        gookie_wallet: creatorWallet,
-        total_signals: 0,
-        total_usdc_locked: 0,
-        total_yield_earned: 0,
-        platform_fee_collected: 0,
-        gookie_fee_earned: 0,
-        user_share_distributed: 0,
-        buyback_burn_amount: 0,
-        min_signal_usdc: 5,
+      token = await getAccessToken()
+    } catch {
+      setError('Unable to retrieve authentication token. Please sign in again.')
+      return
+    }
+
+    if (!token) {
+      setError('Unable to retrieve authentication token. Please sign in again.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetch('/api/markets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim() || undefined,
+          category: category.trim() || 'Other',
+          end_date: parsedEnd.toISOString(),
+          resolution_criteria: resolutionCriteria.trim() || undefined,
+        }),
+      })
+
+      const json = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        const msg =
+          typeof json.error === 'string' ? json.error : `Request failed (status ${res.status})`
+        setError(msg)
+        return
       }
 
-      if (causeTokenEnabled) {
-        insertData.cause_token_enabled = true
-        insertData.cause_token_name = causeTokenName.trim()
-        insertData.cause_token_symbol = causeTokenSymbol.trim().toUpperCase()
-        insertData.cause_token_image = causeTokenImage.trim() || null
-      }
-
-      const { data, error: insertErr } = await supabase
-        .from('markets')
-        .insert(insertData)
-        .select()
-        .single()
-
-      if (insertErr) throw insertErr
-
-      if (marketType === 'multiple' && data) {
-        const validOptions = options.filter(o => o.trim())
-        const optionInserts = validOptions.map(o => ({
-          market_id: data.id,
-          title: o.trim(),
-          yes_signals: 0,
-          no_signals: 0,
-          total_sol_on_option: 0,
-        }))
-        const { error: optErr } = await supabase.from('market_options').insert(optionInserts)
-        if (optErr) console.error('Error inserting options:', optErr)
-      }
-
-      router.push(`/market/${data.id}`)
+      setSuccess({ id: json.market.id, title: json.market.title })
+      setTitle('')
+      setDescription('')
+      setCategory('Other')
+      setEndDate('')
+      setResolutionCriteria('')
     } catch (err: any) {
-      console.error('Create market error:', err)
-      setError(err.message || 'Failed to create market.')
+      setError(err.message || 'Network error. Please try again.')
     } finally {
-      setIsSubmitting(false)
+      setLoading(false)
     }
   }
 
   return (
-    <div className="bg-[#faf8ff] text-[#191b23] antialiased min-h-screen">
-      <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 mb-20 md:mb-12">
-
+    <div className="min-h-screen bg-[#0A0A0A] px-4 pb-24 pt-8">
+      <main className="mx-auto max-w-2xl">
         <div className="mb-8">
-          <h1 className="font-semibold text-[36px] leading-[1.1] tracking-[-0.04em] text-[#191b23]">Create a Market</h1>
-          <p className="text-[15px] leading-[1.5] tracking-[-0.01em] text-[#434655] mt-2">Define the parameters for a new prescription market.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Create a Market
+          </h1>
+          <p className="mt-2 text-sm text-[#9CA3AF]">
+            Define a prediction market and submit it for review.
+          </p>
         </div>
 
         {!authenticated && (
-          <div className="border border-dashed border-[#e1e2ed] rounded-xl p-6 text-center mb-8">
-            <p className="text-[#434655] text-[15px] font-medium mb-4">Sign in to create a market.</p>
+          <div className="rounded-2xl border border-[#2A2A2A] bg-[#161616] p-6 text-center">
+            <p className="text-sm text-[#9CA3AF]">Sign in to create a new market.</p>
             <button
+              type="button"
               onClick={() => login()}
-              className="bg-[#2563eb] text-white font-medium text-sm px-5 py-2.5 rounded-lg hover:bg-[#1d4ed8] transition"
+              className="mt-4 inline-flex items-center justify-center rounded-lg bg-[#3B82F6] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#2563EB]"
             >
               Sign In
             </button>
@@ -125,217 +123,106 @@ export default function CreateMarketPage() {
         )}
 
         {authenticated && (
-          <div className="space-y-6">
-
-            {/* Title */}
-            <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
-              <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">Market Title</label>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label htmlFor="title" className="block text-sm font-medium text-[#9CA3AF]">
+                Market Title <span className="text-[#EF4444]">*</span>
+              </label>
               <input
+                id="title"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Will the central bank raise interest rates this quarter?"
-                className="w-full bg-white border border-[#c3c6d7] rounded-lg px-4 py-3 text-[15px] leading-[1.5] tracking-[-0.01em] text-[#191b23] placeholder:text-[#737686] focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all"
+                placeholder="e.g., Will ETH exceed $10,000 by the end of 2025?"
+                className="w-full rounded-lg border border-[#2A2A2A] bg-[#161616] px-4 py-3 text-sm text-white placeholder:text-[#6B7280] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/30"
               />
             </div>
 
-            {/* Description */}
-            <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
-              <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">Description</label>
+            <div className="space-y-2">
+              <label htmlFor="description" className="block text-sm font-medium text-[#9CA3AF]">
+                Description <span className="text-[#6B7280]">(optional)</span>
+              </label>
               <textarea
+                id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Provide context and details about the market..."
+                placeholder="Provide background and context..."
                 rows={4}
-                className="w-full bg-white border border-[#c3c6d7] rounded-lg px-4 py-3 text-[15px] leading-[1.5] tracking-[-0.01em] text-[#191b23] placeholder:text-[#737686] focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all resize-none"
+                className="w-full resize-none rounded-lg border border-[#2A2A2A] bg-[#161616] px-4 py-3 text-sm text-white placeholder:text-[#6B7280] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/30"
               />
             </div>
 
-            {/* Category & Type Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Category */}
-              <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
-                <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">Category</label>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label htmlFor="category" className="block text-sm font-medium text-[#9CA3AF]">
+                  Category
+                </label>
                 <select
+                  id="category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full appearance-none bg-white border border-[#c3c6d7] rounded-lg px-4 py-3 text-[15px] leading-[1.5] tracking-[-0.01em] text-[#191b23] focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all"
+                  className="w-full rounded-lg border border-[#2A2A2A] bg-[#161616] px-4 py-3 text-sm text-white focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/30"
                 >
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* Market Type Toggle */}
-              <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
-                <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">Market Type</label>
-                <div className="flex p-1 bg-[#e1e2ed] rounded-lg">
-                  <button
-                    type="button"
-                    onClick={() => setMarketType('binary')}
-                    className={`flex-1 py-2 px-4 rounded-md text-[13px] font-medium transition-all ${
-                      marketType === 'binary' ? 'bg-white shadow-sm text-[#191b23]' : 'text-[#434655] hover:text-[#191b23]'
-                    }`}
-                  >
-                    Binary (Yes/No)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMarketType('multiple')}
-                    className={`flex-1 py-2 px-4 rounded-md text-[13px] font-medium transition-all ${
-                      marketType === 'multiple' ? 'bg-white shadow-sm text-[#191b23]' : 'text-[#434655] hover:text-[#191b23]'
-                    }`}
-                  >
-                    Multiple Choice
-                  </button>
-                </div>
+              <div className="space-y-2">
+                <label htmlFor="endDate" className="block text-sm font-medium text-[#9CA3AF]">
+                  End Date <span className="text-[#EF4444]">*</span>
+                </label>
+                <input
+                  id="endDate"
+                  type="datetime-local"
+                  value={endDate}
+                  min={minDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full rounded-lg border border-[#2A2A2A] bg-[#161616] px-4 py-3 text-sm text-white [color-scheme:dark] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/30"
+                />
               </div>
             </div>
 
-            {/* Options (multiple choice) */}
-            {marketType === 'multiple' && (
-              <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
-                <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">Options (min 2, max 6)</label>
-                <div className="space-y-2">
-                  {options.map((opt, i) => (
-                    <div key={i} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={opt}
-                        onChange={(e) => updateOption(i, e.target.value)}
-                        placeholder={`Option ${i + 1}`}
-                        className="flex-1 border border-[#c3c6d7] rounded-lg px-4 py-2 text-[15px] text-[#191b23] placeholder:text-[#737686] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20"
-                      />
-                      {options.length > 2 && (
-                        <button type="button" onClick={() => removeOption(i)} className="text-[#737686] hover:text-[#ba1a1a] text-sm px-2 transition">✕</button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {options.length < 6 && (
-                  <button type="button" onClick={addOption} className="text-[#2563eb] text-[13px] font-medium mt-2 hover:underline">
-                    + Add option
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* End Date */}
-            <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
-              <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">End Date</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full bg-white border border-[#c3c6d7] rounded-lg px-4 py-3 text-[15px] leading-[1.5] tracking-[-0.01em] text-[#191b23] focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all"
-              />
-            </div>
-
-            {/* Resolution Criteria */}
-            <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
-              <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-2">Resolution Criteria</label>
+            <div className="space-y-2">
+              <label htmlFor="resolution" className="block text-sm font-medium text-[#9CA3AF]">
+                Resolution Criteria <span className="text-[#6B7280]">(optional)</span>
+              </label>
               <textarea
-                value={resolveCriteria}
-                onChange={(e) => setResolveCriteria(e.target.value)}
-                placeholder="Explicitly state how the outcome will be determined and verified..."
+                id="resolution"
+                value={resolutionCriteria}
+                onChange={(e) => setResolutionCriteria(e.target.value)}
+                placeholder="How will the outcome be determined and verified?"
                 rows={3}
-                className="w-full bg-white border border-[#c3c6d7] rounded-lg px-4 py-3 text-[15px] leading-[1.5] tracking-[-0.01em] text-[#191b23] placeholder:text-[#737686] focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all resize-none"
+                className="w-full resize-none rounded-lg border border-[#2A2A2A] bg-[#161616] px-4 py-3 text-sm text-white placeholder:text-[#6B7280] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/30"
               />
             </div>
 
-            {/* Cause Token Toggle */}
-            <div className="bg-white p-6 rounded-xl border border-[#c3c6d7] shadow-[0px_1px_3px_rgba(15,23,42,0.08)]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setCauseTokenEnabled(!causeTokenEnabled)}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${causeTokenEnabled ? 'bg-[#2563eb]' : 'bg-[#c3c6d7]'}`}
-                  >
-                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${causeTokenEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </button>
-                  <span className="text-[15px] font-medium text-[#191b23]">Launch a Cause Token (optional)</span>
-                </div>
-                <span className="text-[11px] font-medium text-[#737686] bg-[#e1e2ed] px-2 py-0.5 rounded">Powered by Meteora</span>
-              </div>
-
-              {causeTokenEnabled && (
-                <div className="mt-5 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-1.5">Token Name *</label>
-                      <input
-                        type="text"
-                        value={causeTokenName}
-                        onChange={(e) => setCauseTokenName(e.target.value)}
-                        placeholder="e.g., Prescribe Token"
-                        className="w-full border border-[#c3c6d7] rounded-lg px-4 py-2.5 text-[15px] text-[#191b23] placeholder:text-[#737686] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-1.5">Token Symbol *</label>
-                      <input
-                        type="text"
-                        value={causeTokenSymbol}
-                        onChange={(e) => setCauseTokenSymbol(e.target.value.toUpperCase().slice(0, 6))}
-                        placeholder="e.g., PRSCB"
-                        maxLength={6}
-                        className="w-full border border-[#c3c6d7] rounded-lg px-4 py-2.5 text-[15px] text-[#191b23] placeholder:text-[#737686] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 uppercase"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-1.5">Token Description (optional)</label>
-                    <textarea
-                      value={causeTokenDescription}
-                      onChange={(e) => setCauseTokenDescription(e.target.value)}
-                      placeholder="Describe the purpose of this cause token..."
-                      rows={2}
-                      className="w-full border border-[#c3c6d7] rounded-lg px-4 py-2.5 text-[15px] text-[#191b23] placeholder:text-[#737686] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 resize-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[12px] font-semibold tracking-[0.05em] text-[#434655] uppercase mb-1.5">Token Image URL (optional)</label>
-                    <input
-                      type="text"
-                      value={causeTokenImage}
-                      onChange={(e) => setCauseTokenImage(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full border border-[#c3c6d7] rounded-lg px-4 py-2.5 text-[15px] text-[#191b23] placeholder:text-[#737686] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20"
-                    />
-                  </div>
-                  <div className="bg-[#dbe1ff]/20 border border-[#dbe1ff] rounded-lg p-3">
-                    <p className="text-[12px] text-[#003ea8]/80 leading-relaxed">
-                      A bonding curve token will be launched on Meteora. Early supporters can buy in before graduation to a full liquidity pool.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Info Box */}
-            <div className="bg-[#dbe1ff]/30 border border-[#dbe1ff] rounded-xl p-4 flex items-start gap-3">
-              <span className="text-[#2563eb] mt-0.5">ℹ</span>
-              <div>
-                <h4 className="text-[15px] font-semibold text-[#003ea8]">Creation Fee</h4>
-                <p className="text-[13px] text-[#003ea8]/80 mt-1">A 5 USDC creation fee applies to prevent spam and ensure market quality.</p>
-              </div>
-            </div>
-
-            {/* Error */}
             {error && (
-              <p className="text-[13px] text-[#ba1a1a] font-medium">{error}</p>
+              <div className="rounded-lg border border-[#EF4444]/20 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
+                {error}
+              </div>
             )}
 
-            {/* Submit */}
+            {success && (
+              <div className="rounded-lg border border-[#10B981]/20 bg-[#10B981]/10 p-3 text-sm text-[#10B981]">
+                Market created:{" "}
+                <Link href={`/market/${success.id}`} className="font-semibold underline">
+                  {success.title}
+                </Link>
+              </div>
+            )}
+
             <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="w-full bg-[#2563eb] text-white font-semibold text-[18px] leading-[1.3] tracking-[-0.02em] py-4 rounded-xl shadow-[0px_1px_3px_rgba(15,23,42,0.08)] hover:bg-[#2563eb]/90 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-[#3B82F6] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#2563EB] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSubmitting ? 'Creating...' : 'Create Market'}
+              {loading ? 'Creating...' : 'Create Market'}
             </button>
-          </div>
+          </form>
         )}
       </main>
     </div>

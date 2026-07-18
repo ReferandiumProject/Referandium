@@ -17,6 +17,7 @@ export default function Navbar() {
   const isAdmin = authenticated && dbUser?.wallet_address && ADMIN_WALLETS.includes(dbUser.wallet_address)
 
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const displayLabel = dbUser?.email
@@ -45,7 +46,12 @@ export default function Navbar() {
   const handleDisconnect = () => {
     logout()
     setDropdownOpen(false)
+    setMobileOpen(false)
   }
+
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
 
   return (
     <nav style={{ 
@@ -65,8 +71,8 @@ export default function Navbar() {
           <span style={{ fontWeight: '700', fontSize: '18px', color: '#0F172A', letterSpacing: '-0.02em' }}>Referandium</span>
         </Link>
 
-        {/* Nav Links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+        {/* Nav Links (desktop) */}
+        <div className="hidden md:flex" style={{ alignItems: 'center', gap: '32px' }}>
           <Link href="/markets" style={{ color: pathname === '/markets' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
             Markets
           </Link>
@@ -83,8 +89,8 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Right side */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Right side (desktop) */}
+        <div className="hidden md:flex" style={{ alignItems: 'center', gap: '12px' }}>
           {isAdmin && (
             <Link href="/admin" style={{ textDecoration: 'none', fontSize: '12px', color: '#94A3B8', fontWeight: '500' }}>
               Admin
@@ -208,7 +214,188 @@ export default function Navbar() {
           )}
         </div>
 
+        {/* Hamburger (mobile) */}
+        <button
+          id="mobile-menu-button"
+          className="flex md:hidden"
+          aria-label="Toggle menu"
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-menu"
+          onClick={() => setMobileOpen((o) => !o)}
+          style={{
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '40px',
+            height: '40px',
+            borderRadius: '8px',
+            border: '1px solid #E2E8F0',
+            backgroundColor: 'white',
+            cursor: 'pointer',
+          }}
+        >
+          {mobileOpen ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F172A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F172A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          )}
+        </button>
+
       </div>
+
+      {/* Mobile menu panel */}
+      {mobileOpen && (
+        <div
+          id="mobile-menu"
+          aria-label="Mobile menu"
+          className="flex flex-col md:hidden"
+          style={{
+            backgroundColor: '#0A0A0A',
+            borderTop: '1px solid #2A2A2A',
+            padding: '16px 24px 24px',
+            gap: '4px',
+          }}
+        >
+          {authenticated && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 0',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#9CA3AF',
+              }}
+            >
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+              {displayLabel}
+            </div>
+          )}
+
+          <Link
+            href="/markets"
+            onClick={() => setMobileOpen(false)}
+            style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: pathname === '/markets' ? '#3B82F6' : '#FFFFFF' }}
+          >
+            Markets
+          </Link>
+          <a
+            href="https://startup.referandium.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setMobileOpen(false)}
+            style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: '#FFFFFF' }}
+          >
+            Startups
+          </a>
+          {authenticated && (
+            <Link
+              href="/profile"
+              onClick={() => setMobileOpen(false)}
+              style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: pathname === '/profile' ? '#3B82F6' : '#FFFFFF' }}
+            >
+              Profile
+            </Link>
+          )}
+          <Link
+            href="/docs"
+            onClick={() => setMobileOpen(false)}
+            style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: '#FFFFFF' }}
+          >
+            Docs
+          </Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              onClick={() => setMobileOpen(false)}
+              style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: '#9CA3AF' }}
+            >
+              Admin
+            </Link>
+          )}
+
+          <Link
+            href="/create"
+            onClick={() => setMobileOpen(false)}
+            style={{
+              marginTop: '12px',
+              backgroundColor: '#3B82F6',
+              color: 'white',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontSize: '15px',
+              fontWeight: 600,
+              textAlign: 'center',
+            }}
+          >
+            + Create Market
+          </Link>
+
+          {!authenticated ? (
+            <button
+              onClick={() => { login(); setMobileOpen(false) }}
+              style={{
+                marginTop: '8px',
+                backgroundColor: 'transparent',
+                border: '1px solid #2A2A2A',
+                color: '#FFFFFF',
+                borderRadius: '8px',
+                fontSize: '15px',
+                fontWeight: 600,
+                padding: '12px 16px',
+                cursor: 'pointer',
+              }}
+            >
+              Sign In
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={handleCopyAddress}
+                style={{
+                  marginTop: '8px',
+                  backgroundColor: 'transparent',
+                  border: '1px solid #2A2A2A',
+                  color: '#FFFFFF',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  fontWeight: 500,
+                  padding: '12px 16px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                Copy Address
+              </button>
+              <button
+                onClick={handleDisconnect}
+                style={{
+                  marginTop: '8px',
+                  backgroundColor: 'transparent',
+                  border: '1px solid #2A2A2A',
+                  color: '#EF4444',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  fontWeight: 500,
+                  padding: '12px 16px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                Sign Out
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </nav>
   )
 }
