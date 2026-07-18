@@ -73,9 +73,6 @@ export default function Navbar() {
           <a href="https://startup.referandium.com" target="_blank" rel="noopener noreferrer" style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
             Startups
           </a>
-          <Link href="/gookies" style={{ color: pathname === '/gookies' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
-            Creators
-          </Link>
           {authenticated && (
             <Link href="/profile" style={{ color: pathname === '/profile' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
               Profile

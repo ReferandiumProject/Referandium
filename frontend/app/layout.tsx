@@ -11,8 +11,8 @@ import Footer from './components/Footer'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Referandium | Policy Prescription Market',
-  description: 'Prescribe what should happen. The permissionless policy prescription market on Solana.',
+  title: 'Referandium | Prediction Markets on Solana',
+  description: 'Trade on real-world outcomes with USDC on Solana. Yes/No prediction markets.',
 }
 
 export default function RootLayout({

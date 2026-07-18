@@ -13,7 +13,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { data: market } = await supabase
     .from('markets')
-    .select('title, question, description, image_url')
+    .select('title, description, image_url')
     .eq('id', params.id)
     .single();
 
@@ -22,15 +22,15 @@ export async function generateMetadata(
   if (!market) {
     return {
       title: 'Market Not Found | Referandium',
-      description: "Don't just predict the future, prescribe it. Join the decentralized policy prescription market on Solana.",
+      description: 'Trade on real-world outcomes with USDC on Solana.',
       openGraph: {
         images: ['/og-default.png', ...previousImages],
       },
     };
   }
 
-  const title = `${market.title || market.question || 'Market'} | Referandium`;
-  const description = market.description || "Don't just predict the future, prescribe it. Join the decentralized policy prescription market on Solana.";
+  const title = `${market.title || 'Market'} | Referandium`;
+  const description = market.description || 'Trade on real-world outcomes with USDC on Solana.';
 
   const imageUrl = market.image_url;
   const images = imageUrl && imageUrl.startsWith('http')
