@@ -38,6 +38,7 @@ export default function ProfilePage() {
   const [message, setMessage] = useState<string | null>(null)
   const [sellAmounts, setSellAmounts] = useState<Record<string, string>>({})
   const [sellResponses, setSellResponses] = useState<Record<string, string>>({})
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
 
   const [depositMode, setDepositMode] = useState<'devnet' | 'wallet' | 'card'>('devnet')
   const [depositAmount, setDepositAmount] = useState('')
@@ -101,6 +102,12 @@ export default function ProfilePage() {
     })
     setSellAmounts(init)
   }, [positions])
+
+  useEffect(() => {
+    if (!confirmingId) return
+    const timer = setTimeout(() => setConfirmingId(null), 4000)
+    return () => clearTimeout(timer)
+  }, [confirmingId])
 
   const handleDevnetDeposit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -452,7 +459,18 @@ export default function ProfilePage() {
                           }
                           style={{ width: '80px', marginRight: '0.5rem' }}
                         />
-                        <button onClick={() => handleSell(p)}>Sell</button>
+                        <button
+                          onClick={() => {
+                            if (confirmingId === p.id) {
+                              setConfirmingId(null)
+                              handleSell(p)
+                            } else {
+                              setConfirmingId(p.id)
+                            }
+                          }}
+                        >
+                          {confirmingId === p.id ? 'Confirm Sell?' : 'Sell'}
+                        </button>
                         {sellResponses[p.id] && (
                           <div style={{ fontSize: '12px' }}>{sellResponses[p.id]}</div>
                         )}

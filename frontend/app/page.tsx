@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
-import { supabase } from '../lib/supabaseClient'
 import { Market } from './types'
 
 type Stats = {
@@ -90,38 +89,32 @@ export default function Home() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [marketsRes, tradesRes, usersRes, activeMarketsRes] = await Promise.all([
-          supabase
-            .from('markets')
-            .select('*, options:market_options(*)')
-            .eq('status', 'active')
-            .order('created_at', { ascending: false })
-            .limit(6),
-          supabase.from('trades').select('usdc_amount'),
-          supabase.from('users').select('*', { count: 'exact', head: true }),
-          supabase.from('markets').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+        const [marketsRes, statsRes] = await Promise.all([
+          fetch('/api/markets'),
+          fetch('/api/stats'),
         ])
 
-        const activeMarkets = (marketsRes.data as Market[]) || []
-        setMarkets(activeMarkets)
+        if (!marketsRes.ok || !statsRes.ok) {
+          throw new Error(`Failed to fetch home data (${marketsRes.status}, ${statsRes.status})`)
+        }
+
+        const { markets: activeMarkets } = await marketsRes.json() as { markets: Market[] | null }
+        const { volume, activeMarkets: marketCount, traders } = await statsRes.json() as { volume: number; activeMarkets: number; traders: number }
+
+        setMarkets(activeMarkets || [])
 
         const signalsMap: Record<string, { yes: number; no: number }> = {}
-        for (const market of activeMarkets) {
+        for (const market of activeMarkets || []) {
           const yes = market.options?.reduce((sum, option) => sum + Number(option.yes_signals || 0), 0) || 0
           const no = market.options?.reduce((sum, option) => sum + Number(option.no_signals || 0), 0) || 0
           signalsMap[market.id] = { yes, no }
         }
         setMarketSignals(signalsMap)
 
-        const volume = (tradesRes.data || []).reduce(
-          (sum: number, trade: { usdc_amount?: number }) => sum + Number(trade.usdc_amount || 0),
-          0
-        )
-
         setStats({
           volume,
-          markets: activeMarketsRes.count || 0,
-          users: usersRes.count || 0,
+          markets: marketCount || 0,
+          users: traders || 0,
         })
       } catch (error) {
         console.error('[Home] error fetching stats:', error)

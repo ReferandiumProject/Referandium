@@ -6,6 +6,7 @@ import { getBuyCost, getSellProceeds, getPrice } from '@/lib/lmsr'
 const FEE_RATE = 0.005 // 0.5% trading fee; easy to adjust later.
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 interface TradeBody {
   market_id: string

@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
-import { supabase } from '../../../lib/supabaseClient'
+import { getPrice } from '../../../lib/lmsr'
 import { Market, MarketOption } from '../../types'
 
 type Trade = {
@@ -107,30 +107,73 @@ export default function MarketDetailClient() {
   const [selectedSide, setSelectedSide] = useState<'yes' | 'no'>('yes')
   const [amount, setAmount] = useState('')
   const [tradeMessage, setTradeMessage] = useState('')
+  const [mode, setMode] = useState<'buy' | 'sell'>('buy')
+  const [positions, setPositions] = useState<Record<string, number>>({})
+  const [positionsKey, setPositionsKey] = useState(0)
+  const [confirming, setConfirming] = useState(false)
 
-  useEffect(() => {
+  const loadMarket = useCallback(async () => {
     if (!id) return
 
-    async function fetchData() {
-      try {
-        const res = await fetch(`/api/markets/${id}`)
-        if (!res.ok) {
-          throw new Error(`Failed to fetch market: ${res.status}`)
-        }
-        const data = await res.json()
-        console.log('[MarketDetail] market API response for id', id, data)
-        setMarket(data.market as Market)
-        setOptions((data.options || []) as MarketOption[])
-        setTrades((data.trades || []) as Trade[])
-      } catch (error) {
-        console.error('[MarketDetail] error fetching data:', error)
-      } finally {
-        setLoading(false)
+    try {
+      const res = await fetch(`/api/markets/${id}`)
+      if (!res.ok) {
+        throw new Error(`Failed to fetch market: ${res.status}`)
       }
+      const data = await res.json()
+      console.log('[MarketDetail] market API response for id', id, data)
+      setMarket(data.market as Market)
+      setOptions((data.options || []) as MarketOption[])
+      setTrades((data.trades || []) as Trade[])
+    } catch (error) {
+      console.error('[MarketDetail] error fetching data:', error)
+    } finally {
+      setLoading(false)
     }
-
-    fetchData()
   }, [id])
+
+  useEffect(() => {
+    loadMarket()
+  }, [loadMarket])
+
+  useEffect(() => {
+    if (mode !== 'sell') return
+    async function fetchPositions() {
+      const token = await getAccessToken()
+      if (!token) return
+      const res = await fetch('/api/profile/positions', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const json = await res.json().catch(() => ({}))
+      const map: Record<string, number> = {}
+      for (const pos of json.positions || []) {
+        if (pos.market_id === id) {
+          map[pos.option_id] = Number(pos.shares || 0)
+        }
+      }
+      setPositions(map)
+    }
+    fetchPositions()
+  }, [mode, id, positionsKey, getAccessToken])
+
+  useEffect(() => {
+    setConfirming(false)
+  }, [mode, selectedSide])
+
+  useEffect(() => {
+    if (!confirming) return
+    const timer = setTimeout(() => setConfirming(false), 4000)
+    return () => clearTimeout(timer)
+  }, [confirming])
+
+  useEffect(() => {
+    if (mode !== 'sell') return
+    const rawOptions = options as unknown as { id: string; label: string }[]
+    const option = rawOptions.find((o) => o.label?.toUpperCase() === selectedSide.toUpperCase())
+    const owned = option ? positions[option.id] || 0 : 0
+    setAmount(String(owned))
+  }, [mode, selectedSide, options, positions])
 
   const handleTrade = async () => {
     const shares = Number(amount)
@@ -143,6 +186,21 @@ export default function MarketDetailClient() {
     if (!option) {
       setTradeMessage('Option not found')
       return
+    }
+    if (mode === 'sell') {
+      const owned = positions[option.id] || 0
+      if (owned <= 0) {
+        setTradeMessage(`No ${selectedSide.toUpperCase()} position to sell`)
+        return
+      }
+      if (shares > owned) {
+        setTradeMessage(`Cannot sell more than ${owned} ${selectedSide.toUpperCase()} shares`)
+        return
+      }
+      if (!confirming) {
+        setConfirming(true)
+        return
+      }
     }
     setBuying(true)
     setTradeMessage('')
@@ -161,7 +219,7 @@ export default function MarketDetailClient() {
         body: JSON.stringify({
           market_id: id,
           option_id: option.id,
-          type: 'buy',
+          type: mode,
           shares,
         }),
       })
@@ -169,11 +227,19 @@ export default function MarketDetailClient() {
       if (!res.ok) {
         setTradeMessage(typeof data.error === 'string' ? data.error : `Trade failed (${res.status})`)
       } else {
-        setTradeMessage(`Bought ${shares} ${selectedSide.toUpperCase()} shares. New balance: ${Number(data.newBalance).toFixed(6)}`)
+        if (mode === 'buy') {
+          setTradeMessage(`Bought ${shares} ${selectedSide.toUpperCase()} shares. New balance: ${Number(data.newBalance).toFixed(6)}`)
+        } else {
+          const proceeds = Number(data.trade?.usdc_amount ?? 0) - Number(data.trade?.fee ?? 0)
+          setTradeMessage(`Sold ${shares} ${selectedSide.toUpperCase()} shares. Proceeds: ${proceeds.toFixed(4)} USDC. New balance: ${Number(data.newBalance).toFixed(6)}`)
+        }
+        await loadMarket()
+        setPositionsKey((k) => k + 1)
       }
     } catch (err) {
       setTradeMessage(err instanceof Error ? err.message : 'Trade request failed')
     } finally {
+      setConfirming(false)
       setBuying(false)
     }
   }
@@ -181,8 +247,18 @@ export default function MarketDetailClient() {
   if (loading) return <LoadingState />
   if (!market) return <NotFoundState />
 
-  const yesPrice = 0.5
-  const noPrice = 0.5
+  const lmsrOptions = (options as unknown) as Array<{ label: string; shares_outstanding: number }>
+  const yesOption = lmsrOptions.find((o) => o.label?.toUpperCase() === 'YES')
+  const noOption = lmsrOptions.find((o) => o.label?.toUpperCase() === 'NO')
+  const qYes = Number(yesOption?.shares_outstanding || 0)
+  const qNo = Number(noOption?.shares_outstanding || 0)
+  const yesPrice = getPrice(qYes, qNo, 'YES')
+  const noPrice = getPrice(qYes, qNo, 'NO')
+  const volume = trades.reduce((sum, trade) => sum + Number(trade.usdc_amount || 0), 0)
+
+  const tradeOptions = (options as unknown) as Array<{ id: string; label: string }>
+  const selectedOption = tradeOptions.find((o) => o.label?.toUpperCase() === selectedSide.toUpperCase())
+  const owned = selectedOption ? positions[selectedOption.id] || 0 : 0
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] px-4 pb-24 pt-8">
@@ -234,7 +310,7 @@ export default function MarketDetailClient() {
                 </span>
                 <span className="hidden sm:inline">·</span>
                 <span>
-                  {Number(market.total_usdc_locked || 0).toLocaleString()} USDC Vol
+                  {volume.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC Vol
                 </span>
               </div>
             </div>
@@ -252,8 +328,8 @@ export default function MarketDetailClient() {
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-[#2A2A2A]">
                 <div className="flex h-full">
-                  <div className="h-full w-1/2 bg-[#10B981]" />
-                  <div className="h-full w-1/2 bg-[#EF4444]" />
+                  <div className="h-full bg-[#10B981]" style={{ width: `${yesPrice * 100}%` }} />
+                  <div className="h-full bg-[#EF4444]" style={{ width: `${noPrice * 100}%` }} />
                 </div>
               </div>
             </div>
@@ -286,7 +362,7 @@ export default function MarketDetailClient() {
                             {trade.direction.toUpperCase()}
                           </td>
                           <td className="min-w-0 break-words py-3 pr-2 text-white">
-                            ${Number(trade.usdc_amount).toLocaleString()}
+                            ${Number(trade.usdc_amount).toFixed(2)}
                           </td>
                           <td className="min-w-0 break-words py-3 text-[#9CA3AF]">
                             {new Date(trade.created_at).toLocaleString()}
@@ -303,7 +379,30 @@ export default function MarketDetailClient() {
           {/* Right column - Buy panel */}
           <div className="lg:col-span-4">
             <div className="rounded-2xl border border-[#2A2A2A] bg-[#161616] p-6 lg:sticky lg:top-24">
-              <h3 className="mb-4 text-lg font-semibold text-white">Buy Shares</h3>
+              <h3 className="mb-4 text-lg font-semibold text-white">Trade Shares</h3>
+
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <button
+                  onClick={() => setMode('buy')}
+                  className={`rounded-lg py-2.5 text-sm font-semibold transition-colors ${
+                    mode === 'buy'
+                      ? 'bg-[#3B82F6] text-white'
+                      : 'border border-[#2A2A2A] text-[#9CA3AF] hover:text-white'
+                  }`}
+                >
+                  Buy
+                </button>
+                <button
+                  onClick={() => setMode('sell')}
+                  className={`rounded-lg py-2.5 text-sm font-semibold transition-colors ${
+                    mode === 'sell'
+                      ? 'bg-[#EF4444] text-white'
+                      : 'border border-[#2A2A2A] text-[#9CA3AF] hover:text-white'
+                  }`}
+                >
+                  Sell
+                </button>
+              </div>
 
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <button
@@ -328,9 +427,15 @@ export default function MarketDetailClient() {
                 </button>
               </div>
 
+              {mode === 'sell' && (
+                <p className="mb-2 text-xs text-[#9CA3AF]">
+                  Owned: {owned} {selectedSide.toUpperCase()} shares
+                </p>
+              )}
+
               <div className="mb-4">
                 <label className="mb-1.5 block text-xs font-medium text-[#9CA3AF]">
-                  Amount (USDC)
+                  Amount
                 </label>
                 <div className="relative">
                   <input
@@ -341,17 +446,27 @@ export default function MarketDetailClient() {
                     className="w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] py-2.5 pl-3 pr-12 text-sm text-white placeholder:text-[#6B7280] focus:border-[#3B82F6] focus:outline-none"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#9CA3AF]">
-                    USDC
+                    Shares
                   </span>
                 </div>
               </div>
 
               <button
                 onClick={handleTrade}
-                disabled={buying}
+                disabled={buying || (mode === 'sell' && owned <= 0)}
                 className="w-full rounded-lg bg-[#3B82F6] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#2563EB] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {buying ? 'Buying...' : `Buy ${selectedSide.toUpperCase()}`}
+                {buying
+                  ? mode === 'buy'
+                    ? 'Buying...'
+                    : 'Selling...'
+                  : mode === 'sell'
+                    ? owned <= 0
+                      ? 'No position'
+                      : confirming
+                        ? 'Confirm Sell?'
+                        : `Sell ${selectedSide.toUpperCase()}`
+                    : `Buy ${selectedSide.toUpperCase()}`}
               </button>
               {tradeMessage && (
                 <p className="mt-2 text-xs text-[#9CA3AF]">{tradeMessage}</p>

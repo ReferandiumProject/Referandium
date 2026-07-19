@@ -4,8 +4,10 @@ import { isAdmin } from '@/lib/admin'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
+  console.log('[admin/markets] ADMIN_EMAILS env:', process.env.ADMIN_EMAILS)
   let user
   try {
     user = await getAuthenticatedUser(request)
@@ -13,6 +15,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  console.log('[admin/markets] user.email:', user.email)
   if (!isAdmin(user.email)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }

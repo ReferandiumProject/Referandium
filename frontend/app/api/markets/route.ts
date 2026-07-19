@@ -1,9 +1,25 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../lib/supabaseServer'
 import { getAuthenticatedUser } from '../../../lib/auth-helpers'
 import { isAdmin } from '../../../lib/admin'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+export async function GET(request: NextRequest) {
+  const { data: markets, error } = await supabaseAdmin
+    .from('markets')
+    .select('*, options:market_options(*)')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('[markets GET] error:', error)
+    return NextResponse.json({ error: 'Failed to load markets' }, { status: 500 })
+  }
+
+  return NextResponse.json({ markets: markets || [] })
+}
 
 interface CreateMarketBody {
   title: string

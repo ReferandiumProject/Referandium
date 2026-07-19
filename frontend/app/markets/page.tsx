@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabaseClient'
+import { getPrice } from '../../lib/lmsr'
 import { Market, MarketOption } from '../types'
 
 type MarketWithOptions = Market & { options?: MarketOption[] | null }
@@ -19,9 +19,13 @@ function MarketCard({ market }: { market: MarketWithOptions }) {
   const category = market.category || 'General'
   const endDate = formatEndDate(market.end_time)
 
-  // LMSR pricing is not implemented yet; show static placeholder odds.
-  const yesPrice = 0.5
-  const noPrice = 0.5
+  const rawOptions = ((market.options || []) as unknown) as Array<{ label: string; shares_outstanding: number }>
+  const yesOption = rawOptions.find((o) => o.label?.toUpperCase() === 'YES')
+  const noOption = rawOptions.find((o) => o.label?.toUpperCase() === 'NO')
+  const qYes = Number(yesOption?.shares_outstanding || 0)
+  const qNo = Number(noOption?.shares_outstanding || 0)
+  const yesPrice = getPrice(qYes, qNo, 'YES')
+  const noPrice = getPrice(qYes, qNo, 'NO')
 
   return (
     <Link
@@ -49,8 +53,8 @@ function MarketCard({ market }: { market: MarketWithOptions }) {
         </div>
         <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#2A2A2A]">
           <div className="flex h-full">
-            <div className="h-full w-1/2 bg-[#10B981]" />
-            <div className="h-full w-1/2 bg-[#EF4444]" />
+            <div className="h-full bg-[#10B981]" style={{ width: `${yesPrice * 100}%` }} />
+            <div className="h-full bg-[#EF4444]" style={{ width: `${noPrice * 100}%` }} />
           </div>
         </div>
       </div>
@@ -72,14 +76,10 @@ export default function MarketsPage() {
   useEffect(() => {
     async function fetchMarkets() {
       try {
-        const { data, error } = await supabase
-          .from('markets')
-          .select('*, options:market_options(*)')
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-
-        if (error) throw error
-        setMarkets((data as MarketWithOptions[]) || [])
+        const res = await fetch('/api/markets')
+        if (!res.ok) throw new Error(`Request failed (${res.status})`)
+        const json = await res.json()
+        setMarkets((json.markets as MarketWithOptions[]) || [])
       } catch (error) {
         console.error('[MarketsPage] error fetching markets:', error)
       } finally {
