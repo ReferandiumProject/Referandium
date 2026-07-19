@@ -23,7 +23,14 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+.env
 .env*.local
+
+# sensitive keys / keypair files
+*.key
+id.json
+keypair.json
+wallet.json
 
 # vercel
 .vercel

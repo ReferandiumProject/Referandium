@@ -48,9 +48,6 @@ export default function AppWalletProvider({ children }: { children: React.ReactN
     <PrivyProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
       config={{
-        appearance: {
-          walletChainType: 'solana-only',
-        },
         embeddedWallets: {
           solana: {
             createOnLogin: 'users-without-wallets',

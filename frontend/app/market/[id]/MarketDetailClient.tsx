@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { usePrivy } from '@privy-io/react-auth'
 import { supabase } from '../../../lib/supabaseClient'
 import { Market, MarketOption } from '../../types'
 
@@ -100,37 +101,27 @@ export default function MarketDetailClient() {
   const [market, setMarket] = useState<Market | null>(null)
   const [options, setOptions] = useState<MarketOption[]>([])
   const [trades, setTrades] = useState<Trade[]>([])
+  const { getAccessToken } = usePrivy()
   const [loading, setLoading] = useState(true)
+  const [buying, setBuying] = useState(false)
   const [selectedSide, setSelectedSide] = useState<'yes' | 'no'>('yes')
   const [amount, setAmount] = useState('')
+  const [tradeMessage, setTradeMessage] = useState('')
 
   useEffect(() => {
     if (!id) return
 
     async function fetchData() {
       try {
-        const [marketRes, tradesRes] = await Promise.all([
-          supabase
-            .from('markets')
-            .select('*, options:market_options(*)')
-            .eq('id', id)
-            .single(),
-          supabase
-            .from('trades')
-            .select('id, market_id, direction, usdc_amount, created_at')
-            .eq('market_id', id)
-            .order('created_at', { ascending: false }),
-        ])
-
-        if (marketRes.error) throw marketRes.error
-
-        const marketData = marketRes.data as Market & { options?: MarketOption[] | null }
-        setMarket(marketData)
-        setOptions((marketData.options as MarketOption[]) || [])
-
-        if (!tradesRes.error && tradesRes.data) {
-          setTrades(tradesRes.data as Trade[])
+        const res = await fetch(`/api/markets/${id}`)
+        if (!res.ok) {
+          throw new Error(`Failed to fetch market: ${res.status}`)
         }
+        const data = await res.json()
+        console.log('[MarketDetail] market API response for id', id, data)
+        setMarket(data.market as Market)
+        setOptions((data.options || []) as MarketOption[])
+        setTrades((data.trades || []) as Trade[])
       } catch (error) {
         console.error('[MarketDetail] error fetching data:', error)
       } finally {
@@ -140,6 +131,52 @@ export default function MarketDetailClient() {
 
     fetchData()
   }, [id])
+
+  const handleTrade = async () => {
+    const shares = Number(amount)
+    if (!Number.isFinite(shares) || shares <= 0) {
+      setTradeMessage('Enter a positive number of shares')
+      return
+    }
+    const rawOptions = options as unknown as { id: string; label: string }[]
+    const option = rawOptions.find((o) => o.label?.toUpperCase() === selectedSide.toUpperCase())
+    if (!option) {
+      setTradeMessage('Option not found')
+      return
+    }
+    setBuying(true)
+    setTradeMessage('')
+    try {
+      const token = await getAccessToken()
+      if (!token) {
+        setTradeMessage('Not signed in')
+        return
+      }
+      const res = await fetch('/api/trades', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          market_id: id,
+          option_id: option.id,
+          type: 'buy',
+          shares,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setTradeMessage(typeof data.error === 'string' ? data.error : `Trade failed (${res.status})`)
+      } else {
+        setTradeMessage(`Bought ${shares} ${selectedSide.toUpperCase()} shares. New balance: ${Number(data.newBalance).toFixed(6)}`)
+      }
+    } catch (err) {
+      setTradeMessage(err instanceof Error ? err.message : 'Trade request failed')
+    } finally {
+      setBuying(false)
+    }
+  }
 
   if (loading) return <LoadingState />
   if (!market) return <NotFoundState />
@@ -182,18 +219,18 @@ export default function MarketDetailClient() {
                 </p>
               )}
 
-              {market.resolve_criteria && (
+              {((market as any).resolution_criteria || market.resolve_criteria) && (
                 <div className="mt-6 rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] p-4">
                   <h3 className="mb-2 text-sm font-semibold text-white">
                     Resolution Criteria
                   </h3>
-                  <p className="text-sm text-[#9CA3AF]">{market.resolve_criteria}</p>
+                  <p className="text-sm text-[#9CA3AF]">{(market as any).resolution_criteria || market.resolve_criteria}</p>
                 </div>
               )}
 
               <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-[#9CA3AF]">
                 <span>
-                  Ends <span className="text-white">{formatDate(market.end_time)}</span>
+                  Ends <span className="text-white">{formatDate((market as any).end_date || market.end_time)}</span>
                 </span>
                 <span className="hidden sm:inline">·</span>
                 <span>
@@ -310,14 +347,15 @@ export default function MarketDetailClient() {
               </div>
 
               <button
-                disabled
-                className="group relative w-full cursor-not-allowed rounded-lg bg-[#3B82F6]/50 py-3 text-sm font-semibold text-white transition-colors"
+                onClick={handleTrade}
+                disabled={buying}
+                className="w-full rounded-lg bg-[#3B82F6] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#2563EB] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Buy {selectedSide.toUpperCase()}
-                <span className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-[#2A2A2A] px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
-                  Trading coming soon
-                </span>
+                {buying ? 'Buying...' : `Buy ${selectedSide.toUpperCase()}`}
               </button>
+              {tradeMessage && (
+                <p className="mt-2 text-xs text-[#9CA3AF]">{tradeMessage}</p>
+              )}
             </div>
           </div>
         </div>
