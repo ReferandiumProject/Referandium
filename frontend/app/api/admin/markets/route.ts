@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   const { data: markets, error } = await supabaseAdmin
     .from('markets')
-    .select('id, title, status, category, end_date')
+    .select('id, title, status, category, end_date, market_options(id, label)')
     .order('created_at', { ascending: false })
 
   if (error) {

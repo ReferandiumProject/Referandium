@@ -4,12 +4,18 @@ import { useCallback, useEffect, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import Navbar from '../components/Navbar'
 
+type MarketOption = {
+  id: string
+  label: string
+}
+
 type Market = {
   id: string
   title: string
   status: string
   category: string
   end_date: string
+  market_options?: MarketOption[] | null
 }
 
 export default function AdminPage() {
@@ -62,7 +68,7 @@ export default function AdminPage() {
     fetchMarkets()
   }, [authenticated, fetchMarkets])
 
-  const resolve = async (marketId: string, outcome: 'YES' | 'NO') => {
+  const resolve = async (marketId: string, optionId: string, label: string) => {
     const token = await getAccessToken()
     if (!token) {
       setResponses((r) => ({ ...r, [marketId]: 'Not authorized' }))
@@ -75,13 +81,13 @@ export default function AdminPage() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ outcome }),
+      body: JSON.stringify({ winning_option_id: optionId }),
     })
 
     const json = await res.json().catch(() => ({}))
     setResponses((r) => ({
       ...r,
-      [marketId]: `${outcome}: ${JSON.stringify(json, null, 2)}`,
+      [marketId]: `${label}: ${JSON.stringify(json, null, 2)}`,
     }))
 
     if (res.ok) {
@@ -151,20 +157,17 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {m.status === 'active' && (
+                {m.status === 'active' && (m.market_options?.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => resolve(m.id, 'YES')}
-                      className="rounded-lg bg-[#3B82F6] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2563EB]"
-                    >
-                      Resolve YES
-                    </button>
-                    <button
-                      onClick={() => resolve(m.id, 'NO')}
-                      className="rounded-lg bg-[#3B82F6] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2563EB]"
-                    >
-                      Resolve NO
-                    </button>
+                    {m.market_options!.map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => resolve(m.id, option.id, option.label)}
+                        className="rounded-lg bg-[#3B82F6] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2563EB]"
+                      >
+                        Resolve {option.label}
+                      </button>
+                    ))}
                   </div>
                 )}
 

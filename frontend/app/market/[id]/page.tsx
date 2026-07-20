@@ -1,19 +1,14 @@
-import { createClient } from '@supabase/supabase-js';
 import type { Metadata, ResolvingMetadata } from 'next';
+import { supabaseAdmin } from '@/lib/supabaseServer';
 import MarketDetailClient from './MarketDetailClient';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export async function generateMetadata(
   { params }: { params: { id: string } },
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const { data: market } = await supabase
+  const { data: market } = await supabaseAdmin
     .from('markets')
-    .select('title, description, image_url')
+    .select('*')
     .eq('id', params.id)
     .single();
 
@@ -32,7 +27,7 @@ export async function generateMetadata(
   const title = `${market.title || 'Market'} | Referandium`;
   const description = market.description || 'Trade on real-world outcomes with USDC on Solana.';
 
-  const imageUrl = market.image_url;
+  const imageUrl = (market as any).image_url;
   const images = imageUrl && imageUrl.startsWith('http')
     ? [imageUrl, ...previousImages]
     : ['/og-default.png', ...previousImages];
@@ -56,6 +51,6 @@ export async function generateMetadata(
   };
 }
 
-export default function MarketDetailPage() {
-  return <MarketDetailClient />;
+export default function MarketDetailPage({ params }: { params: { id: string } }) {
+  return <MarketDetailClient id={params.id} />;
 }

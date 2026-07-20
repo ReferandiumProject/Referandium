@@ -1,16 +1,20 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
-import { getPrice, getSharesForBuyCost, getSharesForSellProceeds, getSellProceeds } from '../../../lib/lmsr'
+import {
+  getPriceMulti,
+  getSellProceedsMulti,
+  getSharesForBuyCostMulti,
+  getSharesForSellProceedsMulti,
+} from '../../../lib/lmsr'
 import { Market, MarketOption } from '../../types'
 
 type Trade = {
   id: string
   market_id: string
-  direction: 'yes' | 'no'
+  direction: string
   usdc_amount: number
   created_at: string
 }
@@ -96,15 +100,14 @@ function NotFoundState() {
   )
 }
 
-export default function MarketDetailClient() {
-  const { id } = useParams() as { id: string }
+export default function MarketDetailClient({ id }: { id: string }) {
   const [market, setMarket] = useState<Market | null>(null)
   const [options, setOptions] = useState<MarketOption[]>([])
   const [trades, setTrades] = useState<Trade[]>([])
   const { getAccessToken } = usePrivy()
   const [loading, setLoading] = useState(true)
   const [buying, setBuying] = useState(false)
-  const [selectedSide, setSelectedSide] = useState<'yes' | 'no'>('yes')
+  const [selectedOptionId, setSelectedOptionId] = useState<string>('')
   const [amount, setAmount] = useState('')
   const [tradeMessage, setTradeMessage] = useState('')
   const [mode, setMode] = useState<'buy' | 'sell'>('buy')
@@ -159,7 +162,7 @@ export default function MarketDetailClient() {
 
   useEffect(() => {
     setConfirming(false)
-  }, [mode, selectedSide])
+  }, [mode, selectedOptionId])
 
   useEffect(() => {
     if (!confirming) return
@@ -168,54 +171,67 @@ export default function MarketDetailClient() {
   }, [confirming])
 
   useEffect(() => {
-    if (mode !== 'sell') {
+    if (!selectedOptionId && options.length > 0) {
+      const first = (options as unknown as Array<{ id: string }>).find(() => true)
+      if (first) setSelectedOptionId(first.id)
+    }
+  }, [options, selectedOptionId])
+
+  const optionsById = useMemo(
+    () =>
+      [...(options as unknown as Array<{ id: string; label: string; shares_outstanding: number }>)].sort((a, b) =>
+        String(a.id).localeCompare(String(b.id))
+      ),
+    [options]
+  )
+
+  const quantities = useMemo(
+    () => optionsById.map((o) => Number(o.shares_outstanding || 0)),
+    [optionsById]
+  )
+
+  const displayedOptions = useMemo(() => {
+    const withPrice = optionsById.map((o, i) => ({ ...o, price: getPriceMulti(quantities, i) }))
+    return withPrice.sort((a, b) => b.price - a.price)
+  }, [optionsById, quantities])
+
+  const selectedOption = optionsById.find((o) => o.id === selectedOptionId) || optionsById[0]
+  const selectedIndex = optionsById.findIndex((o) => o.id === selectedOptionId)
+
+  useEffect(() => {
+    if (mode !== 'sell' || !selectedOption) {
       setAmount('')
       return
     }
-    const rawOptions = options as unknown as { id: string; label: string }[]
-    const option = rawOptions.find((o) => o.label?.toUpperCase() === selectedSide.toUpperCase())
-    const owned = option ? positions[option.id] || 0 : 0
+    const owned = positions[selectedOption.id] || 0
     if (owned <= 0) {
       setAmount('')
       return
     }
-    const lmsrOpts = options as unknown as Array<{ label: string; shares_outstanding: number }>
-    const yes = lmsrOpts.find((o) => o.label?.toUpperCase() === 'YES')
-    const no = lmsrOpts.find((o) => o.label?.toUpperCase() === 'NO')
-    const qYes = Number(yes?.shares_outstanding || 0)
-    const qNo = Number(no?.shares_outstanding || 0)
-    const optionLabel = selectedSide.toUpperCase() as 'YES' | 'NO'
-    const proceeds = getSellProceeds(qYes, qNo, optionLabel, owned)
+    const proceeds = getSellProceedsMulti(quantities, selectedIndex, owned)
     setAmount(Number.isFinite(proceeds) && proceeds > 0 ? String(proceeds.toFixed(2)) : '')
-  }, [mode, selectedSide, options, positions])
+  }, [mode, selectedOption, selectedIndex, optionsById, quantities, positions])
 
   const handleTrade = async () => {
-    const rawOptions = options as unknown as { id: string; label: string }[]
-    const option = rawOptions.find((o) => o.label?.toUpperCase() === selectedSide.toUpperCase())
-    if (!option) {
+    if (!selectedOption || selectedIndex < 0) {
       setTradeMessage('Option not found')
       return
     }
-    const lmsrOpts = options as unknown as Array<{ label: string; shares_outstanding: number }>
-    const yes = lmsrOpts.find((o) => o.label?.toUpperCase() === 'YES')
-    const no = lmsrOpts.find((o) => o.label?.toUpperCase() === 'NO')
-    const qYes = Number(yes?.shares_outstanding || 0)
-    const qNo = Number(no?.shares_outstanding || 0)
-    const optionLabel = selectedSide.toUpperCase() as 'YES' | 'NO'
+    const optionLabel = selectedOption.label
     const dollars = Number(amount)
     if (!Number.isFinite(dollars) || dollars <= 0) {
       setTradeMessage('Enter a positive USDC amount')
       return
     }
     const shares = mode === 'buy'
-      ? getSharesForBuyCost(qYes, qNo, optionLabel, dollars)
-      : getSharesForSellProceeds(qYes, qNo, optionLabel, dollars)
+      ? getSharesForBuyCostMulti(quantities, selectedIndex, dollars)
+      : getSharesForSellProceedsMulti(quantities, selectedIndex, dollars)
     if (!Number.isFinite(shares) || shares <= 0) {
       setTradeMessage('USDC amount is too large for current market state')
       return
     }
     if (mode === 'sell') {
-      const owned = positions[option.id] || 0
+      const owned = positions[selectedOption.id] || 0
       if (owned <= 0) {
         setTradeMessage(`No ${optionLabel} position to sell`)
         return
@@ -232,7 +248,7 @@ export default function MarketDetailClient() {
       console.log('[MarketDetailClient sell] client values', {
         owned,
         computedShares: shares,
-        optionId: option.id,
+        optionId: selectedOption.id,
         optionLabel,
         amount,
       })
@@ -253,7 +269,7 @@ export default function MarketDetailClient() {
         },
         body: JSON.stringify({
           market_id: id,
-          option_id: option.id,
+          option_id: selectedOption.id,
           type: mode,
           shares,
         }),
@@ -282,17 +298,7 @@ export default function MarketDetailClient() {
   if (loading) return <LoadingState />
   if (!market) return <NotFoundState />
 
-  const lmsrOptions = (options as unknown) as Array<{ label: string; shares_outstanding: number }>
-  const yesOption = lmsrOptions.find((o) => o.label?.toUpperCase() === 'YES')
-  const noOption = lmsrOptions.find((o) => o.label?.toUpperCase() === 'NO')
-  const qYes = Number(yesOption?.shares_outstanding || 0)
-  const qNo = Number(noOption?.shares_outstanding || 0)
-  const yesPrice = getPrice(qYes, qNo, 'YES')
-  const noPrice = getPrice(qYes, qNo, 'NO')
   const volume = trades.reduce((sum, trade) => sum + Number(trade.usdc_amount || 0), 0)
-
-  const tradeOptions = (options as unknown) as Array<{ id: string; label: string }>
-  const selectedOption = tradeOptions.find((o) => o.label?.toUpperCase() === selectedSide.toUpperCase())
   const owned = selectedOption ? positions[selectedOption.id] || 0 : 0
 
   return (
@@ -353,19 +359,27 @@ export default function MarketDetailClient() {
             {/* Odds card */}
             <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
               <h3 className="mb-4 text-sm font-semibold text-[#111827]">Market Odds</h3>
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="font-semibold text-[#10B981]">
-                  YES ${yesPrice.toFixed(2)}
-                </span>
-                <span className="font-semibold text-[#EF4444]">
-                  NO ${noPrice.toFixed(2)}
-                </span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
-                <div className="flex h-full">
-                  <div className="h-full bg-[#10B981]" style={{ width: `${yesPrice * 100}%` }} />
-                  <div className="h-full bg-[#EF4444]" style={{ width: `${noPrice * 100}%` }} />
-                </div>
+              <div className="space-y-3">
+                {displayedOptions.map((option) => {
+                  const width = `${Math.max(0, Math.min(1, option.price)) * 100}%`
+                  const barColor =
+                    option.label.toUpperCase() === 'YES'
+                      ? 'bg-[#10B981]'
+                      : option.label.toUpperCase() === 'NO'
+                        ? 'bg-[#EF4444]'
+                        : 'bg-[#3B82F6]'
+                  return (
+                    <div key={option.id}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="font-medium text-[#111827]">{option.label}</span>
+                        <span className="font-semibold text-[#111827]">${option.price.toFixed(2)}</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+                        <div className={`h-full ${barColor}`} style={{ width }} />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
@@ -389,12 +403,14 @@ export default function MarketDetailClient() {
                         <tr key={trade.id}>
                           <td
                             className={`py-3 pr-2 font-medium ${
-                              trade.direction === 'yes'
+                              trade.direction.toUpperCase() === 'YES'
                                 ? 'text-[#10B981]'
-                                : 'text-[#EF4444]'
+                                : trade.direction.toUpperCase() === 'NO'
+                                  ? 'text-[#EF4444]'
+                                  : 'text-[#3B82F6]'
                             }`}
                           >
-                            {trade.direction.toUpperCase()}
+                            {trade.direction}
                           </td>
                           <td className="min-w-0 break-words py-3 pr-2 text-[#111827]">
                             ${Number(trade.usdc_amount).toFixed(2)}
@@ -439,36 +455,56 @@ export default function MarketDetailClient() {
                 </button>
               </div>
 
-              <div className="mb-4 grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setSelectedSide('yes')}
-                  className={`rounded-lg py-2.5 text-sm font-semibold transition-colors ${
-                    selectedSide === 'yes'
-                      ? 'bg-[#10B981] text-white'
-                      : 'border border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111827]'
-                  }`}
-                >
-                  YES
-                </button>
-                <button
-                  onClick={() => setSelectedSide('no')}
-                  className={`rounded-lg py-2.5 text-sm font-semibold transition-colors ${
-                    selectedSide === 'no'
-                      ? 'bg-[#EF4444] text-white'
-                      : 'border border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111827]'
-                  }`}
-                >
-                  NO
-                </button>
+              <div className="mb-4">
+                {options.length <= 4 ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {options.map((opt) => {
+                      const raw = opt as unknown as { id: string; label: string }
+                      const active = raw.id === selectedOptionId
+                      const upper = raw.label.toUpperCase()
+                      const activeClass = active
+                        ? upper === 'YES'
+                          ? 'bg-[#10B981] text-white'
+                          : upper === 'NO'
+                            ? 'bg-[#EF4444] text-white'
+                            : 'bg-[#3B82F6] text-white'
+                        : 'border border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111827]'
+                      return (
+                        <button
+                          key={raw.id}
+                          onClick={() => setSelectedOptionId(raw.id)}
+                          className={`rounded-lg py-2.5 text-sm font-semibold transition-colors ${activeClass}`}
+                        >
+                          {raw.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <select
+                    value={selectedOptionId}
+                    onChange={(e) => setSelectedOptionId(e.target.value)}
+                    className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm text-[#111827] focus:border-[#3B82F6] focus:outline-none"
+                  >
+                    {options.map((opt) => {
+                      const raw = opt as unknown as { id: string; label: string }
+                      return (
+                        <option key={raw.id} value={raw.id}>
+                          {raw.label}
+                        </option>
+                      )
+                    })}
+                  </select>
+                )}
               </div>
 
               <p className="mb-2 text-xs text-[#6B7280]">
                 {owned === 0
-                  ? `You own 0 ${selectedSide.toUpperCase()} shares`
-                  : `Owned: ${owned} ${selectedSide.toUpperCase()} shares${(() => {
-                      const price = getPrice(qYes, qNo, selectedSide.toUpperCase() as 'YES' | 'NO')
+                  ? `You own 0 ${selectedOption?.label ?? ''} shares`
+                  : `Owned: ${owned} ${selectedOption?.label ?? ''} shares${(() => {
+                      const price = selectedIndex >= 0 ? getPriceMulti(quantities, selectedIndex) : 0
                       const value = owned * price
-                      return Number.isFinite(value) ? ` (~$${value.toFixed(2)})` : ''
+                      return Number.isFinite(value) && value > 0 ? ` (~$${value.toFixed(2)})` : ''
                     })()}`}
               </p>
 
@@ -492,11 +528,11 @@ export default function MarketDetailClient() {
                 {(() => {
                   const target = Number(amount)
                   let estimate: string | null = null
-                  if (Number.isFinite(target) && target > 0) {
+                  if (Number.isFinite(target) && target > 0 && selectedIndex >= 0) {
                     const est =
                       mode === 'buy'
-                        ? getSharesForBuyCost(qYes, qNo, selectedSide.toUpperCase() as 'YES' | 'NO', target)
-                        : getSharesForSellProceeds(qYes, qNo, selectedSide.toUpperCase() as 'YES' | 'NO', target)
+                        ? getSharesForBuyCostMulti(quantities, selectedIndex, target)
+                        : getSharesForSellProceedsMulti(quantities, selectedIndex, target)
                     if (Number.isFinite(est) && est > 0) {
                       estimate = `≈ ${est.toFixed(2)} shares`
                     }
@@ -522,8 +558,8 @@ export default function MarketDetailClient() {
                       ? 'No position'
                       : confirming
                         ? 'Confirm Sell?'
-                        : `Sell ${selectedSide.toUpperCase()}`
-                    : `Buy ${selectedSide.toUpperCase()}`}
+                        : `Sell ${selectedOption?.label ?? ''}`
+                    : `Buy ${selectedOption?.label ?? ''}`}
               </button>
               {tradeMessage && (
                 <p className="mt-2 text-xs text-[#6B7280]">{tradeMessage}</p>

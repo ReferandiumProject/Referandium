@@ -118,3 +118,97 @@ export function getSharesForSellProceeds(
     eOption / ((eOption + eOther) * Math.exp(-targetProceeds / B) - eOther)
   );
 }
+
+/**
+ * Generalized instantaneous LMSR price for an arbitrary number of outcomes.
+ *
+ * price_i = e^(q_i / b) / Σ_j e^(q_j / b)
+ */
+export function getPriceMulti(quantities: number[], index: number): number {
+  const exps = quantities.map((q) => Math.exp(q / B));
+  const denominator = exps.reduce((sum, e) => sum + e, 0);
+  return exps[index] / denominator;
+}
+
+/**
+ * Generalized LMSR cost function C(q) = b * ln(Σ_j e^(q_j / b)).
+ */
+export function getCostMulti(quantities: number[]): number {
+  let sum = 0;
+  for (const q of quantities) {
+    sum += Math.exp(q / B);
+  }
+  return B * Math.log(sum);
+}
+
+/**
+ * USDC cost to buy `sharesToBuy` shares of outcome `index` in a multi-outcome market.
+ */
+export function getBuyCostMulti(
+  quantities: number[],
+  index: number,
+  sharesToBuy: number
+): number {
+  if (sharesToBuy <= 0) return 0;
+
+  const before = getCostMulti(quantities);
+  const after = quantities.map((q, i) => (i === index ? q + sharesToBuy : q));
+
+  return getCostMulti(after) - before;
+}
+
+/**
+ * USDC proceeds from selling `sharesToSell` shares of outcome `index`.
+ */
+export function getSellProceedsMulti(
+  quantities: number[],
+  index: number,
+  sharesToSell: number
+): number {
+  if (sharesToSell <= 0) return 0;
+
+  const before = getCostMulti(quantities);
+  const after = quantities.map((q, i) => (i === index ? q - sharesToSell : q));
+
+  return before - getCostMulti(after);
+}
+
+/**
+ * Given a target USDC cost, returns the number of shares that buys
+ * approximately that amount for outcome `index` in a multi-outcome market.
+ */
+export function getSharesForBuyCostMulti(
+  quantities: number[],
+  index: number,
+  targetCost: number
+): number {
+  if (targetCost <= 0) return 0;
+
+  const exps = quantities.map((q) => Math.exp(q / B));
+  const eOption = exps[index];
+  const eOthers = exps.reduce((sum, e, i) => (i === index ? sum : sum + e), 0);
+
+  return B * Math.log(
+    (Math.exp(targetCost / B) * (eOption + eOthers) - eOthers) / eOption
+  );
+}
+
+/**
+ * Given a target USDC proceeds, returns the number of shares to sell to
+ * receive approximately that amount for outcome `index`.
+ */
+export function getSharesForSellProceedsMulti(
+  quantities: number[],
+  index: number,
+  targetProceeds: number
+): number {
+  if (targetProceeds <= 0) return 0;
+
+  const exps = quantities.map((q) => Math.exp(q / B));
+  const eOption = exps[index];
+  const eOthers = exps.reduce((sum, e, i) => (i === index ? sum : sum + e), 0);
+
+  return B * Math.log(
+    eOption / ((eOption + eOthers) * Math.exp(-targetProceeds / B) - eOthers)
+  );
+}

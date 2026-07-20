@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
-import { getBuyCost, getSellProceeds, getPrice } from '@/lib/lmsr'
+import { getBuyCostMulti, getSellProceedsMulti, getPriceMulti } from '@/lib/lmsr'
 
 const FEE_RATE = 0.005 // 0.5% trading fee; easy to adjust later.
 
@@ -65,52 +65,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Market has ended or end date is invalid' }, { status: 400 })
   }
 
-  // Fetch the traded option and the opposite option.
-  const { data: tradedOption, error: tradedOptionError } = await supabaseAdmin
+  // Fetch all options for this market, ordered deterministically.
+  const { data: options, error: optionsError } = await supabaseAdmin
     .from('market_options')
     .select('id, market_id, label, shares_outstanding')
-    .eq('id', option_id)
     .eq('market_id', market_id)
-    .single()
+    .order('id', { ascending: true })
 
-  if (tradedOptionError || !tradedOption) {
+  if (optionsError || !options || options.length === 0) {
+    return NextResponse.json({ error: 'Could not load market options' }, { status: 500 })
+  }
+
+  const tradedIndex = options.findIndex((o) => o.id === option_id)
+  if (tradedIndex === -1) {
     return NextResponse.json({ error: 'Option not found for this market' }, { status: 400 })
   }
 
-  if (tradedOption.label !== 'YES' && tradedOption.label !== 'NO') {
-    return NextResponse.json({ error: 'Invalid option label' }, { status: 400 })
-  }
-
-  const { data: otherOptions, error: otherOptionsError } = await supabaseAdmin
-    .from('market_options')
-    .select('label, shares_outstanding')
-    .eq('market_id', market_id)
-    .neq('id', option_id)
-
-  if (otherOptionsError || !otherOptions || otherOptions.length !== 1) {
-    return NextResponse.json({ error: 'Could not load opposite option' }, { status: 500 })
-  }
-
-  const otherOption = otherOptions[0]
-  const otherLabel = otherOption.label === 'YES' ? 'YES' : 'NO'
-
-  const qYes =
-    tradedOption.label === 'YES'
-      ? Number(tradedOption.shares_outstanding)
-      : Number(otherOption.shares_outstanding)
-  const qNo =
-    tradedOption.label === 'YES'
-      ? Number(otherOption.shares_outstanding)
-      : Number(tradedOption.shares_outstanding)
-
-  const optionLabel = tradedOption.label as 'YES' | 'NO'
+  const quantities = options.map((o) => Number(o.shares_outstanding))
 
   // Compute trade cost/proceeds and fee.
   let grossUsdc: number
   if (type === 'buy') {
-    grossUsdc = getBuyCost(qYes, qNo, optionLabel, shares)
+    grossUsdc = getBuyCostMulti(quantities, tradedIndex, shares)
   } else {
-    grossUsdc = getSellProceeds(qYes, qNo, optionLabel, shares)
+    grossUsdc = getSellProceedsMulti(quantities, tradedIndex, shares)
   }
 
   if (grossUsdc < 0 || !Number.isFinite(grossUsdc)) {
@@ -166,7 +144,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Update outstanding shares.
-  const currentOutstanding = Number(tradedOption.shares_outstanding)
+  const currentOutstanding = Number(options[tradedIndex].shares_outstanding)
   const newOutstanding =
     type === 'buy' ? currentOutstanding + shares : currentOutstanding - shares
 
@@ -288,11 +266,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Compute the updated price for the traded option.
-  const updatedQYes =
-    tradedOption.label === 'YES' ? newOutstanding : Number(otherOption.shares_outstanding)
-  const updatedQNo =
-    tradedOption.label === 'YES' ? Number(otherOption.shares_outstanding) : newOutstanding
-  const updatedPrice = getPrice(updatedQYes, updatedQNo, optionLabel)
+  const updatedQuantities = quantities.map((q, i) => (i === tradedIndex ? newOutstanding : q))
+  const updatedPrice = getPriceMulti(updatedQuantities, tradedIndex)
 
   return NextResponse.json({
     updatedPrice,

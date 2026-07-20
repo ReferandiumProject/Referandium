@@ -13,6 +13,8 @@ export default function CreateMarketPage() {
   const [category, setCategory] = useState('Other')
   const [endDate, setEndDate] = useState('')
   const [resolutionCriteria, setResolutionCriteria] = useState('')
+  const [mode, setMode] = useState<'binary' | 'multi'>('binary')
+  const [options, setOptions] = useState<string[]>(['Candidate A', 'Candidate B'])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<{ id: string; title: string } | null>(null)
@@ -45,6 +47,21 @@ export default function CreateMarketPage() {
       return
     }
 
+    const payloadOptions =
+      mode === 'multi'
+        ? options.map((o) => o.trim()).filter((o) => o.length > 0)
+        : []
+
+    if (mode === 'multi' && payloadOptions.length < 2) {
+      setError('Please provide at least 2 valid option labels.')
+      return
+    }
+
+    if (mode === 'multi' && payloadOptions.length > 8) {
+      setError('Please provide at most 8 option labels.')
+      return
+    }
+
     let token: string | null
     try {
       token = await getAccessToken()
@@ -72,6 +89,7 @@ export default function CreateMarketPage() {
           category: category.trim() || 'Other',
           end_date: parsedEnd.toISOString(),
           resolution_criteria: resolutionCriteria.trim() || undefined,
+          ...(mode === 'multi' ? { options: payloadOptions } : {}),
         }),
       })
 
@@ -90,6 +108,8 @@ export default function CreateMarketPage() {
       setCategory('Other')
       setEndDate('')
       setResolutionCriteria('')
+      setMode('binary')
+      setOptions(['Candidate A', 'Candidate B'])
     } catch (err: any) {
       setError(err.message || 'Network error. Please try again.')
     } finally {
@@ -185,6 +205,61 @@ export default function CreateMarketPage() {
                 />
               </div>
             </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#9CA3AF]">
+                Market Type
+              </label>
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value as 'binary' | 'multi')}
+                className="w-full rounded-lg border border-[#2A2A2A] bg-[#161616] px-4 py-3 text-sm text-white focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/30"
+              >
+                <option value="binary">Binary (Yes / No)</option>
+                <option value="multi">Multiple Choice</option>
+              </select>
+            </div>
+
+            {mode === 'multi' && (
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-[#9CA3AF]">
+                  Options
+                </label>
+                {options.map((opt, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={opt}
+                      onChange={(e) => {
+                        const next = [...options]
+                        next[idx] = e.target.value
+                        setOptions(next)
+                      }}
+                      placeholder={`Option ${idx + 1}`}
+                      className="w-full rounded-lg border border-[#2A2A2A] bg-[#161616] px-4 py-3 text-sm text-white placeholder:text-[#6B7280] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/30"
+                    />
+                    {options.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => setOptions(options.filter((_, i) => i !== idx))}
+                        className="rounded-lg border border-[#EF4444]/30 px-3 py-2 text-sm text-[#EF4444] hover:bg-[#EF4444]/10"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {options.length < 8 && (
+                  <button
+                    type="button"
+                    onClick={() => setOptions([...options, ''])}
+                    className="rounded-lg border border-[#3B82F6]/30 px-4 py-2 text-sm text-[#3B82F6] hover:bg-[#3B82F6]/10"
+                  >
+                    + Add option
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <label htmlFor="resolution" className="block text-sm font-medium text-[#9CA3AF]">

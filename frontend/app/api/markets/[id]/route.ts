@@ -26,7 +26,11 @@ export async function GET(
 
   const [{ data: options, error: optionsError }, { data: trades, error: tradesError }] =
     await Promise.all([
-      supabaseAdmin.from('market_options').select('*').eq('market_id', id),
+      supabaseAdmin
+        .from('market_options')
+        .select('*')
+        .eq('market_id', id)
+        .order('id', { ascending: true }),
       supabaseAdmin
         .from('trades')
         .select('*')
@@ -55,10 +59,7 @@ export async function GET(
   const mappedTrades = (trades || []).map((trade: any) => ({
     id: trade.id,
     market_id: trade.market_id,
-    direction: String(optionsMap.get(trade.option_id) || 'unknown').toLowerCase() as
-      | 'yes'
-      | 'no'
-      | 'unknown',
+    direction: String(optionsMap.get(trade.option_id) || 'unknown'),
     usdc_amount: Number(trade.usdc_amount),
     created_at: trade.created_at,
   }))

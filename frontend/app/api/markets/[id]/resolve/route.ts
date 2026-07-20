@@ -29,16 +29,16 @@ export async function POST(
   }
 
   // Body.
-  let body: { outcome?: string }
+  let body: { winning_option_id?: string }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { outcome } = body
-  if (outcome !== 'YES' && outcome !== 'NO') {
-    return NextResponse.json({ error: "outcome must be 'YES' or 'NO'" }, { status: 400 })
+  const { winning_option_id } = body
+  if (!winning_option_id || typeof winning_option_id !== 'string') {
+    return NextResponse.json({ error: 'winning_option_id is required' }, { status: 400 })
   }
 
   // Market.
@@ -65,13 +65,16 @@ export async function POST(
     .select('id, label')
     .eq('market_id', id)
 
-  if (optionsError || !options || options.length !== 2) {
+  if (optionsError || !options || options.length === 0) {
     return NextResponse.json({ error: 'Failed to load market options' }, { status: 500 })
   }
 
-  const winningOption = options.find((o: any) => o.label === outcome)
+  const winningOption = options.find((o: any) => o.id === winning_option_id)
   if (!winningOption) {
-    return NextResponse.json({ error: 'Winning option not found' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Winning option not found for this market' },
+      { status: 400 }
+    )
   }
 
   const winningOptionId = winningOption.id
@@ -185,7 +188,7 @@ export async function POST(
   // Resolve the market.
   const { error: resolveError } = await supabaseAdmin
     .from('markets')
-    .update({ status: 'resolved', outcome })
+    .update({ status: 'resolved', outcome: winningOption.label })
     .eq('id', id)
 
   if (resolveError) {
@@ -194,7 +197,8 @@ export async function POST(
 
   return NextResponse.json({
     market_id: id,
-    outcome,
+    winning_option_id: winningOptionId,
+    outcome: winningOption.label,
     total_paid_out: totalPaidOut,
     positions_settled: positionsSettled,
     total_fees: totalFees,

@@ -27,6 +27,7 @@ interface CreateMarketBody {
   category?: string
   end_date: string
   resolution_criteria?: string
+  options?: string[]
 }
 
 export async function POST(request: Request) {
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { title, description, category, end_date, resolution_criteria } = body
+  const { title, description, category, end_date, resolution_criteria, options } = body
 
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     return NextResponse.json({ error: 'title is required' }, { status: 400 })
@@ -57,6 +58,18 @@ export async function POST(request: Request) {
   if (!end_date || typeof end_date !== 'string' || Number.isNaN(Date.parse(end_date))) {
     return NextResponse.json({ error: 'end_date must be a valid ISO date string' }, { status: 400 })
   }
+
+  const optionLabels = (() => {
+    if (options === undefined) return ['YES', 'NO']
+    if (!Array.isArray(options) || options.length < 2 || options.length > 8) {
+      throw new Error('options must be an array of 2 to 8 labels')
+    }
+    const labels = options.map((o) => (typeof o === 'string' ? o.trim() : ''))
+    if (labels.some((l) => l.length === 0)) {
+      throw new Error('all option labels must be non-empty strings')
+    }
+    return labels
+  })()
 
   const marketInsert = {
     title: title.trim(),
@@ -87,10 +100,9 @@ export async function POST(request: Request) {
 
     const { error: optionsError } = await supabaseAdmin
       .from('market_options')
-      .insert([
-        { market_id: marketId, label: 'YES', shares_outstanding: 0 } as any,
-        { market_id: marketId, label: 'NO', shares_outstanding: 0 } as any,
-      ])
+      .insert(
+        optionLabels.map((label) => ({ market_id: marketId, label, shares_outstanding: 0 } as any))
+      )
 
     if (optionsError) {
       throw new Error(optionsError.message)
