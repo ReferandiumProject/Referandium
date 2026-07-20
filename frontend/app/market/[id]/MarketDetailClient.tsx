@@ -58,7 +58,7 @@ function Badge({ text, color }: { text: string; color: BadgeColor }) {
     blue: 'bg-[#3B82F6]/10 text-[#3B82F6]',
     emerald: 'bg-[#10B981]/10 text-[#10B981]',
     amber: 'bg-amber-500/10 text-amber-500',
-    slate: 'bg-[#2A2A2A] text-[#9CA3AF]',
+    slate: 'bg-[#F3F4F6] text-[#6B7280]',
     red: 'bg-[#EF4444]/10 text-[#EF4444]',
   }
 
@@ -73,7 +73,7 @@ function Badge({ text, color }: { text: string; color: BadgeColor }) {
 
 function LoadingState() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A]">
+    <div className="flex min-h-screen items-center justify-center bg-[#F9FAFB]">
       <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#3B82F6] border-t-transparent" />
     </div>
   )
@@ -81,9 +81,9 @@ function LoadingState() {
 
 function NotFoundState() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0A0A0A] px-4 text-center">
-      <h1 className="text-2xl font-bold text-white">Market not found</h1>
-      <p className="mt-2 text-sm text-[#9CA3AF]">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-4 text-center">
+      <h1 className="text-2xl font-bold text-[#111827]">Market not found</h1>
+      <p className="mt-2 text-sm text-[#6B7280]">
         The market you&apos;re looking for doesn&apos;t exist or has been removed.
       </p>
       <Link
@@ -296,12 +296,12 @@ export default function MarketDetailClient() {
   const owned = selectedOption ? positions[selectedOption.id] || 0 : 0
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] px-4 pb-24 pt-8">
+    <div className="min-h-screen bg-[#F9FAFB] px-4 pb-24 pt-8">
       <main className="mx-auto max-w-[1200px]">
         <div className="mb-6">
           <Link
             href="/markets"
-            className="text-sm text-[#9CA3AF] transition-colors hover:text-white"
+            className="text-sm text-[#6B7280] transition-colors hover:text-[#111827]"
           >
             ← Markets
           </Link>
@@ -311,7 +311,7 @@ export default function MarketDetailClient() {
           {/* Left column */}
           <div className="space-y-6 lg:col-span-8">
             {/* Header card */}
-            <div className="rounded-2xl border border-[#2A2A2A] bg-[#161616] p-6 sm:p-8">
+            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 sm:p-8">
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <Badge text={market.category || 'General'} color="blue" />
                 <Badge
@@ -320,28 +320,28 @@ export default function MarketDetailClient() {
                 />
               </div>
 
-              <h1 className="break-words text-xl font-bold tracking-tight text-white sm:text-2xl lg:text-3xl">
+              <h1 className="break-words text-xl font-bold tracking-tight text-[#111827] sm:text-2xl lg:text-3xl">
                 {market.title}
               </h1>
 
               {market.description && (
-                <p className="mt-4 text-sm leading-relaxed text-[#9CA3AF]">
+                <p className="mt-4 text-sm leading-relaxed text-[#6B7280]">
                   {market.description}
                 </p>
               )}
 
               {((market as any).resolution_criteria || market.resolve_criteria) && (
-                <div className="mt-6 rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] p-4">
-                  <h3 className="mb-2 text-sm font-semibold text-white">
+                <div className="mt-6 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                  <h3 className="mb-2 text-sm font-semibold text-[#111827]">
                     Resolution Criteria
                   </h3>
-                  <p className="text-sm text-[#9CA3AF]">{(market as any).resolution_criteria || market.resolve_criteria}</p>
+                  <p className="text-sm text-[#6B7280]">{(market as any).resolution_criteria || market.resolve_criteria}</p>
                 </div>
               )}
 
-              <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-[#9CA3AF]">
+              <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-[#6B7280]">
                 <span>
-                  Ends <span className="text-white">{formatDate((market as any).end_date || market.end_time)}</span>
+                  Ends <span className="text-[#111827]">{formatDate((market as any).end_date || market.end_time)}</span>
                 </span>
                 <span className="hidden sm:inline">·</span>
                 <span>
@@ -351,8 +351,8 @@ export default function MarketDetailClient() {
             </div>
 
             {/* Odds card */}
-            <div className="rounded-2xl border border-[#2A2A2A] bg-[#161616] p-6">
-              <h3 className="mb-4 text-sm font-semibold text-white">Market Odds</h3>
+            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
+              <h3 className="mb-4 text-sm font-semibold text-[#111827]">Market Odds</h3>
               <div className="mb-2 flex items-center justify-between text-sm">
                 <span className="font-semibold text-[#10B981]">
                   YES ${yesPrice.toFixed(2)}
@@ -361,7 +361,7 @@ export default function MarketDetailClient() {
                   NO ${noPrice.toFixed(2)}
                 </span>
               </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-[#2A2A2A]">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
                 <div className="flex h-full">
                   <div className="h-full bg-[#10B981]" style={{ width: `${yesPrice * 100}%` }} />
                   <div className="h-full bg-[#EF4444]" style={{ width: `${noPrice * 100}%` }} />
@@ -370,21 +370,21 @@ export default function MarketDetailClient() {
             </div>
 
             {/* Trade history */}
-            <div className="rounded-2xl border border-[#2A2A2A] bg-[#161616] p-6">
-              <h3 className="mb-4 text-lg font-semibold text-white">Trade History</h3>
+            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
+              <h3 className="mb-4 text-lg font-semibold text-[#111827]">Trade History</h3>
               {trades.length === 0 ? (
-                <p className="text-sm text-[#9CA3AF]">No trades yet.</p>
+                <p className="text-sm text-[#6B7280]">No trades yet.</p>
               ) : (
                 <div>
                   <table className="w-full table-fixed text-sm">
                     <thead>
-                      <tr className="border-b border-[#2A2A2A] text-left text-[#9CA3AF]">
+                      <tr className="border-b border-[#E5E7EB] text-left text-[#6B7280]">
                         <th className="pb-2 font-medium">Side</th>
                         <th className="pb-2 font-medium">Amount</th>
                         <th className="pb-2 font-medium">Time</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#2A2A2A]">
+                    <tbody className="divide-y divide-[#E5E7EB]">
                       {trades.map((trade) => (
                         <tr key={trade.id}>
                           <td
@@ -396,10 +396,10 @@ export default function MarketDetailClient() {
                           >
                             {trade.direction.toUpperCase()}
                           </td>
-                          <td className="min-w-0 break-words py-3 pr-2 text-white">
+                          <td className="min-w-0 break-words py-3 pr-2 text-[#111827]">
                             ${Number(trade.usdc_amount).toFixed(2)}
                           </td>
-                          <td className="min-w-0 break-words py-3 text-[#9CA3AF]">
+                          <td className="min-w-0 break-words py-3 text-[#6B7280]">
                             {new Date(trade.created_at).toLocaleString()}
                           </td>
                         </tr>
@@ -411,18 +411,18 @@ export default function MarketDetailClient() {
             </div>
           </div>
 
-          {/* Right column - Buy panel */}
+          {/* Right column - Trade panel */}
           <div className="lg:col-span-4">
-            <div className="rounded-2xl border border-[#2A2A2A] bg-[#161616] p-6 lg:sticky lg:top-24">
-              <h3 className="mb-4 text-lg font-semibold text-white">Trade Shares</h3>
+            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 lg:sticky lg:top-24">
+              <h3 className="mb-4 text-lg font-semibold text-[#111827]">Trade Shares</h3>
 
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="mb-4 grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setMode('buy')}
                   className={`rounded-lg py-2.5 text-sm font-semibold transition-colors ${
                     mode === 'buy'
                       ? 'bg-[#3B82F6] text-white'
-                      : 'border border-[#2A2A2A] text-[#9CA3AF] hover:text-white'
+                      : 'border border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111827]'
                   }`}
                 >
                   Buy
@@ -432,20 +432,20 @@ export default function MarketDetailClient() {
                   className={`rounded-lg py-2.5 text-sm font-semibold transition-colors ${
                     mode === 'sell'
                       ? 'bg-[#EF4444] text-white'
-                      : 'border border-[#2A2A2A] text-[#9CA3AF] hover:text-white'
+                      : 'border border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111827]'
                   }`}
                 >
                   Sell
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="mb-4 grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setSelectedSide('yes')}
                   className={`rounded-lg py-2.5 text-sm font-semibold transition-colors ${
                     selectedSide === 'yes'
                       ? 'bg-[#10B981] text-white'
-                      : 'border border-[#2A2A2A] text-[#9CA3AF] hover:text-white'
+                      : 'border border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111827]'
                   }`}
                 >
                   YES
@@ -455,14 +455,14 @@ export default function MarketDetailClient() {
                   className={`rounded-lg py-2.5 text-sm font-semibold transition-colors ${
                     selectedSide === 'no'
                       ? 'bg-[#EF4444] text-white'
-                      : 'border border-[#2A2A2A] text-[#9CA3AF] hover:text-white'
+                      : 'border border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111827]'
                   }`}
                 >
                   NO
                 </button>
               </div>
 
-              <p className="mb-2 text-xs text-[#9CA3AF]">
+              <p className="mb-2 text-xs text-[#6B7280]">
                 {owned === 0
                   ? `You own 0 ${selectedSide.toUpperCase()} shares`
                   : `Owned: ${owned} ${selectedSide.toUpperCase()} shares${(() => {
@@ -473,7 +473,7 @@ export default function MarketDetailClient() {
               </p>
 
               <div className="mb-4">
-                <label className="mb-1.5 block text-xs font-medium text-[#9CA3AF]">
+                <label className="mb-1.5 block text-xs font-medium text-[#6B7280]">
                   USDC Amount
                 </label>
                 <div className="relative">
@@ -483,9 +483,9 @@ export default function MarketDetailClient() {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] py-2.5 pl-3 pr-12 text-sm text-white placeholder:text-[#6B7280] focus:border-[#3B82F6] focus:outline-none"
+                    className="w-full rounded-lg border border-[#E5E7EB] bg-white py-2.5 pl-3 pr-12 text-sm text-[#111827] placeholder:text-[#6B7280] focus:border-[#3B82F6] focus:outline-none"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#9CA3AF]">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#6B7280]">
                     USDC
                   </span>
                 </div>
@@ -501,7 +501,7 @@ export default function MarketDetailClient() {
                       estimate = `≈ ${est.toFixed(2)} shares`
                     }
                   }
-                  return estimate ? <p className="mt-1.5 text-xs text-[#9CA3AF]">{estimate}</p> : null
+                  return estimate ? <p className="mt-1.5 text-xs text-[#6B7280]">{estimate}</p> : null
                 })()}
                 <p className="mt-1.5 text-xs text-[#6B7280]">
                   Final amount may differ slightly once the 0.5% fee is applied.
@@ -526,7 +526,7 @@ export default function MarketDetailClient() {
                     : `Buy ${selectedSide.toUpperCase()}`}
               </button>
               {tradeMessage && (
-                <p className="mt-2 text-xs text-[#9CA3AF]">{tradeMessage}</p>
+                <p className="mt-2 text-xs text-[#6B7280]">{tradeMessage}</p>
               )}
             </div>
           </div>

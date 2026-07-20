@@ -91,62 +91,61 @@ export default function AdminPage() {
 
   return (
     <div
-      className="min-h-screen bg-[#F9FAFB] px-4 pb-24 pt-8 text-gray-900"
-      style={{ fontFamily: 'Inter, sans-serif' }}
+      className="min-h-screen bg-[#F9FAFB] px-4 pb-24 pt-8 text-[#111827]"
     >
       <main className="mx-auto max-w-7xl">
-        <h1 className="mb-6 text-2xl font-semibold text-[#3B82F6] sm:text-3xl">
+        <h1 className="mb-8 text-2xl font-bold text-[#111827] sm:text-3xl">
           Admin - Markets
         </h1>
 
         {loading && (
-          <p className="text-sm text-gray-500">Loading markets...</p>
+          <p className="text-sm text-[#6B7280]">Loading markets...</p>
         )}
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+          <div className="mb-4 rounded-lg border border-[#FECACA] bg-[#FEF2F2] p-3 text-sm text-[#EF4444]">
             {error}
           </div>
         )}
 
         {!loading && !error && markets && markets.length === 0 && (
-          <p className="text-sm text-gray-500">No markets found.</p>
+          <p className="text-sm text-[#6B7280]">No markets found.</p>
         )}
 
         {!loading && !error && markets && markets.length > 0 && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             {markets.map((m) => (
               <div
                 key={m.id}
-                className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+                className="rounded-2xl border border-[#E5E7EB] bg-white p-6"
               >
                 <div className="mb-3 flex items-start justify-between gap-4">
-                  <h2 className="text-base font-medium leading-snug text-gray-900 sm:text-lg">
+                  <h2 className="text-[15px] font-semibold leading-snug text-[#111827]">
                     {m.title}
                   </h2>
                   <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    className={`shrink-0 rounded px-2 py-0.5 text-xs font-semibold ${
                       m.status === 'active'
                         ? 'bg-[#3B82F6]/10 text-[#3B82F6]'
-                        : 'bg-gray-100 text-gray-500'
+                        : 'bg-[#F3F4F6] text-[#6B7280]'
                     }`}
                   >
                     {m.status}
                   </span>
                 </div>
 
-                <div className="mb-4 grid grid-cols-2 gap-3 text-sm text-gray-500">
+                <div className="mb-4 grid grid-cols-2 gap-3 text-sm text-[#6B7280]">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-400">
+                    <p className="text-xs uppercase tracking-wide text-[#6B7280]">
                       Category
                     </p>
-                    <p className="text-gray-900">{m.category}</p>
+                    <p className="text-[#111827]">{m.category}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-400">
+                    <p className="text-xs uppercase tracking-wide text-[#6B7280]">
                       End Date
                     </p>
-                    <p className="text-gray-900">
+                    <p className="text-[#111827]">
                       {new Date(m.end_date).toLocaleString()}
                     </p>
                   </div>
@@ -156,13 +155,13 @@ export default function AdminPage() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => resolve(m.id, 'YES')}
-                      className="rounded-lg bg-[#3B82F6] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
+                      className="rounded-lg bg-[#3B82F6] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2563EB]"
                     >
                       Resolve YES
                     </button>
                     <button
                       onClick={() => resolve(m.id, 'NO')}
-                      className="rounded-lg bg-[#3B82F6] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
+                      className="rounded-lg bg-[#3B82F6] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2563EB]"
                     >
                       Resolve NO
                     </button>
@@ -170,7 +169,7 @@ export default function AdminPage() {
                 )}
 
                 {responses[m.id] && (
-                  <pre className="mt-4 overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 whitespace-pre-wrap">
+                  <pre className="mt-4 overflow-x-auto rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3 text-xs text-[#111827] whitespace-pre-wrap">
                     {responses[m.id]}
                   </pre>
                 )}
