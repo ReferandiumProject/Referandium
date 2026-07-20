@@ -143,6 +143,13 @@ export async function POST(request: NextRequest) {
       .eq('option_id', option_id)
       .single()
 
+    console.log('[trades sell] share check', {
+      userId: user.id,
+      optionId: option_id,
+      posShares: pos?.shares,
+      receivedShares: shares,
+      comparison: pos ? Number(pos.shares) - shares : null,
+    })
     if (posError || !pos || Number(pos.shares) < shares) {
       return NextResponse.json({ error: 'Insufficient shares to sell' }, { status: 400 })
     }

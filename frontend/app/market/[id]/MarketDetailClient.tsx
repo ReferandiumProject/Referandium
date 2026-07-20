@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
-import { getPrice } from '../../../lib/lmsr'
+import { getPrice, getSharesForBuyCost, getSharesForSellProceeds, getSellProceeds } from '../../../lib/lmsr'
 import { Market, MarketOption } from '../../types'
 
 type Trade = {
@@ -168,39 +168,74 @@ export default function MarketDetailClient() {
   }, [confirming])
 
   useEffect(() => {
-    if (mode !== 'sell') return
+    if (mode !== 'sell') {
+      setAmount('')
+      return
+    }
     const rawOptions = options as unknown as { id: string; label: string }[]
     const option = rawOptions.find((o) => o.label?.toUpperCase() === selectedSide.toUpperCase())
     const owned = option ? positions[option.id] || 0 : 0
-    setAmount(String(owned))
+    if (owned <= 0) {
+      setAmount('')
+      return
+    }
+    const lmsrOpts = options as unknown as Array<{ label: string; shares_outstanding: number }>
+    const yes = lmsrOpts.find((o) => o.label?.toUpperCase() === 'YES')
+    const no = lmsrOpts.find((o) => o.label?.toUpperCase() === 'NO')
+    const qYes = Number(yes?.shares_outstanding || 0)
+    const qNo = Number(no?.shares_outstanding || 0)
+    const optionLabel = selectedSide.toUpperCase() as 'YES' | 'NO'
+    const proceeds = getSellProceeds(qYes, qNo, optionLabel, owned)
+    setAmount(Number.isFinite(proceeds) && proceeds > 0 ? String(proceeds.toFixed(2)) : '')
   }, [mode, selectedSide, options, positions])
 
   const handleTrade = async () => {
-    const shares = Number(amount)
-    if (!Number.isFinite(shares) || shares <= 0) {
-      setTradeMessage('Enter a positive number of shares')
-      return
-    }
     const rawOptions = options as unknown as { id: string; label: string }[]
     const option = rawOptions.find((o) => o.label?.toUpperCase() === selectedSide.toUpperCase())
     if (!option) {
       setTradeMessage('Option not found')
       return
     }
+    const lmsrOpts = options as unknown as Array<{ label: string; shares_outstanding: number }>
+    const yes = lmsrOpts.find((o) => o.label?.toUpperCase() === 'YES')
+    const no = lmsrOpts.find((o) => o.label?.toUpperCase() === 'NO')
+    const qYes = Number(yes?.shares_outstanding || 0)
+    const qNo = Number(no?.shares_outstanding || 0)
+    const optionLabel = selectedSide.toUpperCase() as 'YES' | 'NO'
+    const dollars = Number(amount)
+    if (!Number.isFinite(dollars) || dollars <= 0) {
+      setTradeMessage('Enter a positive USDC amount')
+      return
+    }
+    const shares = mode === 'buy'
+      ? getSharesForBuyCost(qYes, qNo, optionLabel, dollars)
+      : getSharesForSellProceeds(qYes, qNo, optionLabel, dollars)
+    if (!Number.isFinite(shares) || shares <= 0) {
+      setTradeMessage('USDC amount is too large for current market state')
+      return
+    }
     if (mode === 'sell') {
       const owned = positions[option.id] || 0
       if (owned <= 0) {
-        setTradeMessage(`No ${selectedSide.toUpperCase()} position to sell`)
+        setTradeMessage(`No ${optionLabel} position to sell`)
         return
       }
       if (shares > owned) {
-        setTradeMessage(`Cannot sell more than ${owned} ${selectedSide.toUpperCase()} shares`)
+        setTradeMessage(`Amount exceeds your ${optionLabel} position by ${(shares - owned).toFixed(2)} shares`)
         return
       }
       if (!confirming) {
+        setTradeMessage(`≈ ${shares.toFixed(2)} ${optionLabel} shares — click again to confirm`)
         setConfirming(true)
         return
       }
+      console.log('[MarketDetailClient sell] client values', {
+        owned,
+        computedShares: shares,
+        optionId: option.id,
+        optionLabel,
+        amount,
+      })
     }
     setBuying(true)
     setTradeMessage('')
@@ -228,10 +263,10 @@ export default function MarketDetailClient() {
         setTradeMessage(typeof data.error === 'string' ? data.error : `Trade failed (${res.status})`)
       } else {
         if (mode === 'buy') {
-          setTradeMessage(`Bought ${shares} ${selectedSide.toUpperCase()} shares. New balance: ${Number(data.newBalance).toFixed(6)}`)
+          setTradeMessage(`Bought ${shares.toFixed(2)} ${optionLabel} shares. New balance: ${Number(data.newBalance).toFixed(6)}`)
         } else {
           const proceeds = Number(data.trade?.usdc_amount ?? 0) - Number(data.trade?.fee ?? 0)
-          setTradeMessage(`Sold ${shares} ${selectedSide.toUpperCase()} shares. Proceeds: ${proceeds.toFixed(4)} USDC. New balance: ${Number(data.newBalance).toFixed(6)}`)
+          setTradeMessage(`Sold ${shares.toFixed(2)} ${optionLabel} shares. Proceeds: ${proceeds.toFixed(4)} USDC. New balance: ${Number(data.newBalance).toFixed(6)}`)
         }
         await loadMarket()
         setPositionsKey((k) => k + 1)
@@ -427,28 +462,50 @@ export default function MarketDetailClient() {
                 </button>
               </div>
 
-              {mode === 'sell' && (
-                <p className="mb-2 text-xs text-[#9CA3AF]">
-                  Owned: {owned} {selectedSide.toUpperCase()} shares
-                </p>
-              )}
+              <p className="mb-2 text-xs text-[#9CA3AF]">
+                {owned === 0
+                  ? `You own 0 ${selectedSide.toUpperCase()} shares`
+                  : `Owned: ${owned} ${selectedSide.toUpperCase()} shares${(() => {
+                      const price = getPrice(qYes, qNo, selectedSide.toUpperCase() as 'YES' | 'NO')
+                      const value = owned * price
+                      return Number.isFinite(value) ? ` (~$${value.toFixed(2)})` : ''
+                    })()}`}
+              </p>
 
               <div className="mb-4">
                 <label className="mb-1.5 block text-xs font-medium text-[#9CA3AF]">
-                  Amount
+                  USDC Amount
                 </label>
                 <div className="relative">
                   <input
                     type="number"
+                    step="0.01"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.00"
                     className="w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] py-2.5 pl-3 pr-12 text-sm text-white placeholder:text-[#6B7280] focus:border-[#3B82F6] focus:outline-none"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#9CA3AF]">
-                    Shares
+                    USDC
                   </span>
                 </div>
+                {(() => {
+                  const target = Number(amount)
+                  let estimate: string | null = null
+                  if (Number.isFinite(target) && target > 0) {
+                    const est =
+                      mode === 'buy'
+                        ? getSharesForBuyCost(qYes, qNo, selectedSide.toUpperCase() as 'YES' | 'NO', target)
+                        : getSharesForSellProceeds(qYes, qNo, selectedSide.toUpperCase() as 'YES' | 'NO', target)
+                    if (Number.isFinite(est) && est > 0) {
+                      estimate = `≈ ${est.toFixed(2)} shares`
+                    }
+                  }
+                  return estimate ? <p className="mt-1.5 text-xs text-[#9CA3AF]">{estimate}</p> : null
+                })()}
+                <p className="mt-1.5 text-xs text-[#6B7280]">
+                  Final amount may differ slightly once the 0.5% fee is applied.
+                </p>
               </div>
 
               <button

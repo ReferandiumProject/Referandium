@@ -24,12 +24,9 @@ export async function GET(request: NextRequest) {
     const marketIds = [
       ...new Set((positions || []).map((p: any) => p.market_id).filter(Boolean)),
     ]
-    const optionIds = [
-      ...new Set((positions || []).map((p: any) => p.option_id).filter(Boolean)),
-    ]
 
     let marketsData: { id: string; title: string }[] = []
-    let optionsData: { id: string; label: string }[] = []
+    let optionsData: { id: string; label: string; market_id: string; shares_outstanding: number }[] = []
 
     if (marketIds.length > 0) {
       const { data, error } = await supabaseAdmin
@@ -46,11 +43,11 @@ export async function GET(request: NextRequest) {
       marketsData = (data as any) || []
     }
 
-    if (optionIds.length > 0) {
+    if (marketIds.length > 0) {
       const { data, error } = await supabaseAdmin
         .from('market_options')
-        .select('id, label')
-        .in('id', optionIds as any)
+        .select('id, label, market_id, shares_outstanding')
+        .in('market_id', marketIds as any)
       if (error) {
         console.error('[api/profile/positions] options query error:', error)
         return NextResponse.json(
@@ -74,7 +71,7 @@ export async function GET(request: NextRequest) {
       avg_price: Number(p.avg_price ?? 0),
     }))
 
-    return NextResponse.json({ positions: result })
+    return NextResponse.json({ positions: result, options: optionsData })
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
