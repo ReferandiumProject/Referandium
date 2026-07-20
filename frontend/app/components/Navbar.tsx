@@ -56,7 +56,7 @@ export default function Navbar() {
   return (
     <nav style={{ 
       backgroundColor: '#FFFFFF', 
-      borderBottom: '1px solid #E2E8F0',
+      borderBottom: '1px solid #E5E7EB',
       position: 'sticky',
       top: 0,
       zIndex: 50
@@ -65,26 +65,26 @@ export default function Navbar() {
         
         {/* Logo */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-          <div style={{ width: '32px', height: '32px', backgroundColor: '#2563EB', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '32px', height: '32px', backgroundColor: '#3B82F6', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ color: 'white', fontWeight: '700', fontSize: '16px' }}>R</span>
           </div>
-          <span style={{ fontWeight: '700', fontSize: '18px', color: '#0F172A', letterSpacing: '-0.02em' }}>Referandium</span>
+          <span style={{ fontWeight: '700', fontSize: '18px', color: '#111827', letterSpacing: '-0.02em' }}>Referandium</span>
         </Link>
 
         {/* Nav Links (desktop) */}
         <div className="hidden md:flex" style={{ alignItems: 'center', gap: '32px' }}>
-          <Link href="/markets" style={{ color: pathname === '/markets' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
+          <Link href="/markets" style={{ color: pathname === '/markets' ? '#3B82F6' : '#6B7280', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
             Markets
           </Link>
-          <a href="https://startup.referandium.com" target="_blank" rel="noopener noreferrer" style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
+          <a href="https://startup.referandium.com" target="_blank" rel="noopener noreferrer" style={{ color: '#6B7280', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
             Startups
           </a>
           {authenticated && (
-            <Link href="/profile" style={{ color: pathname === '/profile' ? '#2563EB' : '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
+            <Link href="/profile" style={{ color: pathname === '/profile' ? '#3B82F6' : '#6B7280', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
               Profile
             </Link>
           )}
-          <Link href="/docs" style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
+          <Link href="/docs" style={{ color: '#6B7280', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
             Docs
           </Link>
         </div>
@@ -92,12 +92,12 @@ export default function Navbar() {
         {/* Right side (desktop) */}
         <div className="hidden md:flex" style={{ alignItems: 'center', gap: '12px' }}>
           {isAdmin && (
-            <Link href="/admin" style={{ textDecoration: 'none', fontSize: '12px', color: '#94A3B8', fontWeight: '500' }}>
+            <Link href="/admin" style={{ textDecoration: 'none', fontSize: '12px', color: '#6B7280', fontWeight: '500' }}>
               Admin
             </Link>
           )}
           <Link href="/create" style={{
-            backgroundColor: '#2563EB',
+            backgroundColor: '#3B82F6',
             color: 'white',
             padding: '8px 16px',
             borderRadius: '8px',
@@ -115,8 +115,8 @@ export default function Navbar() {
               onClick={() => login()}
               style={{
                 backgroundColor: 'white',
-                border: '1px solid #E2E8F0',
-                color: '#0F172A',
+                border: '1px solid #E5E7EB',
+                color: '#111827',
                 borderRadius: '8px',
                 fontSize: '13px',
                 fontWeight: '500',
@@ -125,7 +125,7 @@ export default function Navbar() {
                 cursor: 'pointer',
                 transition: 'background-color 0.15s',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB' }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
             >
               Sign In
@@ -136,8 +136,8 @@ export default function Navbar() {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 style={{
                   backgroundColor: 'white',
-                  border: '1px solid #E2E8F0',
-                  color: '#0F172A',
+                  border: '1px solid #E5E7EB',
+                  color: '#111827',
                   borderRadius: '8px',
                   fontSize: '13px',
                   fontWeight: '500',
@@ -149,7 +149,7 @@ export default function Navbar() {
                   gap: '6px',
                   transition: 'background-color 0.15s',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC' }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB' }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
               >
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981' }} />
@@ -162,9 +162,9 @@ export default function Navbar() {
                   top: '42px',
                   right: 0,
                   backgroundColor: 'white',
-                  border: '1px solid #E2E8F0',
+                  border: '1px solid #E5E7EB',
                   borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(15,23,42,0.12)',
+                  boxShadow: '0 4px 12px rgba(17,24,39,0.12)',
                   minWidth: '160px',
                   overflow: 'hidden',
                   zIndex: 100,
@@ -178,13 +178,13 @@ export default function Navbar() {
                       padding: '10px 14px',
                       fontSize: '13px',
                       fontWeight: '500',
-                      color: '#0F172A',
+                      color: '#111827',
                       backgroundColor: 'white',
                       border: 'none',
                       cursor: 'pointer',
-                      borderBottom: '1px solid #F1F5F9',
+                      borderBottom: '1px solid #E5E7EB',
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB' }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
                   >
                     Copy Address
@@ -198,7 +198,7 @@ export default function Navbar() {
                       padding: '10px 14px',
                       fontSize: '13px',
                       fontWeight: '500',
-                      color: '#DC2626',
+                      color: '#EF4444',
                       backgroundColor: 'white',
                       border: 'none',
                       cursor: 'pointer',
@@ -228,18 +228,18 @@ export default function Navbar() {
             width: '40px',
             height: '40px',
             borderRadius: '8px',
-            border: '1px solid #E2E8F0',
+            border: '1px solid #E5E7EB',
             backgroundColor: 'white',
             cursor: 'pointer',
           }}
         >
           {mobileOpen ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F172A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F172A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="3" y1="6" x2="21" y2="6" />
               <line x1="3" y1="12" x2="21" y2="12" />
               <line x1="3" y1="18" x2="21" y2="18" />
@@ -256,8 +256,8 @@ export default function Navbar() {
           aria-label="Mobile menu"
           className="flex flex-col md:hidden"
           style={{
-            backgroundColor: '#0A0A0A',
-            borderTop: '1px solid #2A2A2A',
+            backgroundColor: '#FFFFFF',
+            borderTop: '1px solid #E5E7EB',
             padding: '16px 24px 24px',
             gap: '4px',
           }}
@@ -271,7 +271,7 @@ export default function Navbar() {
                 padding: '10px 0',
                 fontSize: '14px',
                 fontWeight: 500,
-                color: '#9CA3AF',
+                color: '#6B7280',
               }}
             >
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981' }} />
@@ -282,7 +282,7 @@ export default function Navbar() {
           <Link
             href="/markets"
             onClick={() => setMobileOpen(false)}
-            style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: pathname === '/markets' ? '#3B82F6' : '#FFFFFF' }}
+            style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: pathname === '/markets' ? '#3B82F6' : '#111827' }}
           >
             Markets
           </Link>
@@ -291,7 +291,7 @@ export default function Navbar() {
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => setMobileOpen(false)}
-            style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: '#FFFFFF' }}
+            style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: '#111827' }}
           >
             Startups
           </a>
@@ -299,7 +299,7 @@ export default function Navbar() {
             <Link
               href="/profile"
               onClick={() => setMobileOpen(false)}
-              style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: pathname === '/profile' ? '#3B82F6' : '#FFFFFF' }}
+              style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: pathname === '/profile' ? '#3B82F6' : '#111827' }}
             >
               Profile
             </Link>
@@ -307,7 +307,7 @@ export default function Navbar() {
           <Link
             href="/docs"
             onClick={() => setMobileOpen(false)}
-            style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: '#FFFFFF' }}
+            style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: '#111827' }}
           >
             Docs
           </Link>
@@ -315,7 +315,7 @@ export default function Navbar() {
             <Link
               href="/admin"
               onClick={() => setMobileOpen(false)}
-              style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: '#9CA3AF' }}
+              style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: '#6B7280' }}
             >
               Admin
             </Link>
@@ -345,8 +345,8 @@ export default function Navbar() {
               style={{
                 marginTop: '8px',
                 backgroundColor: 'transparent',
-                border: '1px solid #2A2A2A',
-                color: '#FFFFFF',
+                border: '1px solid #E5E7EB',
+                color: '#111827',
                 borderRadius: '8px',
                 fontSize: '15px',
                 fontWeight: 600,
@@ -363,8 +363,8 @@ export default function Navbar() {
                 style={{
                   marginTop: '8px',
                   backgroundColor: 'transparent',
-                  border: '1px solid #2A2A2A',
-                  color: '#FFFFFF',
+                  border: '1px solid #E5E7EB',
+                  color: '#111827',
                   borderRadius: '8px',
                   fontSize: '15px',
                   fontWeight: 500,
@@ -380,7 +380,7 @@ export default function Navbar() {
                 style={{
                   marginTop: '8px',
                   backgroundColor: 'transparent',
-                  border: '1px solid #2A2A2A',
+                  border: '1px solid #E5E7EB',
                   color: '#EF4444',
                   borderRadius: '8px',
                   fontSize: '15px',

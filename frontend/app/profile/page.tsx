@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { usePrivy, useFundWallet } from '@privy-io/react-auth'
 import { getPrice, getSellProceeds, getSharesForSellProceeds } from '../../lib/lmsr'
 import { useUser } from '../context/UserContext'
@@ -10,6 +10,7 @@ type Position = {
   market_id: string
   option_id: string
   market_title: string
+  market_status: string
   option_label: string
   shares: number
   avg_price: number
@@ -25,6 +26,18 @@ type DepositInfo = {
   usdc_mint: string
 }
 
+type Tab = 'active' | 'closed'
+
+const formatUsd = (n: number | null | undefined) => {
+  const v = Number(n ?? 0)
+  return Number.isFinite(v) ? `$${v.toFixed(2)}` : '—'
+}
+
+const formatShares = (n: number | null | undefined) => {
+  const v = Number(n ?? 0)
+  return Number.isFinite(v) ? v.toFixed(2) : '—'
+}
+
 export default function ProfilePage() {
   const { authenticated, getAccessToken, login } = usePrivy()
   const { dbUser } = useUser()
@@ -34,6 +47,7 @@ export default function ProfilePage() {
 
   const [balance, setBalance] = useState<Balance | null>(null)
   const [positions, setPositions] = useState<Position[] | null>(null)
+  const [totalTrades, setTotalTrades] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -41,6 +55,7 @@ export default function ProfilePage() {
   const [sellResponses, setSellResponses] = useState<Record<string, string>>({})
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [marketDetails, setMarketDetails] = useState<Record<string, { qYes: number; qNo: number }>>({})
+  const [activeTab, setActiveTab] = useState<Tab>('active')
 
   const [depositMode, setDepositMode] = useState<'devnet' | 'wallet' | 'card'>('devnet')
   const [depositAmount, setDepositAmount] = useState('')
@@ -83,6 +98,7 @@ export default function ProfilePage() {
         setError((prev) => prev || positionsJson.error || 'Failed to load positions')
       } else {
         setPositions(positionsJson.positions || [])
+        setTotalTrades(positionsJson.totalTrades ?? 0)
         const opts = (positionsJson.options || []) as Array<{ market_id: string; label: string; shares_outstanding: number }>
         const details: Record<string, { qYes: number; qNo: number }> = {}
         for (const o of opts) {
@@ -124,7 +140,6 @@ export default function ProfilePage() {
     return () => clearTimeout(timer)
   }, [confirmingId])
 
-
   useEffect(() => {
     if (!positions || !Object.keys(marketDetails).length) return
     const next: Record<string, string> = {}
@@ -140,6 +155,26 @@ export default function ProfilePage() {
     }
     setSellAmounts(next)
   }, [positions, marketDetails])
+
+  const openPositionsValue = useMemo(() => {
+    if (!positions) return 0
+    return positions.reduce((sum, p) => {
+      if (p.market_status !== 'active') return sum
+      const md = marketDetails[p.market_id]
+      if (!md) return sum
+      const label = (p.option_label ?? '').toUpperCase() as 'YES' | 'NO'
+      if (label !== 'YES' && label !== 'NO') return sum
+      const price = getPrice(md.qYes, md.qNo, label)
+      return sum + p.shares * price
+    }, 0)
+  }, [positions, marketDetails])
+
+  const filteredPositions = useMemo(() => {
+    if (!positions) return []
+    return positions.filter((p) =>
+      activeTab === 'active' ? p.market_status === 'active' : p.market_status !== 'active'
+    )
+  }, [positions, activeTab])
 
   const handleDevnetDeposit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -347,15 +382,80 @@ export default function ProfilePage() {
     fetchProfile()
   }
 
+  const getPositionPrices = (p: Position) => {
+    const md = marketDetails[p.market_id]
+    const label = (p.option_label ?? '').toUpperCase() as 'YES' | 'NO'
+    const active = p.market_status === 'active'
+    const currentPrice = active && md ? getPrice(md.qYes, md.qNo, label) : null
+    const value = active && currentPrice !== null ? p.shares * currentPrice : null
+    return { label, currentPrice, value, active }
+  }
+
+  const renderSellControl = (p: Position) => {
+    const md = marketDetails[p.market_id]
+    const label = (p.option_label ?? '').toUpperCase() as 'YES' | 'NO'
+    const dollars = parseFloat(sellAmounts[p.id] ?? '0')
+    let estimate: string | null = null
+    if (md && dollars > 0) {
+      const est = getSharesForSellProceeds(md.qYes, md.qNo, label, dollars)
+      if (Number.isFinite(est) && est > 0) {
+        estimate = `≈ ${est.toFixed(2)} shares`
+      }
+    }
+    return (
+      <div className="mt-4">
+        <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+          USDC to sell
+        </label>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            type="number"
+            step="0.01"
+            value={sellAmounts[p.id] ?? ''}
+            onChange={(e) =>
+              setSellAmounts((prev) => ({
+                ...prev,
+                [p.id]: e.target.value,
+              }))
+            }
+            placeholder="USDC amount"
+            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-40"
+          />
+          <button
+            onClick={() => handleSell(p)}
+            className={`w-full rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors sm:w-auto ${
+              confirmingId === p.id ? 'bg-[#EF4444] hover:bg-red-600' : 'bg-[#3B82F6] hover:bg-blue-600'
+            }`}
+          >
+            {confirmingId === p.id ? 'Confirm Sell?' : 'Sell'}
+          </button>
+        </div>
+        {estimate && <p className="mt-2 text-xs text-[#6B7280]">{estimate}</p>}
+        <p className="mt-1 text-xs text-[#9CA3AF]">Final amount may differ after 0.5% fee.</p>
+        {sellResponses[p.id] && <p className="mt-2 text-xs text-[#6B7280]">{sellResponses[p.id]}</p>}
+      </div>
+    )
+  }
+
+  const depositLabels: Record<'devnet' | 'wallet' | 'card', string> = {
+    devnet: 'Devnet Faucet',
+    wallet: 'Wallet Deposit',
+    card: 'Card',
+  }
+
+  const tabClass = (tab: Tab, value: Tab) =>
+    `rounded-md px-4 py-1.5 text-sm font-medium transition ${
+      tab === value
+        ? 'bg-white text-[#111827] shadow-sm'
+        : 'text-[#6B7280] hover:text-[#111827]'
+    }`
+
   if (!authenticated) {
     return (
-      <main
-        className="flex min-h-screen flex-col items-center justify-center bg-[#0A0A0A] px-4"
-        style={{ fontFamily: 'Inter, sans-serif' }}
-      >
-        <div className="w-full max-w-md rounded-2xl border border-[#2A2A2A] bg-[#161616] p-8 text-center">
-          <h1 className="mb-2 text-3xl font-semibold text-white">Profile</h1>
-          <p className="mb-6 text-sm text-[#9CA3AF]">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-4">
+        <div className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
+          <h1 className="mb-2 text-3xl font-semibold text-[#111827]">Profile</h1>
+          <p className="mb-6 text-sm text-[#6B7280]">
             Sign in to view your profile
           </p>
           <button
@@ -370,17 +470,10 @@ export default function ProfilePage() {
   }
 
   return (
-    <main
-      className="min-h-screen bg-[#0A0A0A] px-4 pb-24 pt-8 text-white"
-      style={{ fontFamily: 'Inter, sans-serif' }}
-    >
+    <main className="min-h-screen bg-[#F9FAFB] px-4 pb-24 pt-6 text-[#111827] sm:pt-8">
       <div className="mx-auto max-w-7xl">
-        <h1 className="mb-6 text-2xl font-semibold text-white sm:text-3xl">
-          Profile
-        </h1>
-
         {loading && (
-          <p className="mb-4 text-sm text-[#9CA3AF]">Loading profile...</p>
+          <p className="mb-4 text-sm text-[#6B7280]">Loading profile...</p>
         )}
         {error && (
           <div className="mb-4 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
@@ -393,54 +486,74 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <section className="mb-6 rounded-2xl border border-[#2A2A2A] bg-[#161616] p-5">
-          <h2 className="mb-4 text-lg font-semibold text-white">Balance</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-wide text-[#6B7280]">
-                Available
-              </p>
-              <p className="text-xl font-medium text-white">
-                {balance ? `${balance.available_usdc} USDC` : '—'}
-              </p>
+              <h1 className="text-2xl font-semibold text-[#111827]">Portfolio</h1>
+              <p className="mt-1 text-sm text-[#6B7280]">Manage your balance, positions, and funds</p>
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-[#6B7280]">
-                Locked
-              </p>
-              <p className="text-xl font-medium text-white">
-                {balance ? `${balance.locked_usdc} USDC` : '—'}
-              </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => document.getElementById('deposit')?.scrollIntoView({ behavior: 'smooth' })}
+                className="rounded-lg bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
+              >
+                Deposit
+              </button>
+              <button
+                onClick={() => document.getElementById('withdraw')?.scrollIntoView({ behavior: 'smooth' })}
+                className="rounded-lg border border-[#3B82F6] bg-white px-5 py-2.5 text-sm font-semibold text-[#3B82F6] transition-colors hover:bg-[#F9FAFB]"
+              >
+                Withdraw
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Available</p>
+              <p className="mt-1 text-lg font-semibold text-[#111827]">{formatUsd(balance?.available_usdc)}</p>
+            </div>
+            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Locked</p>
+              <p className="mt-1 text-lg font-semibold text-[#111827]">{formatUsd(balance?.locked_usdc)}</p>
+            </div>
+            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Open Positions</p>
+              <p className="mt-1 text-lg font-semibold text-[#111827]">{formatUsd(openPositionsValue)}</p>
+            </div>
+            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Total Trades</p>
+              <p className="mt-1 text-lg font-semibold text-[#111827]">{totalTrades}</p>
             </div>
           </div>
         </section>
 
-        <section className="mb-6 rounded-2xl border border-[#2A2A2A] bg-[#161616] p-5">
-          <h2 className="mb-4 text-lg font-semibold text-white">Deposit</h2>
-          <select
-            value={depositMode}
-            onChange={(e) =>
-              setDepositMode(e.target.value as 'devnet' | 'wallet' | 'card')
-            }
-            className="mb-4 w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] px-3 py-2 text-sm text-white focus:border-[#3B82F6] focus:outline-none sm:w-auto"
-          >
-            <option value="devnet">Devnet Faucet</option>
-            <option value="wallet">Wallet Deposit</option>
-            <option value="card">Buy USDC with Card</option>
-          </select>
+        <section id="deposit" className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-[#111827]">Deposit</h2>
+          <div className="mb-4 inline-flex rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-1">
+            {(['devnet', 'wallet', 'card'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setDepositMode(m)}
+                className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
+                  depositMode === m
+                    ? 'bg-white text-[#111827] shadow-sm'
+                    : 'text-[#6B7280] hover:text-[#111827]'
+                }`}
+              >
+                {depositLabels[m]}
+              </button>
+            ))}
+          </div>
 
           {depositMode === 'devnet' ? (
-            <form
-              onSubmit={handleDevnetDeposit}
-              className="flex flex-col gap-3 sm:flex-row sm:items-center"
-            >
+            <form onSubmit={handleDevnetDeposit} className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <input
                 type="number"
                 step="0.01"
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
                 placeholder="Amount USDC"
-                className="w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] px-3 py-2 text-sm text-white placeholder-[#6B7280] focus:border-[#3B82F6] focus:outline-none sm:w-48"
+                className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48"
               />
               <button
                 type="submit"
@@ -458,13 +571,13 @@ export default function ProfilePage() {
                 Load Deposit Address
               </button>
               {depositInfo && (
-                <div className="mt-4 rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] p-4">
-                  <p className="mb-2 text-xs text-[#9CA3AF] break-all">
-                    <span className="text-[#6B7280]">Address:</span>{' '}
+                <div className="mt-4 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                  <p className="mb-2 text-xs text-[#6B7280] break-all">
+                    <span className="font-medium text-[#111827]">Address:</span>{' '}
                     {depositInfo.platform_address}
                   </p>
-                  <p className="mb-4 text-xs text-[#9CA3AF] break-all">
-                    <span className="text-[#6B7280]">USDC Mint:</span>{' '}
+                  <p className="mb-4 text-xs text-[#6B7280] break-all">
+                    <span className="font-medium text-[#111827]">USDC Mint:</span>{' '}
                     {depositInfo.usdc_mint}
                   </p>
                   <form
@@ -476,7 +589,7 @@ export default function ProfilePage() {
                       value={depositSig}
                       onChange={(e) => setDepositSig(e.target.value)}
                       placeholder="Deposit transaction signature"
-                      className="w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] px-3 py-2 text-sm text-white placeholder-[#6B7280] focus:border-[#3B82F6] focus:outline-none sm:flex-1"
+                      className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:flex-1"
                     />
                     <button
                       type="submit"
@@ -497,7 +610,7 @@ export default function ProfilePage() {
                   value={cardAmount}
                   onChange={(e) => setCardAmount(e.target.value)}
                   placeholder="Amount USDC (optional)"
-                  className="w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] px-3 py-2 text-sm text-white placeholder-[#6B7280] focus:border-[#3B82F6] focus:outline-none sm:w-48"
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48"
                 />
                 <button
                   onClick={async () => {
@@ -525,33 +638,29 @@ export default function ProfilePage() {
                 </button>
               </div>
               <p className="text-xs text-[#6B7280]">
-                Funds go to your embedded Solana wallet. After they arrive, use
-                the Wallet Deposit flow to credit your platform balance.
+                Funds go to your embedded Solana wallet. After they arrive, use the Wallet Deposit flow to credit your platform balance.
               </p>
             </div>
           )}
         </section>
 
-        <section className="mb-6 rounded-2xl border border-[#2A2A2A] bg-[#161616] p-5">
-          <h2 className="mb-4 text-lg font-semibold text-white">Withdraw</h2>
-          <form
-            onSubmit={handleWithdraw}
-            className="flex flex-col gap-3 sm:flex-row sm:items-center"
-          >
+        <section id="withdraw" className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-[#111827]">Withdraw</h2>
+          <form onSubmit={handleWithdraw} className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               type="number"
               step="0.01"
               value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
               placeholder="Amount USDC"
-              className="w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] px-3 py-2 text-sm text-white placeholder-[#6B7280] focus:border-[#3B82F6] focus:outline-none sm:w-48"
+              className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48"
             />
             <input
               type="text"
               value={withdrawWallet}
               onChange={(e) => setWithdrawWallet(e.target.value)}
               placeholder="Destination wallet address"
-              className="w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] px-3 py-2 text-sm text-white placeholder-[#6B7280] focus:border-[#3B82F6] focus:outline-none sm:flex-1"
+              className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:flex-1"
             />
             <button
               type="submit"
@@ -562,130 +671,112 @@ export default function ProfilePage() {
           </form>
         </section>
 
-        <section className="rounded-2xl border border-[#2A2A2A] bg-[#161616] p-5">
-          <h2 className="mb-4 text-lg font-semibold text-white">Positions</h2>
+        <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-lg font-semibold text-[#111827]">Positions</h2>
+            <div className="inline-flex rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-1">
+              <button onClick={() => setActiveTab('active')} className={tabClass('active', activeTab)}>
+                Active
+              </button>
+              <button onClick={() => setActiveTab('closed')} className={tabClass('closed', activeTab)}>
+                Closed
+              </button>
+            </div>
+          </div>
+
           {positions === null ? (
-            <p className="text-sm text-[#9CA3AF]">Loading positions...</p>
-          ) : positions.length === 0 ? (
-            <p className="text-sm text-[#9CA3AF]">No positions</p>
+            <p className="text-sm text-[#6B7280]">Loading positions...</p>
+          ) : filteredPositions.length === 0 ? (
+            <p className="text-sm text-[#6B7280]">No {activeTab} positions</p>
           ) : (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {positions.map((p) => (
-                <div
-                  key={p.id}
-                  className="rounded-xl border border-[#2A2A2A] bg-[#0A0A0A] p-4"
-                >
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <h3 className="text-sm font-medium text-white sm:text-base">
-                      {p.market_title}
-                    </h3>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${
-                        (p.option_label ?? '').toUpperCase() === 'YES'
-                          ? 'bg-[#10B981]/10 text-[#10B981]'
-                          : 'bg-[#EF4444]/10 text-[#EF4444]'
-                      }`}
-                    >
-                      {p.option_label}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-sm text-[#9CA3AF]">
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-[#6B7280]">
-                        Shares
-                      </p>
-                      <p className="text-white">
-                        {p.shares}
-                        {(() => {
-                          const md = marketDetails[p.market_id]
-                          if (!md) return null
-                          const label = (p.option_label ?? '').toUpperCase() as 'YES' | 'NO'
-                          const price = getPrice(md.qYes, md.qNo, label)
-                          const value = p.shares * price
-                          if (!Number.isFinite(value)) return null
-                          return (
-                            <span className="ml-1 text-[#9CA3AF]">
-                              (~${value.toFixed(2)})
+            <>
+              <div className="hidden lg:block overflow-hidden rounded-lg border border-[#E5E7EB]">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-[#F9FAFB] text-[#6B7280]">
+                    <tr>
+                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Market</th>
+                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Side</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Avg Price</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Current Price</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Value</th>
+                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E5E7EB]">
+                    {filteredPositions.map((p) => {
+                      const { label, currentPrice, value, active } = getPositionPrices(p)
+                      return (
+                        <tr key={p.id} className="hover:bg-[#F9FAFB]">
+                          <td className="px-4 py-3 font-medium text-[#111827]">{p.market_title}</td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${
+                                label === 'YES'
+                                  ? 'bg-[#10B981]/10 text-[#10B981]'
+                                  : 'bg-[#EF4444]/10 text-[#EF4444]'
+                              }`}
+                            >
+                              {p.option_label}
                             </span>
-                          )
-                        })()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-[#6B7280]">
-                        Avg Price
-                      </p>
-                      <p className="text-white">{p.avg_price}</p>
-                    </div>
-                  </div>
+                          </td>
+                          <td className="px-4 py-3 text-right text-[#111827]">{formatUsd(p.avg_price)}</td>
+                          <td className="px-4 py-3 text-right text-[#111827]">{active ? formatUsd(currentPrice) : '—'}</td>
+                          <td className="px-4 py-3 text-right text-[#111827]">{active ? formatUsd(value) : '—'}</td>
+                          <td className="px-4 py-3">
+                            {active ? (
+                              renderSellControl(p)
+                            ) : (
+                              <span className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Closed</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-                  {p.shares > 0 ? (
-                    <div className="mt-4">
-                      <label className="mb-1.5 block text-xs text-[#9CA3AF]">
-                        USDC to sell
-                      </label>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={sellAmounts[p.id] ?? ''}
-                          onChange={(e) =>
-                            setSellAmounts((prev) => ({
-                              ...prev,
-                              [p.id]: e.target.value,
-                            }))
-                          }
-                          placeholder="USDC amount"
-                          className="w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] px-3 py-2 text-sm text-white placeholder-[#6B7280] focus:border-[#3B82F6] focus:outline-none sm:w-40"
-                        />
-                        <button
-                          onClick={() => handleSell(p)}
-                          className={`w-full rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors sm:w-auto ${
-                            confirmingId === p.id
-                              ? 'bg-[#EF4444] hover:bg-red-600'
-                              : 'bg-[#3B82F6] hover:bg-blue-600'
+              <div className="lg:hidden grid grid-cols-1 gap-4">
+                {filteredPositions.map((p) => {
+                  const { label, currentPrice, value, active } = getPositionPrices(p)
+                  return (
+                    <div key={p.id} className="rounded-xl border border-[#E5E7EB] bg-white p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="font-medium text-[#111827]">{p.market_title}</p>
+                        <span
+                          className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${
+                            label === 'YES'
+                              ? 'bg-[#10B981]/10 text-[#10B981]'
+                              : 'bg-[#EF4444]/10 text-[#EF4444]'
                           }`}
                         >
-                          {confirmingId === p.id ? 'Confirm Sell?' : 'Sell'}
-                        </button>
+                          {p.option_label}
+                        </span>
                       </div>
-                      {(() => {
-                        const md = marketDetails[p.market_id]
-                        const dollars = parseFloat(sellAmounts[p.id] ?? '0')
-                        let estimate: string | null = null
-                        if (md && dollars > 0) {
-                          const label = (p.option_label ?? '').toUpperCase() as 'YES' | 'NO'
-                          const est = getSharesForSellProceeds(md.qYes, md.qNo, label, dollars)
-                          if (Number.isFinite(est) && est > 0) {
-                            estimate = `≈ ${est.toFixed(2)} shares`
-                          }
-                        }
-                        return (
-                          <>
-                            {estimate && (
-                              <p className="mt-2 text-xs text-[#9CA3AF]">
-                                {estimate}
-                              </p>
-                            )}
-                            <p className="mt-1 text-xs text-[#6B7280]">
-                              Final amount may differ after 0.5% fee.
-                            </p>
-                            {sellResponses[p.id] && (
-                              <p className="mt-2 text-xs text-[#9CA3AF]">
-                                {sellResponses[p.id]}
-                              </p>
-                            )}
-                          </>
-                        )
-                      })()}
+                      <div className="mt-3 grid grid-cols-2 gap-y-2 text-sm">
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Avg Price</p>
+                          <p className="font-medium text-[#111827]">{formatUsd(p.avg_price)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Current Price</p>
+                          <p className="font-medium text-[#111827]">{active ? formatUsd(currentPrice) : '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Value</p>
+                          <p className="font-medium text-[#111827]">{active ? formatUsd(value) : '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Shares</p>
+                          <p className="font-medium text-[#111827]">{formatShares(p.shares)}</p>
+                        </div>
+                      </div>
+                      {active && renderSellControl(p)}
                     </div>
-                  ) : (
-                    <p className="mt-3 text-sm text-[#9CA3AF]">No shares to sell</p>
-                  )}
-                </div>
-              ))}
-            </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </section>
       </div>

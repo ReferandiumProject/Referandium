@@ -73,8 +73,8 @@ function StatCard({ label, value, prefix = '' }: { label: string; value: number;
 
   return (
     <div className="text-center">
-      <p className="text-3xl font-bold tracking-tight text-white sm:text-4xl">{formatted}</p>
-      <p className="mt-1 text-sm text-[#9CA3AF]">{label}</p>
+      <p className="text-3xl font-bold tracking-tight text-[#111827] sm:text-4xl">{formatted}</p>
+      <p className="mt-1 text-sm text-[#6B7280]">{label}</p>
     </div>
   )
 }
@@ -127,17 +127,17 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
+    <div className="min-h-screen bg-[#F9FAFB]">
       {/* Hero */}
       <section className="px-4 pb-16 pt-24 sm:pb-24 sm:pt-32">
         <div className="mx-auto max-w-[1200px] text-center">
           <span className="mb-6 inline-flex items-center rounded-full bg-[#3B82F6]/10 px-3 py-1 text-xs font-semibold text-[#3B82F6]">
             USDC Prediction Markets on Solana
           </span>
-          <h1 className="mb-6 text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl">
+          <h1 className="mb-6 text-3xl font-bold tracking-tight text-[#111827] sm:text-4xl md:text-5xl lg:text-6xl">
             Trade on what happens next.
           </h1>
-          <p className="mx-auto mb-10 max-w-2xl px-2 text-base leading-relaxed text-[#9CA3AF] sm:px-0 sm:text-lg">
+          <p className="mx-auto mb-10 max-w-2xl px-2 text-base leading-relaxed text-[#6B7280] sm:px-0 sm:text-lg">
             Referandium is a Polymarket-style prediction market where you bet USDC on real-world outcomes.
             Yes or no. Trade now, settle later.
           </p>
@@ -151,14 +151,14 @@ export default function Home() {
             {authenticated ? (
               <Link
                 href="/create"
-                className="inline-flex w-full items-center justify-center rounded-lg border border-[#2A2A2A] bg-white px-8 py-3 text-[15px] font-semibold text-[#0A0A0A] transition-colors hover:bg-[#F9FAFB] sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-lg border border-[#E5E7EB] bg-white px-8 py-3 text-[15px] font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB] sm:w-auto"
               >
                 Create a Market
               </Link>
             ) : (
               <button
                 onClick={() => login()}
-                className="inline-flex w-full items-center justify-center rounded-lg border border-[#2A2A2A] bg-white px-8 py-3 text-[15px] font-semibold text-[#0A0A0A] transition-colors hover:bg-[#F9FAFB] sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-lg border border-[#E5E7EB] bg-white px-8 py-3 text-[15px] font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB] sm:w-auto"
               >
                 Sign Up
               </button>
@@ -171,7 +171,7 @@ export default function Home() {
       <section className="px-4 pb-24">
         <div className="mx-auto max-w-[1200px]">
           <FadeIn>
-            <div className="grid grid-cols-1 gap-8 rounded-2xl border border-[#2A2A2A] bg-[#161616] p-8 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 sm:grid-cols-3">
               <StatCard label="Total Volume Traded" value={stats.volume} prefix="$" />
               <StatCard label="Open Markets" value={stats.markets} />
               <StatCard label="Traders" value={stats.users} />
@@ -185,7 +185,7 @@ export default function Home() {
         <div className="mx-auto max-w-[1200px]">
           <FadeIn>
             <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
-              <h2 className="text-2xl font-bold tracking-tight text-white">Featured Markets</h2>
+              <h2 className="text-2xl font-bold tracking-tight text-[#111827]">Featured Markets</h2>
               <Link
                 href="/markets"
                 className="text-sm font-semibold text-[#3B82F6] transition-colors hover:text-[#2563EB]"
@@ -200,15 +200,15 @@ export default function Home() {
               {[...Array(3)].map((_, i) => (
                 <div
                   key={i}
-                  className="h-48 animate-pulse rounded-xl border border-[#2A2A2A] bg-[#161616]"
+                  className="h-48 animate-pulse rounded-xl border border-[#E5E7EB] bg-[#F3F4F6]"
                 />
               ))}
             </div>
           ) : markets.length === 0 ? (
             <FadeIn>
-              <div className="rounded-2xl border border-[#2A2A2A] bg-[#161616] py-16 text-center">
-                <p className="text-lg font-medium text-white">No live markets yet</p>
-                <p className="mt-2 text-sm text-[#9CA3AF]">Check back soon for new prediction markets.</p>
+              <div className="rounded-2xl border border-[#E5E7EB] bg-white py-16 text-center">
+                <p className="text-lg font-medium text-[#111827]">No live markets yet</p>
+                <p className="mt-2 text-sm text-[#6B7280]">Check back soon for new prediction markets.</p>
               </div>
             </FadeIn>
           ) : (
@@ -225,7 +225,7 @@ export default function Home() {
       <section className="px-4 py-24">
         <div className="mx-auto max-w-[1200px]">
           <FadeIn>
-            <h2 className="mb-12 text-center text-2xl font-bold tracking-tight text-white">
+            <h2 className="mb-12 text-center text-2xl font-bold tracking-tight text-[#111827]">
               How it works
             </h2>
           </FadeIn>
@@ -245,12 +245,12 @@ export default function Home() {
               },
             ].map((step, index) => (
               <FadeIn key={step.title}>
-                <div className="rounded-xl border border-[#2A2A2A] bg-[#161616] p-6 transition-all duration-200 hover:-translate-y-1 hover:border-[#3B82F6]/30">
+                <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 transition-all duration-200 hover:-translate-y-1 hover:border-[#3B82F6]/30">
                   <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#3B82F6] text-sm font-bold text-white">
                     {index + 1}
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold text-white">{step.title}</h3>
-                  <p className="text-sm leading-relaxed text-[#9CA3AF]">{step.desc}</p>
+                  <h3 className="mb-2 text-lg font-semibold text-[#111827]">{step.title}</h3>
+                  <p className="text-sm leading-relaxed text-[#6B7280]">{step.desc}</p>
                 </div>
               </FadeIn>
             ))}
@@ -302,7 +302,7 @@ function MarketCard({
   return (
     <Link
       href={`/market/${market.id}`}
-      className="group block rounded-xl border border-[#2A2A2A] bg-[#161616] p-5 transition-all duration-200 hover:-translate-y-1 hover:border-[#3B82F6]/50"
+      className="group block rounded-xl border border-[#E5E7EB] bg-white p-5 transition-all duration-200 hover:-translate-y-1 hover:border-[#3B82F6]/50"
     >
       <div className="mb-4 flex items-center gap-2">
         <span className="inline-flex rounded bg-[#3B82F6]/10 px-2 py-0.5 text-xs font-semibold text-[#3B82F6]">
@@ -313,7 +313,7 @@ function MarketCard({
         </span>
       </div>
 
-      <h3 className="mb-4 text-[15px] font-semibold leading-snug text-white line-clamp-2">
+      <h3 className="mb-4 text-[15px] font-semibold leading-snug text-[#111827] line-clamp-2">
         {market.title}
       </h3>
 
@@ -323,7 +323,7 @@ function MarketCard({
             <span className="text-[#10B981]">YES {yesPct}%</span>
             <span className="text-[#EF4444]">NO {noPct}%</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#2A2A2A]">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
             <div className="flex h-full">
               <div className="h-full bg-[#10B981]" style={{ width: `${yesPct}%` }} />
               <div className="h-full bg-[#EF4444]" style={{ width: `${noPct}%` }} />
@@ -331,10 +331,10 @@ function MarketCard({
           </div>
         </div>
       ) : (
-        <p className="mb-4 text-xs text-[#9CA3AF]">No signals yet</p>
+        <p className="mb-4 text-xs text-[#6B7280]">No signals yet</p>
       )}
 
-      <div className="mt-auto flex items-center justify-between border-t border-[#2A2A2A] pt-4 text-xs text-[#9CA3AF]">
+      <div className="mt-auto flex items-center justify-between border-t border-[#E5E7EB] pt-4 text-xs text-[#6B7280]">
         <span>${Number(market.total_usdc_locked || 0).toLocaleString()} Vol</span>
         <span>Ends {endDate}</span>
       </div>

@@ -30,7 +30,7 @@ function MarketCard({ market }: { market: MarketWithOptions }) {
   return (
     <Link
       href={`/market/${market.id}`}
-      className="group flex h-full flex-col rounded-xl border border-[#2A2A2A] bg-[#161616] p-5 transition-all duration-200 hover:-translate-y-1 hover:border-[#3B82F6]/50"
+      className="group flex h-full flex-col rounded-xl border border-[#E5E7EB] bg-white p-5 transition-all duration-200 hover:-translate-y-1 hover:border-[#3B82F6]/50"
     >
       <div className="mb-4 flex items-center gap-2">
         <span className="inline-flex rounded bg-[#3B82F6]/10 px-2 py-0.5 text-xs font-semibold text-[#3B82F6]">
@@ -41,17 +41,17 @@ function MarketCard({ market }: { market: MarketWithOptions }) {
         </span>
       </div>
 
-      <h3 className="mb-4 text-[15px] font-semibold leading-snug text-white line-clamp-2">
+      <h3 className="mb-4 text-[15px] font-semibold leading-snug text-[#111827] line-clamp-2">
         {market.title}
       </h3>
 
-      <div className="mb-4 rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3">
+      <div className="mb-4 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3">
         <div className="flex items-center justify-between text-sm">
           <span className="font-semibold text-[#10B981]">YES ${yesPrice.toFixed(2)}</span>
-          <span className="text-[#9CA3AF]">—</span>
+          <span className="text-[#6B7280]">—</span>
           <span className="font-semibold text-[#EF4444]">NO ${noPrice.toFixed(2)}</span>
         </div>
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#2A2A2A]">
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
           <div className="flex h-full">
             <div className="h-full bg-[#10B981]" style={{ width: `${yesPrice * 100}%` }} />
             <div className="h-full bg-[#EF4444]" style={{ width: `${noPrice * 100}%` }} />
@@ -59,7 +59,7 @@ function MarketCard({ market }: { market: MarketWithOptions }) {
         </div>
       </div>
 
-      <div className="mt-auto flex items-center justify-between border-t border-[#2A2A2A] pt-4 text-xs text-[#9CA3AF]">
+      <div className="mt-auto flex items-center justify-between border-t border-[#E5E7EB] pt-4 text-xs text-[#6B7280]">
         <span>${Number(market.total_usdc_locked || 0).toLocaleString()} Vol</span>
         <span>Ends {endDate}</span>
       </div>
@@ -111,13 +111,13 @@ export default function MarketsPage() {
   }, [markets, searchTerm, selectedCategory])
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] px-4 pb-24 pt-8">
+    <div className="min-h-screen bg-[#F9FAFB] px-4 pb-24 pt-8">
       <main className="mx-auto max-w-[1280px]">
         {/* Header */}
         <div className="mb-10 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Markets</h1>
-            <p className="mt-1 text-sm text-[#9CA3AF]">Active prediction markets on Solana</p>
+            <h1 className="text-3xl font-bold tracking-tight text-[#111827] sm:text-4xl">Markets</h1>
+            <p className="mt-1 text-sm text-[#6B7280]">Active prediction markets on Solana</p>
           </div>
           <Link
             href="/create"
@@ -131,7 +131,7 @@ export default function MarketsPage() {
         <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center">
           <div className="relative w-full lg:max-w-md">
             <svg
-              className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#9CA3AF]"
+              className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#6B7280]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -145,7 +145,7 @@ export default function MarketsPage() {
               placeholder="Search markets..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-[#2A2A2A] bg-[#161616] py-2.5 pl-10 pr-3 text-sm text-white placeholder:text-[#6B7280] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/30"
+              className="w-full rounded-lg border border-[#E5E7EB] bg-white py-2.5 pl-10 pr-3 text-sm text-[#111827] placeholder:text-[#6B7280] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/30"
             />
           </div>
 
@@ -157,7 +157,7 @@ export default function MarketsPage() {
                 className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                   selectedCategory === cat
                     ? 'bg-[#3B82F6] text-white'
-                    : 'border border-[#2A2A2A] bg-[#161616] text-[#9CA3AF] hover:border-[#3B82F6]/30 hover:text-white'
+                    : 'border border-[#E5E7EB] bg-white text-[#6B7280] hover:border-[#3B82F6]/30 hover:text-[#111827]'
                 }`}
               >
                 {cat}
@@ -172,7 +172,7 @@ export default function MarketsPage() {
             {[...Array(6)].map((_, i) => (
               <div
                 key={i}
-                className="h-48 animate-pulse rounded-xl border border-[#2A2A2A] bg-[#161616]"
+                className="h-48 animate-pulse rounded-xl border border-[#E5E7EB] bg-[#F3F4F6]"
               />
             ))}
           </div>
@@ -183,9 +183,9 @@ export default function MarketsPage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-[#2A2A2A] bg-[#161616] py-20 text-center">
-            <p className="text-lg font-medium text-white">No active markets yet</p>
-            <p className="mt-2 text-sm text-[#9CA3AF]">
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white py-20 text-center">
+            <p className="text-lg font-medium text-[#111827]">No active markets yet</p>
+            <p className="mt-2 text-sm text-[#6B7280]">
               {searchTerm || selectedCategory !== 'All'
                 ? 'Try adjusting your search or category filter.'
                 : 'Check back soon for new prediction markets.'}
