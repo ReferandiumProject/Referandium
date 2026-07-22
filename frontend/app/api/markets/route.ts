@@ -38,7 +38,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  if (!isAdmin(user.email)) {
+  const isAdminUser = isAdmin(user.email)
+  let isGookie = false
+  if (!isAdminUser) {
+    const { data: gookies, error: gookieError } = await supabaseAdmin
+      .from('gookies')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .limit(1)
+
+    if (gookieError) {
+      console.error('[markets POST] gookie lookup error:', gookieError)
+      return NextResponse.json({ error: 'Failed to check gookie status' }, { status: 500 })
+    }
+
+    isGookie = !!gookies && gookies.length > 0
+  }
+
+  if (!isAdminUser && !isGookie) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -77,10 +95,10 @@ export async function POST(request: Request) {
     category: category?.trim() || 'Other',
     end_date,
     resolution_criteria: resolution_criteria?.trim() || null,
-    status: 'active',
+    status: isAdminUser ? 'active' : 'pending',
     outcome: 'unresolved',
     creator_id: user.id,
-    creator_type: 'admin',
+    creator_type: isAdminUser ? 'admin' : 'gookie',
   }
 
   let marketId: string | null = null

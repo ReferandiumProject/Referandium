@@ -17,7 +17,7 @@ export default function CreateMarketPage() {
   const [options, setOptions] = useState<string[]>(['Candidate A', 'Candidate B'])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<{ id: string; title: string } | null>(null)
+  const [success, setSuccess] = useState<{ id: string; title: string; status: string } | null>(null)
 
   const minDate = new Date().toISOString().slice(0, 16)
 
@@ -102,7 +102,7 @@ export default function CreateMarketPage() {
         return
       }
 
-      setSuccess({ id: json.market.id, title: json.market.title })
+      setSuccess({ id: json.market.id, title: json.market.title, status: json.market.status })
       setTitle('')
       setDescription('')
       setCategory('Other')
@@ -282,11 +282,20 @@ export default function CreateMarketPage() {
             )}
 
             {success && (
-              <div className="rounded-lg border border-[#10B981]/20 bg-[#10B981]/10 p-3 text-sm text-[#10B981]">
-                Market created:{" "}
-                <Link href={`/market/${success.id}`} className="font-semibold underline">
-                  {success.title}
-                </Link>
+              <div className={`rounded-lg border p-3 text-sm ${success.status === 'active' ? 'border-[#10B981]/20 bg-[#10B981]/10 text-[#10B981]' : 'border-[#F59E0B]/20 bg-[#FEF3C7]/30 text-[#D97706]'}`}>
+                {success.status === 'active' ? (
+                  <>
+                    Market created:{" "}
+                    <Link href={`/market/${success.id}`} className="font-semibold underline">
+                      {success.title}
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    Market submitted for review:{" "}
+                    <span className="font-semibold">{success.title}</span>
+                  </>
+                )}
               </div>
             )}
 

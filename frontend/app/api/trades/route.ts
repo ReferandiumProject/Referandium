@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
-import { getBuyCostMulti, getSellProceedsMulti, getPriceMulti } from '@/lib/lmsr'
-
-const FEE_RATE = 0.005 // 0.5% trading fee; easy to adjust later.
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -45,233 +42,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'shares must be a positive number' }, { status: 400 })
   }
 
-  // Fetch and validate market.
-  const { data: market, error: marketError } = await supabaseAdmin
-    .from('markets')
-    .select('id, status, end_date')
-    .eq('id', market_id)
-    .single()
+  // Execute the trade atomically in Postgres
+  const { data, error } = await supabaseAdmin.rpc('execute_trade', {
+    p_user_id: user.id,
+    p_market_id: market_id,
+    p_option_id: option_id,
+    p_type: type,
+    p_shares: shares,
+  })
 
-  if (marketError || !market) {
-    return NextResponse.json({ error: 'Market not found' }, { status: 404 })
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 })
   }
-
-  if (market.status !== 'active') {
-    return NextResponse.json({ error: 'Market is not active' }, { status: 400 })
-  }
-
-  const marketEnd = new Date(market.end_date as string)
-  if (Number.isNaN(marketEnd.getTime()) || marketEnd.getTime() <= Date.now()) {
-    return NextResponse.json({ error: 'Market has ended or end date is invalid' }, { status: 400 })
-  }
-
-  // Fetch all options for this market, ordered deterministically.
-  const { data: options, error: optionsError } = await supabaseAdmin
-    .from('market_options')
-    .select('id, market_id, label, shares_outstanding')
-    .eq('market_id', market_id)
-    .order('id', { ascending: true })
-
-  if (optionsError || !options || options.length === 0) {
-    return NextResponse.json({ error: 'Could not load market options' }, { status: 500 })
-  }
-
-  const tradedIndex = options.findIndex((o) => o.id === option_id)
-  if (tradedIndex === -1) {
-    return NextResponse.json({ error: 'Option not found for this market' }, { status: 400 })
-  }
-
-  const quantities = options.map((o) => Number(o.shares_outstanding))
-
-  // Compute trade cost/proceeds and fee.
-  let grossUsdc: number
-  if (type === 'buy') {
-    grossUsdc = getBuyCostMulti(quantities, tradedIndex, shares)
-  } else {
-    grossUsdc = getSellProceedsMulti(quantities, tradedIndex, shares)
-  }
-
-  if (grossUsdc < 0 || !Number.isFinite(grossUsdc)) {
-    return NextResponse.json({ error: 'Trade calculation produced an invalid amount' }, { status: 500 })
-  }
-
-  const fee = grossUsdc * FEE_RATE
-  const price = shares === 0 ? 0 : grossUsdc / shares
-
-  // Fetch user balance.
-  const { data: balance, error: balanceError } = await supabaseAdmin
-    .from('balances')
-    .select('id, available_usdc')
-    .eq('user_id', user.id)
-    .single()
-
-  if (balanceError || !balance) {
-    return NextResponse.json({ error: 'Balance not found' }, { status: 400 })
-  }
-
-  const available = Number(balance.available_usdc)
-
-  // For sells, verify the user owns enough shares.
-  let position: { id: string; shares: number; avg_price: number } | null = null
-  if (type === 'sell') {
-    const { data: pos, error: posError } = await supabaseAdmin
-      .from('positions')
-      .select('id, shares, avg_price')
-      .eq('user_id', user.id)
-      .eq('option_id', option_id)
-      .single()
-
-    console.log('[trades sell] share check', {
-      userId: user.id,
-      optionId: option_id,
-      posShares: pos?.shares,
-      receivedShares: shares,
-      comparison: pos ? Number(pos.shares) - shares : null,
-    })
-    if (posError || !pos || Number(pos.shares) < shares) {
-      return NextResponse.json({ error: 'Insufficient shares to sell' }, { status: 400 })
-    }
-
-    position = pos as { id: string; shares: number; avg_price: number }
-  }
-
-  // Check buy affordability.
-  if (type === 'buy') {
-    const totalCost = grossUsdc + fee
-    if (available < totalCost) {
-      return NextResponse.json({ error: 'Insufficient USDC balance' }, { status: 400 })
-    }
-  }
-
-  // Update outstanding shares.
-  const currentOutstanding = Number(options[tradedIndex].shares_outstanding)
-  const newOutstanding =
-    type === 'buy' ? currentOutstanding + shares : currentOutstanding - shares
-
-  if (newOutstanding < 0) {
-    return NextResponse.json({ error: 'Insufficient market liquidity' }, { status: 400 })
-  }
-
-  const { error: updateOptionError } = await supabaseAdmin
-    .from('market_options')
-    .update({ shares_outstanding: newOutstanding })
-    .eq('id', option_id)
-
-  if (updateOptionError) {
-    return NextResponse.json({ error: 'Failed to update option shares' }, { status: 500 })
-  }
-
-  // Update user balance.
-  const newAvailable =
-    type === 'buy' ? available - (grossUsdc + fee) : available + (grossUsdc - fee)
-
-  const { data: updatedBalance, error: updateBalanceError } = await supabaseAdmin
-    .from('balances')
-    .update({ available_usdc: newAvailable })
-    .eq('id', balance.id)
-    .select('available_usdc')
-    .single()
-
-  if (updateBalanceError || !updatedBalance) {
-    return NextResponse.json({ error: 'Failed to update balance' }, { status: 500 })
-  }
-
-  // Record the trade.
-  const tradeInsert = {
-    user_id: user.id,
-    market_id,
-    option_id,
-    type,
-    shares,
-    price,
-    usdc_amount: grossUsdc,
-    fee,
-  } as any
-
-  const { data: trade, error: tradeError } = await supabaseAdmin
-    .from('trades')
-    .insert(tradeInsert)
-    .select('*')
-    .single()
-
-  if (tradeError || !trade) {
-    return NextResponse.json({ error: 'Failed to record trade' }, { status: 500 })
-  }
-
-  // Upsert position.
-  const { data: existingPosition, error: existingPositionError } = await supabaseAdmin
-    .from('positions')
-    .select('id, shares, avg_price')
-    .eq('user_id', user.id)
-    .eq('option_id', option_id)
-    .maybeSingle()
-
-  if (existingPositionError) {
-    return NextResponse.json({ error: 'Failed to fetch position' }, { status: 500 })
-  }
-
-  if (type === 'buy') {
-    const oldShares = existingPosition ? Number(existingPosition.shares) : 0
-    const oldAvg = existingPosition ? Number(existingPosition.avg_price) : 0
-    const totalShares = oldShares + shares
-    const totalCostBasis = oldShares * oldAvg + grossUsdc
-    const newAvgPrice = totalShares === 0 ? 0 : totalCostBasis / totalShares
-
-    if (existingPosition) {
-      const { error: positionUpdateError } = await supabaseAdmin
-        .from('positions')
-        .update({ shares: totalShares, avg_price: newAvgPrice })
-        .eq('id', existingPosition.id)
-
-      if (positionUpdateError) {
-        return NextResponse.json({ error: 'Failed to update position' }, { status: 500 })
-      }
-    } else {
-      const { error: positionInsertError } = await supabaseAdmin.from('positions').insert({
-        user_id: user.id,
-        market_id,
-        option_id,
-        shares: totalShares,
-        avg_price: newAvgPrice,
-      } as any)
-
-      if (positionInsertError) {
-        return NextResponse.json({ error: 'Failed to create position' }, { status: 500 })
-      }
-    }
-  } else {
-    // Sell: decrease shares. Delete the row if all shares are sold.
-    const oldShares = Number(position?.shares || 0)
-    const newPosShares = oldShares - shares
-
-    if (newPosShares <= 0) {
-      const { error: deleteError } = await supabaseAdmin
-        .from('positions')
-        .delete()
-        .eq('id', (position as { id: string }).id)
-
-      if (deleteError) {
-        return NextResponse.json({ error: 'Failed to delete position' }, { status: 500 })
-      }
-    } else {
-      const { error: positionUpdateError } = await supabaseAdmin
-        .from('positions')
-        .update({ shares: newPosShares })
-        .eq('id', (position as { id: string }).id)
-
-      if (positionUpdateError) {
-        return NextResponse.json({ error: 'Failed to update position' }, { status: 500 })
-      }
-    }
-  }
-
-  // Compute the updated price for the traded option.
-  const updatedQuantities = quantities.map((q, i) => (i === tradedIndex ? newOutstanding : q))
-  const updatedPrice = getPriceMulti(updatedQuantities, tradedIndex)
 
   return NextResponse.json({
-    updatedPrice,
-    newBalance: Number(updatedBalance.available_usdc),
-    trade,
+    updatedPrice: data.updated_price,
+    newBalance: data.new_balance,
+    trade: data.trade,
   })
 }

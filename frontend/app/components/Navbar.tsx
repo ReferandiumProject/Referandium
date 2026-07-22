@@ -5,16 +5,37 @@ import { usePrivy } from '@privy-io/react-auth'
 import { useUser } from '../context/UserContext'
 import { usePathname } from 'next/navigation'
 
-const ADMIN_WALLETS = [
-  'PanbgtcTiZ2HasCT9CC94nUBwUx55uH8YDmZk6587da',
-  '5vJggeRkrFSZBJw6rZvWNzuRbKTe4g44pQEwaBcyZVBP'
-]
-
 export default function Navbar() {
-  const { login, logout, authenticated } = usePrivy()
+  const { login, logout, authenticated, getAccessToken } = usePrivy()
   const { dbUser } = useUser()
   const pathname = usePathname()
-  const isAdmin = authenticated && dbUser?.wallet_address && ADMIN_WALLETS.includes(dbUser.wallet_address)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    if (!authenticated) {
+      setIsAdmin(false)
+      return
+    }
+
+    let cancelled = false
+    async function checkAdmin() {
+      try {
+        const token = await getAccessToken()
+        if (!token) return
+        const res = await fetch('/api/admin/whoami', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) return
+        const json = await res.json()
+        if (!cancelled) setIsAdmin(!!json.isAdmin)
+      } catch {
+        // ignore
+      }
+    }
+
+    checkAdmin()
+    return () => { cancelled = true }
+  }, [authenticated])
 
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
