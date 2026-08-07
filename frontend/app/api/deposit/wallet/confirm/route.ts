@@ -46,6 +46,39 @@ export async function POST(request: Request) {
     const platformAta = await getAssociatedTokenAddress(usdcMintPubkey, platformPubkey)
     console.log('[api/deposit] platform ATA:', platformAta.toBase58())
 
+    // Look up the user's wallet addresses and compute their possible USDC ATAs.
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('wallet_address, custodial_wallet_address, connected_wallet_address')
+      .eq('id', user.id)
+      .single()
+
+    if (userError || !userData) {
+      console.error('[api/deposit] user lookup failed:', userError)
+      return NextResponse.json({ error: 'Unable to fetch user' }, { status: 500 })
+    }
+
+    const userAddresses = [
+      userData.wallet_address,
+      userData.custodial_wallet_address,
+      userData.connected_wallet_address,
+    ].filter((addr): addr is string => typeof addr === 'string' && addr.length > 0)
+
+    const userAtaSet = new Set<string>()
+    await Promise.all(
+      userAddresses.map(async (addr) => {
+        try {
+          const pubkey = new PublicKey(addr)
+          const ata = await getAssociatedTokenAddress(usdcMintPubkey, pubkey)
+          userAtaSet.add(ata.toBase58())
+        } catch {
+          // Skip invalid addresses
+        }
+      })
+    )
+
+    console.log('[api/deposit] user ATAs:', Array.from(userAtaSet))
+
     const parsedTx = await connection.getParsedTransaction(signature, {
       commitment: 'finalized',
       maxSupportedTransactionVersion: 0,
@@ -58,6 +91,7 @@ export async function POST(request: Request) {
 
     console.log('[api/deposit] scanning transaction instructions')
     let creditedAmount = 0
+    let matchedSourceAta: string | null = null
 
     for (const ix of parsedTx.transaction.message.instructions) {
       const parsed = (ix as any).parsed
@@ -70,6 +104,12 @@ export async function POST(request: Request) {
 
       const destination = info.destination
       if (destination !== platformAta.toBase58()) continue
+
+      const source = info.source
+      if (typeof source !== 'string' || !userAtaSet.has(source)) continue
+      if (matchedSourceAta === null) {
+        matchedSourceAta = source
+      }
 
       if (parsed.type === 'transferChecked') {
         if (info.mint !== usdcMint) continue
@@ -92,32 +132,34 @@ export async function POST(request: Request) {
 
     console.log('[api/deposit] credited amount:', creditedAmount)
 
-    const { data: balance, error: balanceError } = await supabaseAdmin
-      .from('balances')
-      .select('available_usdc, locked_usdc')
-      .eq('user_id', user.id)
-      .single()
-
-    if (balanceError || !balance) {
-      console.error('[api/deposit] balance fetch failed:', balanceError)
-      return NextResponse.json({ error: 'Unable to fetch balance' }, { status: 500 })
+    if (!matchedSourceAta) {
+      console.log('[api/deposit] no matching user source ATA found')
+      return NextResponse.json({ error: 'No USDC transfer from your wallet found in transaction' }, { status: 400 })
     }
 
-    const newAvailable = balance.available_usdc + creditedAmount
-    const { data: updatedBalance, error: updateError } = await supabaseAdmin
-      .from('balances')
-      .update({ available_usdc: newAvailable })
-      .eq('user_id', user.id)
-      .select('available_usdc, locked_usdc')
-      .single()
+    const { data, error } = await supabaseAdmin.rpc('confirm_deposit', {
+      p_user_id: user.id,
+      p_signature: signature,
+      p_amount_usdc: creditedAmount,
+      p_source_ata: matchedSourceAta,
+    })
 
-    if (updateError || !updatedBalance) {
-      console.error('[api/deposit] balance update failed:', updateError)
+    if (error) {
+      const isUniqueViolation =
+        error.code === '23505' ||
+        (typeof error.message === 'string' && error.message.includes('deposits_signature_key'))
+
+      if (isUniqueViolation) {
+        console.log('[api/deposit] duplicate signature detected')
+        return NextResponse.json({ error: 'This deposit has already been credited' }, { status: 400 })
+      }
+
+      console.error('[api/deposit] confirm_deposit RPC failed:', error)
       return NextResponse.json({ error: 'Unable to update balance' }, { status: 500 })
     }
 
-    console.log('[api/deposit] deposit confirmed, new balance:', updatedBalance.available_usdc)
-    return NextResponse.json({ credited_amount: creditedAmount, new_balance: updatedBalance.available_usdc })
+    console.log('[api/deposit] deposit confirmed, new balance:', data.new_balance)
+    return NextResponse.json({ credited_amount: creditedAmount, new_balance: data.new_balance })
   } catch (error: any) {
     console.error('[api/deposit] unexpected error:', error)
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })

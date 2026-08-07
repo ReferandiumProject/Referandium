@@ -1,0 +1,150 @@
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest'
+import { POST as castVote } from '@/app/api/startup-votes/cast/route'
+import { POST as withdrawVote } from '@/app/api/startup-votes/withdraw/route'
+import { GET as getBalance } from '@/app/api/startup-votes/balance/route'
+import { getAuthenticatedUser } from '@/lib/auth-helpers'
+import { supabaseAdmin } from '@/lib/supabaseServer'
+import { createFixtureUser, createFixtureStartup, cleanupFixtures } from './fixtures'
+
+vi.mock('@/lib/auth-helpers', () => ({
+  getAuthenticatedUser: vi.fn(),
+}))
+
+describe('POST /api/startup-votes/cast', () => {
+  let user: Awaited<ReturnType<typeof createFixtureUser>>
+  let startup: Awaited<ReturnType<typeof createFixtureStartup>>
+
+  beforeAll(async () => {
+    user = await createFixtureUser()
+    startup = await createFixtureStartup(user.id)
+
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+    const balanceRes = await getBalance(new Request('http://localhost:3000/api/startup-votes/balance', {
+      headers: { Authorization: 'Bearer mock-token' },
+    }))
+    const balance = await balanceRes.json()
+    expect(balance.total_spendable).toBe(100)
+  })
+
+  beforeEach(() => {
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+  })
+
+  afterAll(async () => {
+    await cleanupFixtures(user.id, [startup.id])
+  })
+
+  async function cast(direction: 'yes' | 'no', votes: number) {
+    const req = new Request('http://localhost:3000/api/startup-votes/cast', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer mock-token', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startup_id: startup.id, direction, votes }),
+    })
+    return castVote(req)
+  }
+
+  async function withdraw(votes: number) {
+    const req = new Request('http://localhost:3000/api/startup-votes/withdraw', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer mock-token', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startup_id: startup.id, votes }),
+    })
+    return withdrawVote(req)
+  }
+
+  async function currentBalance() {
+    const res = await getBalance(new Request('http://localhost:3000/api/startup-votes/balance', {
+      headers: { Authorization: 'Bearer mock-token' },
+    }))
+    return res.json()
+  }
+
+  async function currentStartup() {
+    const { data, error } = await supabaseAdmin
+      .from('startup_startups')
+      .select('total_yes_votes, total_no_votes')
+      .eq('id', startup.id)
+      .single()
+    if (error) throw new Error(error.message)
+    return data
+  }
+
+  it('deploys YES votes, decrements the grant, and increases the startup YES total', async () => {
+    const res = await cast('yes', 20)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.deployed).toBe(20)
+    expect(body.from_grant).toBe(20)
+    expect(body.from_pool).toBe(0)
+    expect(body.net_votes).toBe(20)
+    expect(body.phase_closed).toBe(false)
+
+    const startupRow = await currentStartup()
+    expect(startupRow.total_yes_votes).toBe(20)
+    expect(startupRow.total_no_votes).toBe(0)
+
+    const balance = await currentBalance()
+    expect(balance.remaining_today).toBe(80)
+    expect(balance.total_spendable).toBe(80)
+    expect(balance.pool_balance).toBe(0)
+  })
+
+  it('casting again in the same direction adds to the existing position', async () => {
+    const res = await cast('yes', 10)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.deployed).toBe(10)
+    expect(body.from_grant).toBe(10)
+    expect(body.from_pool).toBe(0)
+    expect(body.net_votes).toBe(30)
+
+    const startupRow = await currentStartup()
+    expect(startupRow.total_yes_votes).toBe(30)
+
+    const balance = await currentBalance()
+    expect(balance.remaining_today).toBe(70)
+    expect(balance.total_spendable).toBe(70)
+  })
+
+  it('rejects casting the opposite direction with 409', async () => {
+    const res = await cast('no', 5)
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error).toMatch(/already hold/i)
+  })
+
+  it('rejects casting more votes than available with 400', async () => {
+    const res = await cast('yes', 1000)
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/Not enough votes/i)
+  })
+
+  it('drains the grant first and draws the shortfall from the pool', async () => {
+    // create a pool balance by withdrawing some of the deployed YES votes
+    const withdrawRes = await withdraw(10)
+    expect(withdrawRes.status).toBe(200)
+
+    const balanceAfterWithdraw = await currentBalance()
+    expect(balanceAfterWithdraw.remaining_today).toBe(70)
+    expect(balanceAfterWithdraw.pool_balance).toBe(10)
+    expect(balanceAfterWithdraw.total_spendable).toBe(80)
+
+    // cast 75: 70 from the remaining grant, then 5 from the pool
+    const res = await cast('yes', 75)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.from_grant).toBe(70)
+    expect(body.from_pool).toBe(5)
+    expect(body.deployed).toBe(75)
+    expect(body.net_votes).toBe(95)
+
+    const startupRow = await currentStartup()
+    expect(startupRow.total_yes_votes).toBe(95)
+
+    const balance = await currentBalance()
+    expect(balance.remaining_today).toBe(0)
+    expect(balance.pool_balance).toBe(5)
+    expect(balance.total_spendable).toBe(5)
+  })
+})

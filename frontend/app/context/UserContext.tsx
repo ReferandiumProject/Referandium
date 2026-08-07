@@ -8,6 +8,7 @@ export interface AppUser {
   privy_id: string;
   email: string | null;
   wallet_address: string | null;
+  custodial_wallet_address: string | null;
 }
 
 interface UserContextType {
@@ -72,6 +73,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           privy_id: data.privy_id,
           email: data.email,
           wallet_address: data.wallet_address,
+          custodial_wallet_address: data.custodial_wallet_address ?? null,
         });
       } catch (err: any) {
         console.error('[UserContext] sync error:', err);

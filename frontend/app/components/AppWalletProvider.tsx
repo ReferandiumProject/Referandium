@@ -50,7 +50,7 @@ export default function AppWalletProvider({ children }: { children: React.ReactN
       config={{
         embeddedWallets: {
           solana: {
-            createOnLogin: 'users-without-wallets',
+            createOnLogin: 'all-users',
           },
         },
         loginMethods: ['google', 'wallet'],

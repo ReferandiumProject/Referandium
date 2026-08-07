@@ -1,41 +1,21 @@
 'use client'
+
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter, usePathname } from 'next/navigation'
 import { usePrivy } from '@privy-io/react-auth'
 import { useUser } from '../context/UserContext'
-import { usePathname } from 'next/navigation'
+
+const navLinks = [
+  { href: '/', label: 'Startups' },
+  { href: '/how-it-works', label: 'How it works' },
+]
 
 export default function Navbar() {
-  const { login, logout, authenticated, getAccessToken } = usePrivy()
+  const { login, logout, authenticated } = usePrivy()
   const { dbUser } = useUser()
   const pathname = usePathname()
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    if (!authenticated) {
-      setIsAdmin(false)
-      return
-    }
-
-    let cancelled = false
-    async function checkAdmin() {
-      try {
-        const token = await getAccessToken()
-        if (!token) return
-        const res = await fetch('/api/admin/whoami', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!res.ok) return
-        const json = await res.json()
-        if (!cancelled) setIsAdmin(!!json.isAdmin)
-      } catch {
-        // ignore
-      }
-    }
-
-    checkAdmin()
-    return () => { cancelled = true }
-  }, [authenticated])
+  const router = useRouter()
 
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -57,12 +37,9 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleCopyAddress = () => {
-    if (dbUser?.wallet_address) {
-      navigator.clipboard.writeText(dbUser.wallet_address)
-      setDropdownOpen(false)
-    }
-  }
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
 
   const handleDisconnect = () => {
     logout()
@@ -70,189 +47,96 @@ export default function Navbar() {
     setMobileOpen(false)
   }
 
-  useEffect(() => {
-    setMobileOpen(false)
-  }, [pathname])
+  const handleListStartup = async () => {
+    if (!authenticated) {
+      await login()
+    }
+    router.push('/list')
+  }
+
+  const linkClass = (href: string) =>
+    `text-[14px] font-medium no-underline transition-colors duration-150 ${
+      pathname === href ? 'text-[#3B82F6]' : 'text-[#6B7280] hover:text-[#111827]'
+    }`
 
   return (
-    <nav style={{ 
-      backgroundColor: '#FFFFFF', 
-      borderBottom: '1px solid #E5E7EB',
-      position: 'sticky',
-      top: 0,
-      zIndex: 50
-    }}>
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        
+    <nav className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white">
+      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
         {/* Logo */}
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-          <div style={{ width: '32px', height: '32px', backgroundColor: '#3B82F6', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: 'white', fontWeight: '700', fontSize: '16px' }}>R</span>
+        <Link href="/" className="flex items-center gap-2 no-underline">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#3B82F6]">
+            <span className="text-base font-bold text-white">R</span>
           </div>
-          <span style={{ fontWeight: '700', fontSize: '18px', color: '#111827', letterSpacing: '-0.02em' }}>Referandium</span>
+          <span className="text-lg font-bold tracking-tight text-[#111827]">
+            Referandium
+          </span>
         </Link>
 
         {/* Nav Links (desktop) */}
-        <div className="hidden md:flex" style={{ alignItems: 'center', gap: '32px' }}>
-          <Link href="/markets" style={{ color: pathname === '/markets' ? '#3B82F6' : '#6B7280', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
-            Markets
-          </Link>
-          <a href="https://startup.referandium.com" target="_blank" rel="noopener noreferrer" style={{ color: '#6B7280', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
-            Startups
-          </a>
-          {authenticated && (
-            <Link href="/profile" style={{ color: pathname === '/profile' ? '#3B82F6' : '#6B7280', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
-              Profile
+        <div className="hidden items-center gap-8 md:flex">
+          {navLinks.map((link) => (
+            <Link key={link.href} href={link.href} className={linkClass(link.href)}>
+              {link.label}
             </Link>
-          )}
-          <Link href="/docs" style={{ color: '#6B7280', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
-            Docs
-          </Link>
+          ))}
         </div>
 
         {/* Right side (desktop) */}
-        <div className="hidden md:flex" style={{ alignItems: 'center', gap: '12px' }}>
-          {isAdmin && (
-            <Link href="/admin" style={{ textDecoration: 'none', fontSize: '12px', color: '#6B7280', fontWeight: '500' }}>
-              Admin
-            </Link>
-          )}
-          <Link href="/create" style={{
-            backgroundColor: '#3B82F6',
-            color: 'white',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            fontSize: '14px',
-            fontWeight: '500',
-            lineHeight: '20px',
-          }}>
-            + Create Market
-          </Link>
+        <div className="hidden items-center gap-3 md:flex">
+          <button
+            onClick={handleListStartup}
+            className="rounded-lg bg-[#3B82F6] px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-blue-600"
+          >
+            List your startup
+          </button>
 
-          {/* Custom Wallet Button */}
-          {!authenticated ? (
+          {authenticated ? (
+            <>
+              <Link
+                href="/profile"
+                className={`text-[14px] font-medium transition-colors duration-150 ${
+                  pathname === '/profile' ? 'text-[#3B82F6]' : 'text-[#6B7280] hover:text-[#111827]'
+                }`}
+              >
+                Profile
+              </Link>
+              <div ref={dropdownRef} className="relative">
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="flex h-9 items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-3 text-[13px] font-medium text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+                >
+                  <span className="h-2 w-2 rounded-full bg-[#10B981]" />
+                  {displayLabel}
+                </button>
+
+                {dropdownOpen && (
+                  <div className="absolute right-0 top-[42px] min-w-[160px] overflow-hidden rounded-lg border border-[#E5E7EB] bg-white shadow-md">
+                    <button
+                      onClick={handleDisconnect}
+                      className="block w-full px-4 py-2.5 text-left text-[13px] font-medium text-[#EF4444] transition-colors hover:bg-[#F9FAFB]"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
             <button
               onClick={() => login()}
-              style={{
-                backgroundColor: 'white',
-                border: '1px solid #E5E7EB',
-                color: '#111827',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: '500',
-                height: '36px',
-                padding: '0 12px',
-                cursor: 'pointer',
-                transition: 'background-color 0.15s',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB' }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
+              className="rounded-lg border border-[#E5E7EB] bg-white px-4 py-2 text-[13px] font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB]"
             >
               Sign In
             </button>
-          ) : (
-            <div ref={dropdownRef} style={{ position: 'relative' }}>
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                style={{
-                  backgroundColor: 'white',
-                  border: '1px solid #E5E7EB',
-                  color: '#111827',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  height: '36px',
-                  padding: '0 12px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'background-color 0.15s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB' }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
-              >
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981' }} />
-                {displayLabel}
-              </button>
-
-              {dropdownOpen && (
-                <div style={{
-                  position: 'absolute',
-                  top: '42px',
-                  right: 0,
-                  backgroundColor: 'white',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(17,24,39,0.12)',
-                  minWidth: '160px',
-                  overflow: 'hidden',
-                  zIndex: 100,
-                }}>
-                  <button
-                    onClick={handleCopyAddress}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '10px 14px',
-                      fontSize: '13px',
-                      fontWeight: '500',
-                      color: '#111827',
-                      backgroundColor: 'white',
-                      border: 'none',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid #E5E7EB',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
-                  >
-                    Copy Address
-                  </button>
-                  <button
-                    onClick={handleDisconnect}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '10px 14px',
-                      fontSize: '13px',
-                      fontWeight: '500',
-                      color: '#EF4444',
-                      backgroundColor: 'white',
-                      border: 'none',
-                      cursor: 'pointer',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#FEF2F2' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              )}
-            </div>
           )}
         </div>
 
         {/* Hamburger (mobile) */}
         <button
-          id="mobile-menu-button"
-          className="flex md:hidden"
           aria-label="Toggle menu"
           aria-expanded={mobileOpen}
-          aria-controls="mobile-menu"
           onClick={() => setMobileOpen((o) => !o)}
-          style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '40px',
-            height: '40px',
-            borderRadius: '8px',
-            border: '1px solid #E5E7EB',
-            backgroundColor: 'white',
-            cursor: 'pointer',
-          }}
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white md:hidden"
         >
           {mobileOpen ? (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -267,153 +151,62 @@ export default function Navbar() {
             </svg>
           )}
         </button>
-
       </div>
 
       {/* Mobile menu panel */}
       {mobileOpen && (
-        <div
-          id="mobile-menu"
-          aria-label="Mobile menu"
-          className="flex flex-col md:hidden"
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderTop: '1px solid #E5E7EB',
-            padding: '16px 24px 24px',
-            gap: '4px',
-          }}
-        >
-          {authenticated && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 0',
-                fontSize: '14px',
-                fontWeight: 500,
-                color: '#6B7280',
-              }}
-            >
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981' }} />
-              {displayLabel}
-            </div>
-          )}
-
-          <Link
-            href="/markets"
-            onClick={() => setMobileOpen(false)}
-            style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: pathname === '/markets' ? '#3B82F6' : '#111827' }}
-          >
-            Markets
-          </Link>
-          <a
-            href="https://startup.referandium.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => setMobileOpen(false)}
-            style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: '#111827' }}
-          >
-            Startups
-          </a>
-          {authenticated && (
+        <div className="flex flex-col border-t border-[#E5E7EB] bg-white px-6 py-4 md:hidden">
+          {navLinks.map((link) => (
             <Link
-              href="/profile"
+              key={link.href}
+              href={link.href}
               onClick={() => setMobileOpen(false)}
-              style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: pathname === '/profile' ? '#3B82F6' : '#111827' }}
+              className={`py-3 text-[15px] font-medium ${
+                pathname === link.href ? 'text-[#3B82F6]' : 'text-[#111827]'
+              }`}
             >
-              Profile
+              {link.label}
             </Link>
-          )}
-          <Link
-            href="/docs"
-            onClick={() => setMobileOpen(false)}
-            style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: '#111827' }}
-          >
-            Docs
-          </Link>
-          {isAdmin && (
-            <Link
-              href="/admin"
-              onClick={() => setMobileOpen(false)}
-              style={{ padding: '12px 0', fontSize: '15px', fontWeight: 500, textDecoration: 'none', color: '#6B7280' }}
-            >
-              Admin
-            </Link>
-          )}
+          ))}
 
-          <Link
-            href="/create"
-            onClick={() => setMobileOpen(false)}
-            style={{
-              marginTop: '12px',
-              backgroundColor: '#3B82F6',
-              color: 'white',
-              padding: '12px 16px',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontSize: '15px',
-              fontWeight: 600,
-              textAlign: 'center',
+          <button
+            onClick={() => {
+              setMobileOpen(false)
+              handleListStartup()
             }}
+            className="mt-3 rounded-lg bg-[#3B82F6] px-4 py-3 text-center text-[15px] font-semibold text-white transition-colors hover:bg-blue-600"
           >
-            + Create Market
-          </Link>
+            List your startup
+          </button>
 
-          {!authenticated ? (
-            <button
-              onClick={() => { login(); setMobileOpen(false) }}
-              style={{
-                marginTop: '8px',
-                backgroundColor: 'transparent',
-                border: '1px solid #E5E7EB',
-                color: '#111827',
-                borderRadius: '8px',
-                fontSize: '15px',
-                fontWeight: 600,
-                padding: '12px 16px',
-                cursor: 'pointer',
-              }}
-            >
-              Sign In
-            </button>
-          ) : (
+          {authenticated ? (
             <>
-              <button
-                onClick={handleCopyAddress}
-                style={{
-                  marginTop: '8px',
-                  backgroundColor: 'transparent',
-                  border: '1px solid #E5E7EB',
-                  color: '#111827',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  fontWeight: 500,
-                  padding: '12px 16px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
+              <Link
+                href="/profile"
+                onClick={() => setMobileOpen(false)}
+                className={`py-3 text-[15px] font-medium ${
+                  pathname === '/profile' ? 'text-[#3B82F6]' : 'text-[#111827]'
+                }`}
               >
-                Copy Address
-              </button>
+                Profile
+              </Link>
               <button
                 onClick={handleDisconnect}
-                style={{
-                  marginTop: '8px',
-                  backgroundColor: 'transparent',
-                  border: '1px solid #E5E7EB',
-                  color: '#EF4444',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  fontWeight: 500,
-                  padding: '12px 16px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
+                className="mt-1 rounded-lg border border-[#E5E7EB] px-4 py-3 text-left text-[15px] font-medium text-[#EF4444] transition-colors hover:bg-[#F9FAFB]"
               >
                 Sign Out
               </button>
             </>
+          ) : (
+            <button
+              onClick={() => {
+                setMobileOpen(false)
+                login()
+              }}
+              className="mt-3 rounded-lg border border-[#E5E7EB] px-4 py-3 text-[15px] font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+            >
+              Sign In
+            </button>
           )}
         </div>
       )}

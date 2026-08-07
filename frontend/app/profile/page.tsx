@@ -1,20 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { usePrivy, useFundWallet } from '@privy-io/react-auth'
-import { getPrice, getSellProceeds, getSharesForSellProceeds } from '../../lib/lmsr'
+import Link from 'next/link'
+import { usePrivy, useFundWallet, useHeadlessDelegatedActions } from '@privy-io/react-auth'
 import { useUser } from '../context/UserContext'
-
-type Position = {
-  id: string
-  market_id: string
-  option_id: string
-  market_title: string
-  market_status: string
-  option_label: string
-  shares: number
-  avg_price: number
-}
 
 type Balance = {
   available_usdc: number
@@ -26,36 +15,85 @@ type DepositInfo = {
   usdc_mint: string
 }
 
-type Tab = 'active' | 'closed'
+type VotePosition = {
+  startup_id: string
+  name: string
+  slug: string
+  logo_url: string | null
+  phase: number
+  total_yes_votes: number
+  total_no_votes: number
+  vote_threshold: number
+  net: number
+  progress: number
+  direction: 'yes' | 'no'
+  votes: number
+  burned_at?: string | null
+}
+
+type VoteState = {
+  balance: {
+    grant_date: string | null
+    granted_today: number
+    remaining_today: number
+    newly_granted: boolean
+    pool_balance: number
+    total_spendable: number
+  }
+  active: VotePosition[]
+  burned: VotePosition[]
+}
 
 const formatUsd = (n: number | null | undefined) => {
   const v = Number(n ?? 0)
   return Number.isFinite(v) ? `$${v.toFixed(2)}` : '—'
 }
 
-const formatShares = (n: number | null | undefined) => {
+const formatVotes = (n: number | null | undefined) => {
   const v = Number(n ?? 0)
-  return Number.isFinite(v) ? v.toFixed(2) : '—'
+  return Number.isFinite(v) ? v.toLocaleString() : '—'
+}
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+function Avatar({ name, src }: { name: string; src: string | null }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className="h-10 w-10 flex-shrink-0 rounded-lg object-cover"
+      />
+    )
+  }
+
+  return (
+    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#3B82F6] text-sm font-bold text-white">
+      {getInitials(name)}
+    </div>
+  )
 }
 
 export default function ProfilePage() {
-  const { authenticated, getAccessToken, login } = usePrivy()
+  const { authenticated, getAccessToken, login, user } = usePrivy()
   const { dbUser } = useUser()
   const { fundWallet } = useFundWallet({
     onUserExited: () => console.log('[Privy] card funding flow exited'),
   })
+  const { delegateWallet } = useHeadlessDelegatedActions()
 
   const [balance, setBalance] = useState<Balance | null>(null)
-  const [positions, setPositions] = useState<Position[] | null>(null)
-  const [totalTrades, setTotalTrades] = useState(0)
+  const [voteState, setVoteState] = useState<VoteState | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  const [sellAmounts, setSellAmounts] = useState<Record<string, string>>({})
-  const [sellResponses, setSellResponses] = useState<Record<string, string>>({})
-  const [confirmingId, setConfirmingId] = useState<string | null>(null)
-  const [marketDetails, setMarketDetails] = useState<Record<string, { qYes: number; qNo: number }>>({})
-  const [activeTab, setActiveTab] = useState<Tab>('active')
 
   const [depositMode, setDepositMode] = useState<'devnet' | 'wallet' | 'card'>('devnet')
   const [depositAmount, setDepositAmount] = useState('')
@@ -64,6 +102,10 @@ export default function ProfilePage() {
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [withdrawWallet, setWithdrawWallet] = useState('')
   const [cardAmount, setCardAmount] = useState('')
+  const [copied, setCopied] = useState(false)
+  const [delegating, setDelegating] = useState(false)
+  const [delegationError, setDelegationError] = useState<string | null>(null)
+  const [enabled, setEnabled] = useState(false)
 
   const fetchProfile = async () => {
     const token = await getAccessToken()
@@ -76,17 +118,17 @@ export default function ProfilePage() {
     setError(null)
 
     try {
-      const [balanceRes, positionsRes] = await Promise.all([
+      const [balanceRes, voteRes] = await Promise.all([
         fetch('/api/balance', {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch('/api/profile/positions', {
+        fetch('/api/startup-votes/mine', {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ])
 
       const balanceJson = await balanceRes.json().catch(() => ({}))
-      const positionsJson = await positionsRes.json().catch(() => ({}))
+      const voteJson = await voteRes.json().catch(() => ({}))
 
       if (!balanceRes.ok) {
         setError(balanceJson.error || 'Failed to load balance')
@@ -94,22 +136,14 @@ export default function ProfilePage() {
         setBalance(balanceJson.data || null)
       }
 
-      if (!positionsRes.ok) {
-        setError((prev) => prev || positionsJson.error || 'Failed to load positions')
+      if (!voteRes.ok) {
+        setError((prev) => prev || voteJson.error || 'Failed to load votes')
       } else {
-        setPositions(positionsJson.positions || [])
-        setTotalTrades(positionsJson.totalTrades ?? 0)
-        const opts = (positionsJson.options || []) as Array<{ market_id: string; label: string; shares_outstanding: number }>
-        const details: Record<string, { qYes: number; qNo: number }> = {}
-        for (const o of opts) {
-          if (!details[o.market_id]) {
-            details[o.market_id] = { qYes: 0, qNo: 0 }
-          }
-          const label = (o.label ?? '').toUpperCase() as 'YES' | 'NO'
-          if (label === 'YES') details[o.market_id].qYes = Number(o.shares_outstanding || 0)
-          if (label === 'NO') details[o.market_id].qNo = Number(o.shares_outstanding || 0)
-        }
-        setMarketDetails(details)
+        setVoteState({
+          balance: voteJson.balance,
+          active: voteJson.active || [],
+          burned: voteJson.burned || [],
+        })
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load profile')
@@ -123,58 +157,6 @@ export default function ProfilePage() {
       fetchProfile()
     }
   }, [authenticated, getAccessToken])
-
-  useEffect(() => {
-    setSellAmounts((prev) => {
-      const init: Record<string, string> = {}
-      positions?.forEach((p) => {
-        init[p.id] = prev[p.id] ?? ''
-      })
-      return init
-    })
-  }, [positions])
-
-  useEffect(() => {
-    if (!confirmingId) return
-    const timer = setTimeout(() => setConfirmingId(null), 4000)
-    return () => clearTimeout(timer)
-  }, [confirmingId])
-
-  useEffect(() => {
-    if (!positions || !Object.keys(marketDetails).length) return
-    const next: Record<string, string> = {}
-    for (const p of positions) {
-      const md = marketDetails[p.market_id]
-      if (!md) {
-        next[p.id] = ''
-        continue
-      }
-      const label = (p.option_label ?? '').toUpperCase() as 'YES' | 'NO'
-      const proceeds = getSellProceeds(md.qYes, md.qNo, label, p.shares)
-      next[p.id] = Number.isFinite(proceeds) && proceeds > 0 ? String(proceeds.toFixed(2)) : ''
-    }
-    setSellAmounts(next)
-  }, [positions, marketDetails])
-
-  const openPositionsValue = useMemo(() => {
-    if (!positions) return 0
-    return positions.reduce((sum, p) => {
-      if (p.market_status !== 'active') return sum
-      const md = marketDetails[p.market_id]
-      if (!md) return sum
-      const label = (p.option_label ?? '').toUpperCase() as 'YES' | 'NO'
-      if (label !== 'YES' && label !== 'NO') return sum
-      const price = getPrice(md.qYes, md.qNo, label)
-      return sum + p.shares * price
-    }, 0)
-  }, [positions, marketDetails])
-
-  const filteredPositions = useMemo(() => {
-    if (!positions) return []
-    return positions.filter((p) =>
-      activeTab === 'active' ? p.market_status === 'active' : p.market_status !== 'active'
-    )
-  }, [positions, activeTab])
 
   const handleDevnetDeposit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -301,154 +283,33 @@ export default function ProfilePage() {
     fetchProfile()
   }
 
-  const handleSell = async (position: Position) => {
-    setMessage(null)
-    const token = await getAccessToken()
-    if (!token) {
-      setError('Not authenticated')
-      return
-    }
-
-    const md = marketDetails[position.market_id]
-    if (!md) {
-      setSellResponses((r) => ({ ...r, [position.id]: 'Market data not loaded' }))
-      return
-    }
-
-    const raw = sellAmounts[position.id] ?? ''
-    const dollars = parseFloat(raw)
-    if (!dollars || dollars <= 0) {
-      setSellResponses((r) => ({ ...r, [position.id]: 'Invalid USDC amount' }))
-      return
-    }
-
-    const label = (position.option_label ?? '').toUpperCase() as 'YES' | 'NO'
-    const shares = getSharesForSellProceeds(md.qYes, md.qNo, label, dollars)
-    if (!Number.isFinite(shares) || shares <= 0) {
-      setSellResponses((r) => ({ ...r, [position.id]: 'USDC amount is too large for current market state' }))
-      return
-    }
-    if (shares > position.shares) {
-      setSellResponses((r) => ({ ...r, [position.id]: `Amount exceeds position by ${(shares - position.shares).toFixed(2)} shares` }))
-      return
-    }
-
-    if (confirmingId !== position.id) {
-      setConfirmingId(position.id)
-      setSellResponses((r) => ({
-        ...r,
-        [position.id]: `≈ ${shares.toFixed(2)} shares — click again to confirm`,
-      }))
-      return
-    }
-
-    console.log('[profile sell] client values', {
-      owned: position.shares,
-      computedShares: shares,
-      optionId: position.option_id,
-      optionLabel: label,
-      amount: dollars,
-    })
-
-    setConfirmingId(null)
-    setSellResponses((r) => ({ ...r, [position.id]: 'Selling...' }))
-
-    const res = await fetch('/api/trades', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        market_id: position.market_id,
-        option_id: position.option_id,
-        type: 'sell',
-        shares,
-      }),
-    })
-
-    const json = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setSellResponses((r) => ({ ...r, [position.id]: json.error || `Sell failed (${res.status})` }))
-      return
-    }
-
-    const trade = json.trade || {}
-    const proceeds = Number(trade.usdc_amount ?? 0) - Number(trade.fee ?? 0)
-    setSellResponses((r) => ({
-      ...r,
-      [position.id]: `Sold ${shares.toFixed(2)} shares. Proceeds: ${proceeds.toFixed(4)} USDC. New balance: ${json.newBalance}`,
-    }))
-    fetchProfile()
-  }
-
-  const getPositionPrices = (p: Position) => {
-    const md = marketDetails[p.market_id]
-    const label = (p.option_label ?? '').toUpperCase() as 'YES' | 'NO'
-    const active = p.market_status === 'active'
-    const currentPrice = active && md ? getPrice(md.qYes, md.qNo, label) : null
-    const value = active && currentPrice !== null ? p.shares * currentPrice : null
-    return { label, currentPrice, value, active }
-  }
-
-  const renderSellControl = (p: Position) => {
-    const md = marketDetails[p.market_id]
-    const label = (p.option_label ?? '').toUpperCase() as 'YES' | 'NO'
-    const dollars = parseFloat(sellAmounts[p.id] ?? '0')
-    let estimate: string | null = null
-    if (md && dollars > 0) {
-      const est = getSharesForSellProceeds(md.qYes, md.qNo, label, dollars)
-      if (Number.isFinite(est) && est > 0) {
-        estimate = `≈ ${est.toFixed(2)} shares`
-      }
-    }
-    return (
-      <div className="mt-4">
-        <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
-          USDC to sell
-        </label>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <input
-            type="number"
-            step="0.01"
-            value={sellAmounts[p.id] ?? ''}
-            onChange={(e) =>
-              setSellAmounts((prev) => ({
-                ...prev,
-                [p.id]: e.target.value,
-              }))
-            }
-            placeholder="USDC amount"
-            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-40"
-          />
-          <button
-            onClick={() => handleSell(p)}
-            className={`w-full rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors sm:w-auto ${
-              confirmingId === p.id ? 'bg-[#EF4444] hover:bg-red-600' : 'bg-[#3B82F6] hover:bg-blue-600'
-            }`}
-          >
-            {confirmingId === p.id ? 'Confirm Sell?' : 'Sell'}
-          </button>
-        </div>
-        {estimate && <p className="mt-2 text-xs text-[#6B7280]">{estimate}</p>}
-        <p className="mt-1 text-xs text-[#9CA3AF]">Final amount may differ after 0.5% fee.</p>
-        {sellResponses[p.id] && <p className="mt-2 text-xs text-[#6B7280]">{sellResponses[p.id]}</p>}
-      </div>
-    )
-  }
-
   const depositLabels: Record<'devnet' | 'wallet' | 'card', string> = {
     devnet: 'Devnet Faucet',
     wallet: 'Wallet Deposit',
     card: 'Card',
   }
 
-  const tabClass = (tab: Tab, value: Tab) =>
-    `rounded-md px-4 py-1.5 text-sm font-medium transition ${
-      tab === value
-        ? 'bg-white text-[#111827] shadow-sm'
-        : 'text-[#6B7280] hover:text-[#111827]'
-    }`
+  const depositAddress = useMemo(() => {
+    const account = user?.linkedAccounts?.find(
+      (a: any) =>
+        a.type === 'wallet' &&
+        a.chainType === 'solana' &&
+        a.walletClientType === 'privy'
+    )
+    return (account as any)?.address as string | undefined
+  }, [user])
+
+  const isEnabled = useMemo(() => {
+    if (!user?.linkedAccounts || !depositAddress) return false
+    const account = user.linkedAccounts.find(
+      (a: any) => a.type === 'wallet' && a.address === depositAddress
+    )
+    return (account as any)?.delegated === true
+  }, [user, depositAddress])
+
+  useEffect(() => {
+    setEnabled(isEnabled)
+  }, [isEnabled])
 
   if (!authenticated) {
     return (
@@ -456,7 +317,7 @@ export default function ProfilePage() {
         <div className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
           <h1 className="mb-2 text-3xl font-semibold text-[#111827]">Profile</h1>
           <p className="mb-6 text-sm text-[#6B7280]">
-            Sign in to view your profile
+            Sign in to view your balance, voting power, and positions.
           </p>
           <button
             onClick={() => login()}
@@ -471,7 +332,7 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-[#F9FAFB] px-4 pb-24 pt-6 text-[#111827] sm:pt-8">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-5xl">
         {loading && (
           <p className="mb-4 text-sm text-[#6B7280]">Loading profile...</p>
         )}
@@ -489,8 +350,8 @@ export default function ProfilePage() {
         <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-[#111827]">Portfolio</h1>
-              <p className="mt-1 text-sm text-[#6B7280]">Manage your balance, positions, and funds</p>
+              <h1 className="text-2xl font-semibold text-[#111827]">Profile</h1>
+              <p className="mt-1 text-sm text-[#6B7280]">Manage your balance and votes</p>
             </div>
             <div className="flex gap-3">
               <button
@@ -507,24 +368,164 @@ export default function ProfilePage() {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Available</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Available USDC</p>
               <p className="mt-1 text-lg font-semibold text-[#111827]">{formatUsd(balance?.available_usdc)}</p>
             </div>
             <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Locked</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Locked USDC</p>
               <p className="mt-1 text-lg font-semibold text-[#111827]">{formatUsd(balance?.locked_usdc)}</p>
             </div>
             <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Open Positions</p>
-              <p className="mt-1 text-lg font-semibold text-[#111827]">{formatUsd(openPositionsValue)}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Daily votes remaining</p>
+              <p className="mt-1 text-lg font-semibold text-[#111827]">
+                {voteState ? formatVotes(voteState.balance.remaining_today) : '—'}
+              </p>
             </div>
             <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Total Trades</p>
-              <p className="mt-1 text-lg font-semibold text-[#111827]">{totalTrades}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Vote pool</p>
+              <p className="mt-1 text-lg font-semibold text-[#111827]">
+                {voteState ? formatVotes(voteState.balance.pool_balance) : '—'}
+              </p>
             </div>
           </div>
+        </section>
+
+        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Voting power</h2>
+          <p className="mb-4 text-sm text-[#6B7280]">
+            Votes are free tokens, not USDC. The daily grant resets each day if unused,
+            while the pool holds votes you previously withdrew and never expires.
+          </p>
+          {voteState ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Today&apos;s grant</p>
+                <p className="mt-1 text-2xl font-semibold text-[#111827]">
+                  {formatVotes(voteState.balance.remaining_today)}
+                  <span className="ml-1 text-sm font-normal text-[#6B7280]">
+                    / {formatVotes(voteState.balance.granted_today)}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-[#6B7280]">
+                  100 free tokens added each day. Use them or lose them by end of day.
+                </p>
+              </div>
+              <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Pool balance</p>
+                <p className="mt-1 text-2xl font-semibold text-[#111827]">
+                  {formatVotes(voteState.balance.pool_balance)}
+                </p>
+                <p className="mt-1 text-xs text-[#6B7280]">
+                  Votes withdrawn from startups. They never expire and can be redeployed any time.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-[#6B7280]">Loading votes...</p>
+          )}
+        </section>
+
+        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-[#111827]">Active votes</h2>
+          {voteState === null ? (
+            <p className="text-sm text-[#6B7280]">Loading active votes...</p>
+          ) : voteState.active.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-6 text-center">
+              <p className="text-sm text-[#6B7280]">
+                You are not currently backing any startups.
+              </p>
+              <Link
+                href="/"
+                className="mt-3 inline-block text-sm font-semibold text-[#3B82F6] hover:text-blue-700"
+              >
+                Browse startups to start voting
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {voteState.active.map((pos) => (
+                <Link
+                  key={pos.startup_id}
+                  href={`/startup/${pos.slug}`}
+                  className="flex flex-col gap-4 rounded-lg border border-[#E5E7EB] p-4 transition-colors hover:bg-[#F9FAFB] sm:flex-row sm:items-center"
+                >
+                  <Avatar name={pos.name} src={pos.logo_url} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate font-medium text-[#111827]">{pos.name}</p>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${
+                          pos.direction === 'yes'
+                            ? 'bg-[#10B981]/10 text-[#10B981]'
+                            : 'bg-[#EF4444]/10 text-[#EF4444]'
+                        }`}
+                      >
+                        {pos.direction}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-[#6B7280]">
+                      {formatVotes(pos.votes)} votes · net {formatVotes(pos.net)} /{' '}
+                      {formatVotes(pos.vote_threshold)}
+                    </p>
+                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+                      <div
+                        className="h-full bg-[#3B82F6]"
+                        style={{ width: `${Math.min(100, Math.max(0, pos.progress))}%` }}
+                      />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Past votes</h2>
+          <p className="mb-4 text-sm text-[#6B7280]">
+            Startups you backed that reached their vote threshold and moved on to raising capital.
+            Those votes were consumed as part of the community validation.
+          </p>
+          {voteState === null ? (
+            <p className="text-sm text-[#6B7280]">Loading past votes...</p>
+          ) : voteState.burned.length === 0 ? (
+            <p className="text-sm text-[#6B7280]">No startups have crossed the threshold with your support yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {voteState.burned.map((pos) => (
+                <Link
+                  key={pos.startup_id}
+                  href={`/startup/${pos.slug}`}
+                  className="flex flex-col gap-4 rounded-lg border border-[#E5E7EB] p-4 transition-colors hover:bg-[#F9FAFB] sm:flex-row sm:items-center"
+                >
+                  <Avatar name={pos.name} src={pos.logo_url} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate font-medium text-[#111827]">{pos.name}</p>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${
+                          pos.direction === 'yes'
+                            ? 'bg-[#10B981]/10 text-[#10B981]'
+                            : 'bg-[#EF4444]/10 text-[#EF4444]'
+                        }`}
+                      >
+                        {pos.direction}
+                      </span>
+                      <span className="inline-flex rounded-full bg-[#10B981]/10 px-2 py-0.5 text-xs font-semibold text-[#10B981]">
+                        Validated
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-[#6B7280]">
+                      {formatVotes(pos.votes)} votes contributed · threshold reached
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         <section id="deposit" className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
@@ -563,7 +564,68 @@ export default function ProfilePage() {
               </button>
             </form>
           ) : depositMode === 'wallet' ? (
-            <div>
+            <div className="flex flex-col gap-4">
+              {depositAddress ? (
+                <>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="flex-1 overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-2">
+                      <p className="font-mono text-sm text-[#111827] break-all">{depositAddress}</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(depositAddress)
+                          setCopied(true)
+                          setTimeout(() => setCopied(false), 2000)
+                        } catch {
+                          setMessage('Failed to copy address')
+                        }
+                      }}
+                      className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
+                    >
+                      {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-[#6B7280]">
+                    This is your personal Solana deposit address. Send USDC (Solana) here and funds will be detected and swept into your platform balance automatically.
+                  </p>
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <button
+                      disabled={!depositAddress || delegating || enabled}
+                      onClick={async () => {
+                        if (!depositAddress) return
+                        setDelegating(true)
+                        setDelegationError(null)
+                        try {
+                          await delegateWallet({ address: depositAddress, chainType: 'solana' })
+                          setEnabled(true)
+                        } catch (err: any) {
+                          setDelegationError(err.message || 'Failed to enable automatic deposits')
+                        } finally {
+                          setDelegating(false)
+                        }
+                      }}
+                      className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors ${
+                        enabled
+                          ? 'bg-[#10B981] hover:bg-green-600'
+                          : 'bg-[#3B82F6] hover:bg-blue-600'
+                      } ${(!depositAddress || delegating || enabled) ? 'cursor-not-allowed opacity-60' : ''}`}
+                    >
+                      {enabled ? 'Enabled ✓' : delegating ? 'Enabling...' : 'Enable automatic deposits'}
+                    </button>
+                    <p className="text-xs text-[#6B7280]">
+                      Allow the app to automatically move USDC from your deposit address into the platform, so you don&apos;t have to submit anything manually.
+                    </p>
+                  </div>
+                  {delegationError && (
+                    <p className="mt-2 text-xs text-[#EF4444]">{delegationError}</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-[#6B7280]">Your deposit address is being set up, refresh shortly.</p>
+              )}
+
               <button
                 onClick={loadDepositInfo}
                 className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
@@ -669,115 +731,6 @@ export default function ProfilePage() {
               Withdraw
             </button>
           </form>
-        </section>
-
-        <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-semibold text-[#111827]">Positions</h2>
-            <div className="inline-flex rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-1">
-              <button onClick={() => setActiveTab('active')} className={tabClass('active', activeTab)}>
-                Active
-              </button>
-              <button onClick={() => setActiveTab('closed')} className={tabClass('closed', activeTab)}>
-                Closed
-              </button>
-            </div>
-          </div>
-
-          {positions === null ? (
-            <p className="text-sm text-[#6B7280]">Loading positions...</p>
-          ) : filteredPositions.length === 0 ? (
-            <p className="text-sm text-[#6B7280]">No {activeTab} positions</p>
-          ) : (
-            <>
-              <div className="hidden lg:block overflow-hidden rounded-lg border border-[#E5E7EB]">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-[#F9FAFB] text-[#6B7280]">
-                    <tr>
-                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Market</th>
-                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Side</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Avg Price</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Current Price</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Value</th>
-                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#E5E7EB]">
-                    {filteredPositions.map((p) => {
-                      const { label, currentPrice, value, active } = getPositionPrices(p)
-                      return (
-                        <tr key={p.id} className="hover:bg-[#F9FAFB]">
-                          <td className="px-4 py-3 font-medium text-[#111827]">{p.market_title}</td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${
-                                label === 'YES'
-                                  ? 'bg-[#10B981]/10 text-[#10B981]'
-                                  : 'bg-[#EF4444]/10 text-[#EF4444]'
-                              }`}
-                            >
-                              {p.option_label}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right text-[#111827]">{formatUsd(p.avg_price)}</td>
-                          <td className="px-4 py-3 text-right text-[#111827]">{active ? formatUsd(currentPrice) : '—'}</td>
-                          <td className="px-4 py-3 text-right text-[#111827]">{active ? formatUsd(value) : '—'}</td>
-                          <td className="px-4 py-3">
-                            {active ? (
-                              renderSellControl(p)
-                            ) : (
-                              <span className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Closed</span>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="lg:hidden grid grid-cols-1 gap-4">
-                {filteredPositions.map((p) => {
-                  const { label, currentPrice, value, active } = getPositionPrices(p)
-                  return (
-                    <div key={p.id} className="rounded-xl border border-[#E5E7EB] bg-white p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="font-medium text-[#111827]">{p.market_title}</p>
-                        <span
-                          className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${
-                            label === 'YES'
-                              ? 'bg-[#10B981]/10 text-[#10B981]'
-                              : 'bg-[#EF4444]/10 text-[#EF4444]'
-                          }`}
-                        >
-                          {p.option_label}
-                        </span>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-y-2 text-sm">
-                        <div>
-                          <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Avg Price</p>
-                          <p className="font-medium text-[#111827]">{formatUsd(p.avg_price)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Current Price</p>
-                          <p className="font-medium text-[#111827]">{active ? formatUsd(currentPrice) : '—'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Value</p>
-                          <p className="font-medium text-[#111827]">{active ? formatUsd(value) : '—'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Shares</p>
-                          <p className="font-medium text-[#111827]">{formatShares(p.shares)}</p>
-                        </div>
-                      </div>
-                      {active && renderSellControl(p)}
-                    </div>
-                  )
-                })}
-              </div>
-            </>
-          )}
         </section>
       </div>
     </main>

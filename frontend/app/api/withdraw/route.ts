@@ -50,20 +50,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
     }
 
-    const { data: balance, error: balanceError } = await supabaseAdmin
-      .from('balances')
-      .select('available_usdc, locked_usdc')
-      .eq('user_id', user.id)
-      .single()
+    // Reserve the off-chain balance first, before any on-chain movement.
+    const { data: reserved, error: reserveError } = await supabaseAdmin.rpc('reserve_withdrawal', {
+      p_user_id: user.id,
+      p_amount_usdc: amount_usdc,
+      p_wallet_address: wallet_address,
+    })
 
-    if (balanceError || !balance) {
-      console.error('[api/withdraw] balance fetch failed:', balanceError)
-      return NextResponse.json({ error: 'Unable to fetch balance' }, { status: 500 })
-    }
-
-    if (balance.available_usdc < amount_usdc) {
-      console.log('[api/withdraw] insufficient balance')
-      return NextResponse.json({ error: 'Insufficient available USDC' }, { status: 400 })
+    if (reserveError) {
+      console.error('[api/withdraw] reserve_withdrawal failed:', reserveError)
+      return NextResponse.json({ error: reserveError.message }, { status: 400 })
     }
 
     console.log('[api/withdraw] loading platform keypair')
@@ -93,26 +89,33 @@ export async function POST(request: Request) {
       createTransferInstruction(platformAta, recipientAta, platformPubkey, amountRaw)
     )
 
-    console.log('[api/withdraw] sending transaction')
-    const signature = await connection.sendTransaction(transaction, [platformKeypair])
-    await connection.confirmTransaction(signature, 'finalized')
-    console.log('[api/withdraw] transaction confirmed:', signature)
-
-    const newAvailable = balance.available_usdc - amount_usdc
-    const { data: updatedBalance, error: updateError } = await supabaseAdmin
-      .from('balances')
-      .update({ available_usdc: newAvailable })
-      .eq('user_id', user.id)
-      .select('available_usdc, locked_usdc')
-      .single()
-
-    if (updateError || !updatedBalance) {
-      console.error('[api/withdraw] balance update failed:', updateError)
-      return NextResponse.json({ error: 'Transaction sent but balance update failed' }, { status: 500 })
+    let signature: string
+    try {
+      console.log('[api/withdraw] sending transaction')
+      signature = await connection.sendTransaction(transaction, [platformKeypair])
+      await connection.confirmTransaction(signature, 'finalized')
+      console.log('[api/withdraw] transaction confirmed:', signature)
+    } catch (onChainError: any) {
+      console.error('[api/withdraw] on-chain transfer failed:', onChainError)
+      await supabaseAdmin.rpc('refund_withdrawal', { p_withdrawal_id: reserved.withdrawal_id })
+      return NextResponse.json(
+        { error: 'Withdrawal failed on-chain and has been refunded' },
+        { status: 500 }
+      )
     }
 
-    console.log('[api/withdraw] complete, new balance:', updatedBalance.available_usdc)
-    return NextResponse.json({ signature, new_balance: updatedBalance.available_usdc })
+    const { error: finalizeError } = await supabaseAdmin.rpc('finalize_withdrawal', {
+      p_withdrawal_id: reserved.withdrawal_id,
+      p_signature: signature,
+    })
+
+    if (finalizeError) {
+      console.error('[api/withdraw] finalize_withdrawal failed:', finalizeError)
+      return NextResponse.json({ error: finalizeError.message }, { status: 500 })
+    }
+
+    console.log('[api/withdraw] complete, new balance:', reserved.new_balance)
+    return NextResponse.json({ signature, new_balance: reserved.new_balance })
   } catch (error: any) {
     console.error('[api/withdraw] unexpected error:', error)
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })

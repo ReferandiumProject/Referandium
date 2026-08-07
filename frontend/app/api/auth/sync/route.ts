@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
       privy_id: userRecord.privy_id,
       email: userRecord.email,
       wallet_address: userRecord.wallet_address,
+      custodial_wallet_address: userRecord.custodial_wallet_address ?? null,
       available_usdc: balance?.available_usdc ?? 0,
     })
   } catch (err: any) {
