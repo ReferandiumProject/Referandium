@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabaseAdmin
       .from('startup_startups')
       .select(
-        'id, name, slug, description, pitch, website, twitter, logo_url, stage, phase, vote_threshold, capital_target, total_yes_votes, total_no_votes, deleted_at, created_at, owner_id'
+        'id, user_id, name, slug, description, pitch, website, twitter, logo_url, stage, created_at, phase, vote_threshold, capital_target, total_yes_votes, total_no_votes, phase1_closed_at, deleted_at'
       )
       .order('created_at', { ascending: false })
 

@@ -23,6 +23,8 @@ describe('admin routes', () => {
   let voter: Awaited<ReturnType<typeof createFixtureUser>>
   let phase1Startup: Awaited<ReturnType<typeof createFixtureStartup>>
   let phase2Startup: Awaited<ReturnType<typeof createFixtureStartup>>
+  let deletedStartup: Awaited<ReturnType<typeof createFixtureStartup>>
+  let forcePhaseStartup: Awaited<ReturnType<typeof createFixtureStartup>>
 
   beforeAll(async () => {
     admin = await createFixtureUser('admin-test@example.com')
@@ -30,6 +32,13 @@ describe('admin routes', () => {
     voter = await createFixtureUser('voter@example.com')
     phase1Startup = await createFixtureStartup(admin.id, { vote_threshold: 20 })
     phase2Startup = await createFixtureStartup(admin.id, { phase: 2 })
+    deletedStartup = await createFixtureStartup(admin.id)
+    forcePhaseStartup = await createFixtureStartup(admin.id)
+
+    await supabaseAdmin
+      .from('startup_startups')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', deletedStartup.id)
 
     process.env.ADMIN_EMAILS = admin.email
   })
@@ -37,7 +46,7 @@ describe('admin routes', () => {
   afterAll(async () => {
     await cleanupAdminFixtures(
       [admin.id, nonAdmin.id, voter.id],
-      [phase1Startup?.id, phase2Startup?.id].filter(Boolean) as string[]
+      [phase1Startup?.id, phase2Startup?.id, deletedStartup?.id, forcePhaseStartup?.id].filter(Boolean) as string[]
     )
   })
 
@@ -174,6 +183,82 @@ describe('admin routes', () => {
         .eq('startup_id', phase1Startup.id)
       expect(actionError).toBeNull()
       expect((actions ?? []).some((a: any) => a.action === 'restore_startup' || a.action === 'restore')).toBe(true)
+    })
+  })
+
+  describe('success paths', () => {
+    it('GET /api/admin/startups returns all startups including deleted with expected fields', async () => {
+      vi.mocked(getAuthenticatedUser).mockResolvedValue(admin as any)
+      const res = await listStartups(req('GET', '/api/admin/startups', undefined, admin))
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(Array.isArray(json)).toBe(true)
+
+      const byId = Object.fromEntries(json.map((s: any) => [s.id, s]))
+      expect(byId[phase1Startup.id]).toMatchObject({
+        id: phase1Startup.id,
+        user_id: admin.id,
+        name: phase1Startup.name,
+        slug: phase1Startup.slug,
+        phase: 1,
+        vote_threshold: phase1Startup.vote_threshold,
+        capital_target: phase1Startup.capital_target,
+        total_yes_votes: expect.any(Number),
+        total_no_votes: expect.any(Number),
+        deleted_at: null,
+      })
+      expect(byId[phase2Startup.id]).toMatchObject({
+        id: phase2Startup.id,
+        phase: 2,
+      })
+      expect(byId[deletedStartup.id]).toBeDefined()
+      expect(byId[deletedStartup.id].deleted_at).not.toBeNull()
+    })
+
+    it('PATCH /api/admin/startups/[id] updates allowed fields', async () => {
+      vi.mocked(getAuthenticatedUser).mockResolvedValue(admin as any)
+      const res = await patchStartup(
+        req('PATCH', `/api/admin/startups/${phase1Startup.id}`, { name: 'Updated Name', stage: 'Series A' }, admin),
+        { params: { id: phase1Startup.id } }
+      )
+      expect(res.status).toBe(200)
+
+      const { data: row, error } = await supabaseAdmin
+        .from('startup_startups')
+        .select('name, stage')
+        .eq('id', phase1Startup.id)
+        .single()
+      expect(error).toBeNull()
+      expect(row?.name).toBe('Updated Name')
+      expect(row?.stage).toBe('Series A')
+    })
+
+    it('POST /api/admin/startups/[id]/force-phase2 moves a phase-1 startup to phase 2', async () => {
+      vi.mocked(getAuthenticatedUser).mockResolvedValue(admin as any)
+      const res = await forcePhase2(
+        req('POST', `/api/admin/startups/${forcePhaseStartup.id}/force-phase2`, { reason: 'test force' }, admin),
+        { params: { id: forcePhaseStartup.id } }
+      )
+      expect(res.status).toBe(200)
+
+      const { data: row, error } = await supabaseAdmin
+        .from('startup_startups')
+        .select('phase')
+        .eq('id', forcePhaseStartup.id)
+        .single()
+      expect(error).toBeNull()
+      expect(row?.phase).toBe(2)
+    })
+
+    it('GET /api/admin/actions returns the audit log', async () => {
+      vi.mocked(getAuthenticatedUser).mockResolvedValue(admin as any)
+      const res = await listActions(req('GET', '/api/admin/actions', undefined, admin))
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(Array.isArray(json)).toBe(true)
+      expect(json.length).toBeGreaterThan(0)
+      expect(json[0]).toHaveProperty('action')
+      expect(json[0]).toHaveProperty('admin_email')
     })
   })
 
