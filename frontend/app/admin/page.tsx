@@ -79,6 +79,7 @@ export default function AdminPage() {
   const [editForm, setEditForm] = useState<Partial<Startup>>({})
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!ready) return
@@ -92,7 +93,8 @@ export default function AdminPage() {
   const getToken = async () => {
     try {
       return await getAccessToken()
-    } catch {
+    } catch (e) {
+      console.warn('[admin page] getAccessToken failed:', e)
       return null
     }
   }
@@ -139,7 +141,8 @@ export default function AdminPage() {
       }
       const json = await res.json()
       setStartups(json || [])
-    } catch {
+    } catch (e) {
+      console.error('[admin page] fetchStartups failed:', e)
       setError('Failed to load startups')
     } finally {
       setLoadingStartups(false)
@@ -157,12 +160,14 @@ export default function AdminPage() {
       })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
+        console.error(`[admin page] fetchActions HTTP ${res.status}:`, json)
         setError(json.error || 'Failed to load audit log')
         return
       }
       const json = await res.json()
       setActions(json || [])
-    } catch {
+    } catch (e) {
+      console.error('[admin page] fetchActions failed:', e)
       setError('Failed to load audit log')
     } finally {
       setLoadingActions(false)
@@ -264,13 +269,16 @@ export default function AdminPage() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
+        console.error(`[admin page] edit failed — HTTP ${res.status}:`, json)
         setActionError(json.error || `Update failed (${res.status})`)
         setActionLoading(false)
         return
       }
       closeModal()
       await refresh()
+      setSuccessMessage('Startup updated successfully.')
     } catch (e: any) {
+      console.error('[admin page] edit exception:', e)
       setActionError(e.message || 'Update failed')
     } finally {
       setActionLoading(false)
@@ -298,13 +306,16 @@ export default function AdminPage() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
+        console.error(`[admin page] delete failed — HTTP ${res.status}:`, json)
         setActionError(json.error || `Delete failed (${res.status})`)
         setActionLoading(false)
         return
       }
       closeModal()
       await refresh()
+      setSuccessMessage('Startup deleted successfully.')
     } catch (e: any) {
+      console.error('[admin page] delete exception:', e)
       setActionError(e.message || 'Delete failed')
     } finally {
       setActionLoading(false)
@@ -328,13 +339,16 @@ export default function AdminPage() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
+        console.error(`[admin page] restore failed — HTTP ${res.status}:`, json)
         setActionError(json.error || `Restore failed (${res.status})`)
         setActionLoading(false)
         return
       }
       closeModal()
       await refresh()
+      setSuccessMessage('Startup restored successfully.')
     } catch (e: any) {
+      console.error('[admin page] restore exception:', e)
       setActionError(e.message || 'Restore failed')
     } finally {
       setActionLoading(false)
@@ -362,13 +376,16 @@ export default function AdminPage() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
+        console.error(`[admin page] force-phase2 failed — HTTP ${res.status}:`, json)
         setActionError(json.error || `Force phase 2 failed (${res.status})`)
         setActionLoading(false)
         return
       }
       closeModal()
       await refresh()
+      setSuccessMessage('Startup forced to phase 2 successfully.')
     } catch (e: any) {
+      console.error('[admin page] force-phase2 exception:', e)
       setActionError(e.message || 'Force phase 2 failed')
     } finally {
       setActionLoading(false)
@@ -391,7 +408,7 @@ export default function AdminPage() {
         <div className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
           <h1 className="mb-2 text-2xl font-semibold text-[#111827]">Admin</h1>
           <p className="mb-6 text-sm text-[#6B7280]">Sign in to access the admin panel.</p>
-          <button onClick={() => login()} className={buttonPrimary}>
+          <button type="button" onClick={() => login()} className={buttonPrimary}>
             Sign In
           </button>
         </div>
@@ -420,6 +437,15 @@ export default function AdminPage() {
         {error && (
           <div className="mb-4 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
             {error}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="mb-4 flex items-center justify-between gap-4 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-3 text-sm text-[#10B981]">
+            <span>{successMessage}</span>
+            <button type="button" onClick={() => setSuccessMessage(null)} className="font-semibold hover:underline">
+              Dismiss
+            </button>
           </div>
         )}
 
@@ -484,20 +510,20 @@ export default function AdminPage() {
                         <td className="px-4 py-3 text-[#6B7280]">{formatDate(s.created_at)}</td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-2">
-                            <button onClick={() => openEdit(s)} className="text-xs font-semibold text-[#3B82F6] hover:text-blue-700">
+                            <button type="button" onClick={() => openEdit(s)} className="text-xs font-semibold text-[#3B82F6] hover:text-blue-700">
                               Edit
                             </button>
                             {s.deleted_at ? (
-                              <button onClick={() => openRestore(s)} className="text-xs font-semibold text-[#10B981] hover:text-green-700">
+                              <button type="button" onClick={() => openRestore(s)} className="text-xs font-semibold text-[#10B981] hover:text-green-700">
                                 Restore
                               </button>
                             ) : (
-                              <button onClick={() => openDelete(s)} className="text-xs font-semibold text-[#EF4444] hover:text-red-700">
+                              <button type="button" onClick={() => openDelete(s)} className="text-xs font-semibold text-[#EF4444] hover:text-red-700">
                                 Delete
                               </button>
                             )}
                             {s.phase === 1 && !s.deleted_at && (
-                              <button onClick={() => openForcePhase2(s)} className="text-xs font-semibold text-[#F59E0B] hover:text-amber-700">
+                              <button type="button" onClick={() => openForcePhase2(s)} className="text-xs font-semibold text-[#F59E0B] hover:text-amber-700">
                                 Force Phase 2
                               </button>
                             )}
@@ -647,10 +673,10 @@ export default function AdminPage() {
                   <p className="mt-4 text-sm text-[#EF4444]">{actionError}</p>
                 )}
                 <div className="mt-6 flex justify-end gap-3">
-                  <button onClick={closeModal} className={buttonSecondary}>
+                  <button type="button" onClick={closeModal} className={buttonSecondary}>
                     Cancel
                   </button>
-                  <button onClick={handleEdit} disabled={actionLoading} className={buttonPrimary}>
+                  <button type="button" onClick={handleEdit} disabled={actionLoading} className={buttonPrimary}>
                     {actionLoading ? 'Saving...' : 'Save changes'}
                   </button>
                 </div>
@@ -672,10 +698,10 @@ export default function AdminPage() {
                 />
                 {actionError && <p className="mt-4 text-sm text-[#EF4444]">{actionError}</p>}
                 <div className="mt-6 flex justify-end gap-3">
-                  <button onClick={closeModal} className={buttonSecondary}>
+                  <button type="button" onClick={closeModal} className={buttonSecondary}>
                     Cancel
                   </button>
-                  <button onClick={handleDelete} disabled={actionLoading} className={buttonDanger}>
+                  <button type="button" onClick={handleDelete} disabled={actionLoading} className={buttonDanger}>
                     {actionLoading ? 'Deleting...' : 'Delete startup'}
                   </button>
                 </div>
@@ -690,10 +716,10 @@ export default function AdminPage() {
                 </p>
                 {actionError && <p className="mt-4 text-sm text-[#EF4444]">{actionError}</p>}
                 <div className="mt-6 flex justify-end gap-3">
-                  <button onClick={closeModal} className={buttonSecondary}>
+                  <button type="button" onClick={closeModal} className={buttonSecondary}>
                     Cancel
                   </button>
-                  <button onClick={handleRestore} disabled={actionLoading} className={buttonPrimary}>
+                  <button type="button" onClick={handleRestore} disabled={actionLoading} className={buttonPrimary}>
                     {actionLoading ? 'Restoring...' : 'Restore startup'}
                   </button>
                 </div>
@@ -718,10 +744,10 @@ export default function AdminPage() {
                 />
                 {actionError && <p className="mt-4 text-sm text-[#EF4444]">{actionError}</p>}
                 <div className="mt-6 flex justify-end gap-3">
-                  <button onClick={closeModal} className={buttonSecondary}>
+                  <button type="button" onClick={closeModal} className={buttonSecondary}>
                     Cancel
                   </button>
-                  <button onClick={handleForcePhase2} disabled={actionLoading} className={buttonWarning}>
+                  <button type="button" onClick={handleForcePhase2} disabled={actionLoading} className={buttonWarning}>
                     {actionLoading ? 'Processing...' : 'Force to phase 2'}
                   </button>
                 </div>
