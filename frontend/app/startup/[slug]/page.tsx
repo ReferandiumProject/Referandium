@@ -444,6 +444,7 @@ export default function StartupDetailPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionSuccess, setActionSuccess] = useState<string | null>(null)
+  const [thresholdNotice, setThresholdNotice] = useState<{ message: string } | null>(null)
 
   const authState = useMemo(
     () => (ready ? (authenticated ? 'auth' : 'anon') : 'pending'),
@@ -509,7 +510,7 @@ export default function StartupDetailPage() {
   async function handleAction<T>(
     action: () => Promise<T>,
     successMessage: string,
-    phaseClosedMessage: string
+    votesConsumed?: number
   ) {
     setActionLoading(true)
     setActionError(null)
@@ -519,9 +520,16 @@ export default function StartupDetailPage() {
       const result = await action()
       const closed = (result as any)?.phase_closed === true
       if (closed) {
-        setActionSuccess(
-          phaseClosedMessage
-        )
+        const consumed = votesConsumed ?? 0
+        setThresholdNotice({
+          message:
+            `This startup just reached its community threshold because of your action. ` +
+            `Voting is now permanently closed. ` +
+            (consumed > 0
+              ? `The ${consumed.toLocaleString()} votes you had deployed here were consumed as part of the community validation — `
+              : `The votes you had deployed here were consumed as part of the community validation — `) +
+            `this is the intended outcome of backing a startup that makes it through, not a penalty or an error.`,
+        })
       } else {
         setActionSuccess(successMessage)
       }
@@ -654,6 +662,21 @@ export default function StartupDetailPage() {
                 />
               </div>
 
+              {thresholdNotice && (
+                <div className="mt-8 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-4 text-sm text-[#10B981]">
+                  <div className="flex items-start justify-between gap-4">
+                    <p>{thresholdNotice.message}</p>
+                    <button
+                      type="button"
+                      onClick={() => setThresholdNotice(null)}
+                      className="shrink-0 font-semibold hover:underline"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {startup.phase !== 1 && (
                 <div className="mt-8 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-4 text-sm text-[#10B981]">
                   Voting has closed. This startup reached its community threshold and is now moving
@@ -667,27 +690,22 @@ export default function StartupDetailPage() {
             <VotePanel
               startup={startup}
               balance={balance}
-              onCast={(direction, votes) =>
-                handleAction(
+              onCast={(direction, votes) => {
+                const prior = startup?.user_position?.votes ?? 0
+                return handleAction(
                   () => castVote(direction, votes),
                   `Votes cast successfully.`,
-                  `This startup just crossed its vote threshold. Voting is now closed and your deployed votes were consumed in the final count.`
+                  prior > 0 ? prior + votes : votes
                 )
-              }
-              onFlip={() =>
-                handleAction(
-                  () => flipVote(),
-                  `Your position was flipped.`,
-                  `This startup just crossed its vote threshold. Voting is now closed and your deployed votes were consumed in the final count.`
-                )
-              }
-              onWithdraw={(votes) =>
-                handleAction(
-                  () => withdrawVote(votes),
-                  `Votes withdrawn back to your pool.`,
-                  `This startup just crossed its vote threshold. Voting is now closed and your withdrawn votes returned to your pool.`
-                )
-              }
+              }}
+              onFlip={() => {
+                const prior = startup?.user_position?.votes ?? 0
+                return handleAction(() => flipVote(), `Your position was flipped.`, prior)
+              }}
+              onWithdraw={(votes) => {
+                const prior = startup?.user_position?.votes ?? 0
+                return handleAction(() => withdrawVote(votes), `Votes withdrawn back to your pool.`, prior)
+              }}
               loading={actionLoading}
               error={actionError}
               success={actionSuccess}
