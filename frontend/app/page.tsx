@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
-import { Decimal } from '@/lib/decimal'
+import { formatUsd, formatPrice, formatVoteCount } from '@/lib/format'
 
 type UserPosition = {
   direction: 'yes' | 'no'
@@ -36,30 +36,6 @@ type Startup = {
 }
 
 type TabKey = 'voting' | 'raising' | 'completed' | 'all'
-
-function formatUsd(s: string): string {
-  try {
-    const d = Decimal.parse(s)
-    const fixed = d.toFixed(2)
-    const [int, frac] = fixed.split('.')
-    const intNum = Number(int)
-    return `$${intNum.toLocaleString()}.${frac}`
-  } catch {
-    return '$0.00'
-  }
-}
-
-function formatPrice(s: string): string {
-  try {
-    const str = Decimal.parse(s).toString()
-    const [int, frac = ''] = str.split('.')
-    const trimmed = frac.slice(0, 10).replace(/0+$/, '')
-    const intNum = Number(int)
-    return trimmed ? `${intNum.toLocaleString()}.${trimmed}` : intNum.toLocaleString()
-  } catch {
-    return '0'
-  }
-}
 
 function getInitials(name: string) {
   return name
@@ -145,15 +121,15 @@ function PhaseOneCard({ startup }: { startup: Startup }) {
             }`}
           >
             You · {startup.user_position.direction === 'yes' ? 'YES' : 'NO'} ·{' '}
-            {startup.user_position.votes}
+            {formatVoteCount(startup.user_position.votes)}
           </span>
         )
       }
     >
       <div>
         <div className="mb-2 flex items-center justify-between text-xs font-medium">
-          <span className="text-[#10B981]">YES {totalYes}</span>
-          <span className="text-[#EF4444]">NO {totalNo}</span>
+          <span className="text-[#10B981]">YES {formatVoteCount(totalYes)}</span>
+          <span className="text-[#EF4444]">NO {formatVoteCount(totalNo)}</span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
           {totalVotes > 0 ? (
@@ -171,7 +147,7 @@ function PhaseOneCard({ startup }: { startup: Startup }) {
         <div className="mb-2 flex items-center justify-between text-xs text-[#6B7280]">
           <span className="text-[#111827]">{Math.round(progress)}%</span>
           <span>
-            {net.toLocaleString()} / {threshold.toLocaleString()} votes
+            {formatVoteCount(net)} / {formatVoteCount(threshold)} votes
           </span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">

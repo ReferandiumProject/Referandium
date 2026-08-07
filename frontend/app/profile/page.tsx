@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePrivy, useFundWallet, useHeadlessDelegatedActions } from '@privy-io/react-auth'
 import { useUser } from '../context/UserContext'
 import { Decimal } from '@/lib/decimal'
+import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
 
 type Balance = {
   available_usdc: number
@@ -60,34 +61,6 @@ type CurveHolding = {
   graduated: boolean
   frozen: boolean
   spot_value_estimate: string
-}
-
-const formatUsd = (n: number | null | undefined) => {
-  const v = Number(n ?? 0)
-  return Number.isFinite(v) ? `$${v.toFixed(2)}` : '—'
-}
-
-const formatVotes = (n: number | null | undefined) => {
-  const v = Number(n ?? 0)
-  return Number.isFinite(v) ? v.toLocaleString() : '—'
-}
-
-const formatTokens = (s: string | null | undefined) => {
-  if (!s) return '—'
-  try {
-    return Decimal.parse(String(s)).toString()
-  } catch {
-    return String(s)
-  }
-}
-
-const formatUsdDecimal = (s: string | null | undefined) => {
-  if (!s) return '—'
-  try {
-    return `$${Decimal.parse(String(s)).toFixed(2)}`
-  } catch {
-    return `$${s}`
-  }
 }
 
 const decimalUsd = (s: string | null | undefined) => {
@@ -459,13 +432,13 @@ export default function ProfilePage() {
             <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Daily votes remaining</p>
               <p className="mt-1 text-lg font-semibold text-[#111827]">
-                {voteState ? formatVotes(voteState.balance.remaining_today) : '—'}
+                {voteState ? formatVoteCount(voteState.balance.remaining_today) : '—'}
               </p>
             </div>
             <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Vote pool</p>
               <p className="mt-1 text-lg font-semibold text-[#111827]">
-                {voteState ? formatVotes(voteState.balance.pool_balance) : '—'}
+                {voteState ? formatVoteCount(voteState.balance.pool_balance) : '—'}
               </p>
             </div>
           </div>
@@ -482,9 +455,9 @@ export default function ProfilePage() {
               <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Today&apos;s grant</p>
                 <p className="mt-1 text-2xl font-semibold text-[#111827]">
-                  {formatVotes(voteState.balance.remaining_today)}
+                  {formatVoteCount(voteState.balance.remaining_today)}
                   <span className="ml-1 text-sm font-normal text-[#6B7280]">
-                    / {formatVotes(voteState.balance.granted_today)}
+                    / {formatVoteCount(voteState.balance.granted_today)}
                   </span>
                 </p>
                 <p className="mt-1 text-xs text-[#6B7280]">
@@ -494,7 +467,7 @@ export default function ProfilePage() {
               <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Pool balance</p>
                 <p className="mt-1 text-2xl font-semibold text-[#111827]">
-                  {formatVotes(voteState.balance.pool_balance)}
+                  {formatVoteCount(voteState.balance.pool_balance)}
                 </p>
                 <p className="mt-1 text-xs text-[#6B7280]">
                   Votes withdrawn from startups. They never expire and can be redeployed any time.
@@ -545,8 +518,8 @@ export default function ProfilePage() {
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-[#6B7280]">
-                      {formatVotes(pos.votes)} votes · net {formatVotes(pos.net)} /{' '}
-                      {formatVotes(pos.vote_threshold)}
+                      {formatVoteCount(pos.votes)} votes · net {formatVoteCount(pos.net)} /{' '}
+                      {formatVoteCount(pos.vote_threshold)}
                     </p>
                     <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
                       <div
@@ -636,19 +609,19 @@ export default function ProfilePage() {
                       <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                         <div>
                           <p className="text-xs text-[#6B7280]">Tokens</p>
-                          <p className="font-medium text-[#111827]">{formatTokens(h.tokens)}</p>
+                          <p className="font-medium text-[#111827]">{formatTokenAmount(h.tokens)}</p>
                         </div>
                         <div>
                           <p className="text-xs text-[#6B7280]">Current price</p>
-                          <p className="font-medium text-[#111827]">{formatUsdDecimal(h.current_price)}</p>
+                          <p className="font-medium text-[#111827]">${formatPrice(h.current_price)}</p>
                         </div>
                         <div>
                           <p className="text-xs text-[#6B7280]">Cost basis</p>
-                          <p className="font-medium text-[#111827]">{formatUsdDecimal(h.cost_basis)}</p>
+                          <p className="font-medium text-[#111827]">{formatUsd(h.cost_basis)}</p>
                         </div>
                         <div>
                           <p className="text-xs text-[#6B7280]">Estimated value</p>
-                          <p className="font-medium text-[#111827]">{formatUsdDecimal(h.spot_value_estimate)}</p>
+                          <p className="font-medium text-[#111827]">{formatUsd(h.spot_value_estimate)}</p>
                         </div>
                       </div>
 
@@ -660,7 +633,7 @@ export default function ProfilePage() {
                           }`}
                         >
                           {isGain ? '+' : isLoss ? '-' : ''}
-                          {formatUsdDecimal(gainLossAbs.toString())}
+                          {formatUsd(gainLossAbs.toString())}
                         </span>
                         {!cost.isZero() && (
                           <span
@@ -734,7 +707,7 @@ export default function ProfilePage() {
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-[#6B7280]">
-                      {formatVotes(pos.votes)} votes contributed · threshold reached
+                      {formatVoteCount(pos.votes)} votes contributed · threshold reached
                     </p>
                   </div>
                 </Link>

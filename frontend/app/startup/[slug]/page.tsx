@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
 import { Decimal } from '@/lib/decimal'
+import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
 
 type CurveState = {
   startup_id: string
@@ -67,42 +68,6 @@ function decimalIsZero(s: string): boolean {
   }
 }
 
-function formatUsd(s: string): string {
-  try {
-    const d = Decimal.parse(s)
-    const fixed = d.toFixed(2)
-    const [int, frac] = fixed.split('.')
-    const intNum = Number(int)
-    return `$${intNum.toLocaleString()}.${frac}`
-  } catch {
-    return `$0.00`
-  }
-}
-
-function formatTokens(s: string, maxDecimals = 6): string {
-  try {
-    const str = Decimal.parse(s).toString()
-    const [int, frac = ''] = str.split('.')
-    const trimmed = frac.slice(0, maxDecimals).replace(/0+$/, '')
-    const intNum = Number(int)
-    return trimmed ? `${intNum.toLocaleString()}.${trimmed}` : intNum.toLocaleString()
-  } catch {
-    return '0'
-  }
-}
-
-function formatPrice(s: string): string {
-  try {
-    const str = Decimal.parse(s).toString()
-    const [int, frac = ''] = str.split('.')
-    const trimmed = frac.slice(0, 10).replace(/0+$/, '')
-    const intNum = Number(int)
-    return trimmed ? `${intNum.toLocaleString()}.${trimmed}` : intNum.toLocaleString()
-  } catch {
-    return '0'
-  }
-}
-
 function sanitizeUsdcInput(value: string): string {
   const cleaned = value.replace(/[^0-9.]/g, '')
   const parts = cleaned.split('.')
@@ -145,8 +110,8 @@ function SentimentBar({ yes, no }: { yes: number; no: number }) {
   return (
     <div>
       <div className="mb-2 flex items-center justify-between text-sm font-medium">
-        <span className="text-[#10B981]">YES {yes.toLocaleString()}</span>
-        <span className="text-[#EF4444]">NO {no.toLocaleString()}</span>
+        <span className="text-[#10B981]">YES {formatVoteCount(yes)}</span>
+        <span className="text-[#EF4444]">NO {formatVoteCount(no)}</span>
       </div>
       <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
         {total > 0 ? (
@@ -168,7 +133,7 @@ function ProgressBar({ progress, net, threshold }: { progress: number; net: numb
       <div className="mb-2 flex items-center justify-between text-sm text-[#6B7280]">
         <span className="font-medium text-[#111827]">{Math.round(progress)}%</span>
         <span>
-          {net.toLocaleString()} / {threshold.toLocaleString()} votes
+          {formatVoteCount(net)} / {formatVoteCount(threshold)} votes
         </span>
       </div>
       <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
@@ -359,7 +324,7 @@ function NewPositionForm({
           className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition-colors focus:border-[#3B82F6]"
         />
         <p className="mt-1.5 text-xs text-[#6B7280]">
-          Available: {totalSpendable.toLocaleString()} votes
+          Available: {formatVoteCount(totalSpendable)} votes
         </p>
       </div>
 
@@ -420,7 +385,7 @@ function ExistingPositionForm({
         <div>
           <h3 className="text-lg font-semibold text-[#111827]">Your position</h3>
           <p className="text-sm text-[#6B7280]">
-            You have deployed {position.votes.toLocaleString()} votes to{' '}
+            You have deployed {formatVoteCount(position.votes)} votes to{' '}
             <span className={isYes ? 'text-[#10B981]' : 'text-[#EF4444]'}>
               {isYes ? 'YES' : 'NO'}
             </span>
@@ -474,7 +439,7 @@ function ExistingPositionForm({
             className="mb-3 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition-colors focus:border-[#3B82F6]"
           />
           <p className="mb-4 text-xs text-[#6B7280]">
-            Available: {totalSpendable.toLocaleString()} votes
+            Available: {formatVoteCount(totalSpendable)} votes
           </p>
           <div className="flex gap-2">
             <button
@@ -508,7 +473,7 @@ function ExistingPositionForm({
             className="mb-3 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition-colors focus:border-[#3B82F6]"
           />
           <p className="mb-4 text-xs text-[#6B7280]">
-            Deployed: {position.votes.toLocaleString()} votes
+            Deployed: {formatVoteCount(position.votes)} votes
           </p>
           <div className="flex gap-2">
             <button
@@ -653,7 +618,7 @@ function CurvePanel({
         <div className="mt-3 flex items-center justify-between text-sm">
           <span className="text-[#6B7280]">Current token price</span>
           <span className="font-medium text-[#111827]">
-            {formatPrice(curve.current_price)} USDC
+            ${formatPrice(curve.current_price)}
           </span>
         </div>
       </div>
@@ -663,7 +628,7 @@ function CurvePanel({
           <div className="flex items-center justify-between">
             <span className="text-[#6B7280]">Your holding</span>
             <span className="font-medium text-[#111827]">
-              {formatTokens(curve.user_holding.tokens)} tokens
+              {formatTokenAmount(curve.user_holding.tokens)} tokens
             </span>
           </div>
           <div className="mt-1 flex items-center justify-between text-xs text-[#6B7280]">
@@ -767,7 +732,7 @@ function CurvePanel({
                   <div className="mt-1 flex justify-between">
                     <span>Estimated tokens received</span>
                     <span className="font-medium text-[#111827]">
-                      {formatTokens(buyEstimate.toString())}
+                      {formatTokenAmount(buyEstimate.toString())}
                     </span>
                   </div>
                   <p className="mt-2 text-[10px] leading-tight">
@@ -808,7 +773,7 @@ function CurvePanel({
               />
               {hasHolding && curve.user_holding && (
                 <div className="mb-3 flex items-center justify-between text-xs text-[#6B7280]">
-                  <span>Available: {formatTokens(curve.user_holding.tokens)}</span>
+                  <span>Available: {formatTokenAmount(curve.user_holding.tokens)}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -966,7 +931,7 @@ export default function StartupDetailPage() {
             `This startup just reached its community threshold because of your action. ` +
             `Voting is now permanently closed. ` +
             (consumed > 0
-              ? `The ${consumed.toLocaleString()} votes you had deployed here were consumed as part of the community validation — `
+              ? `The ${formatVoteCount(consumed)} votes you had deployed here were consumed as part of the community validation — `
               : `The votes you had deployed here were consumed as part of the community validation — `) +
             `this is the intended outcome of backing a startup that makes it through, not a penalty or an error.`,
         })
@@ -1181,11 +1146,13 @@ export default function StartupDetailPage() {
 
               <div className="space-y-6">
                 <SentimentBar yes={startup.total_yes_votes} no={startup.total_no_votes} />
-                <ProgressBar
-                  progress={startup.progress}
-                  net={startup.net}
-                  threshold={startup.vote_threshold}
-                />
+                {startup.phase === 1 && (
+                  <ProgressBar
+                    progress={startup.progress}
+                    net={startup.net}
+                    threshold={startup.vote_threshold}
+                  />
+                )}
               </div>
 
               {thresholdNotice && (

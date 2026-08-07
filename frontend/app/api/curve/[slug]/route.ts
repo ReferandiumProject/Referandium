@@ -38,7 +38,16 @@ export async function GET(
 
     const { data: curve, error: curveError } = await supabaseAdmin
       .from('startup_curve_state')
-      .select('*')
+      .select(
+        `
+        pool_usdc::text,
+        price::text,
+        progress,
+        capital_target::text,
+        graduated_at,
+        frozen_at
+      `
+      )
       .eq('startup_id', startup.id)
       .single()
 
