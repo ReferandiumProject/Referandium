@@ -181,14 +181,18 @@ describe('Phase 2 bonding curve', () => {
 
     const result = await buy(startup.id, trader.id, 100)
 
+    const platformBalanceAfter = await fetchBalance(PLATFORM_USER_ID)
+
     expect(result.r_usdc_spent).toBe(100)
     expect(result.r_fee).toBe(1)
     expect(result.r_pool_usdc).toBe(99)
 
     const traderBalanceAfter = await fetchBalance(trader.id)
-    const platformBalanceAfter = await fetchBalance(PLATFORM_USER_ID)
     expect(traderBalanceAfter).toBeCloseTo(traderBalanceBefore - 100, 6)
-    expect(platformBalanceAfter).toBeGreaterThanOrEqual(platformBalanceBefore + 1 - 1e-6)
+    // Delta assertion: the platform's own balance must have increased by exactly
+    // the fee this trade reported. This is unaffected by concurrent tests
+    // touching the same platform row, unlike a check against an absolute total.
+    expect(platformBalanceAfter - platformBalanceBefore).toBeCloseTo(result.r_fee, 6)
 
     const expected = expectedTokens(curveBefore, 100)
     const actual = Number(result.r_tokens)
@@ -249,11 +253,21 @@ describe('Phase 2 bonding curve', () => {
     const balanceBefore = await fetchBalance(trader.id)
     const initialPool = Number((await fetchCurve(startup.id)).initial_v_t)
 
-    await buy(startup.id, trader.id, 100)
+    const platformBalanceBeforeBuy = await fetchBalance(PLATFORM_USER_ID)
+    const buyResult = await buy(startup.id, trader.id, 100)
+    const platformBalanceAfterBuy = await fetchBalance(PLATFORM_USER_ID)
+    // Delta assertion: platform balance increase must equal exactly the fee
+    // this buy reported, regardless of what concurrent tests do to the same row.
+    expect(platformBalanceAfterBuy - platformBalanceBeforeBuy).toBeCloseTo(buyResult.r_fee, 6)
+
     const holding = await fetchHolding(trader.id, startup.id)
     expect(holding).not.toBeNull()
 
+    const platformBalanceBeforeSell = await fetchBalance(PLATFORM_USER_ID)
     const sellResult = await sell(startup.id, trader.id, holding!.tokens)
+    const platformBalanceAfterSell = await fetchBalance(PLATFORM_USER_ID)
+    // Same delta assertion for the sell-side fee.
+    expect(platformBalanceAfterSell - platformBalanceBeforeSell).toBeCloseTo(sellResult.r_fee, 6)
 
     const expectedReturn = 100 * 0.99 * 0.99
     expect(Number(sellResult.r_usdc_net)).toBeCloseTo(expectedReturn, 2)
