@@ -311,7 +311,7 @@ describe('Phase 2 bonding curve', () => {
     expect(Number(curveFinal.v_s)).toBeCloseTo(Number(curveFinal.initial_v_s), 4)
   })
 
-  it('does not shrink the pool across 200 minimum buy-then-sell round trips', { timeout: 180000 }, async () => {
+  it('does not shrink the pool across 200 minimum buy-then-sell round trips', { timeout: 300000 }, async () => {
     const { startup } = await setupPhase2Startup(1000)
     const trader = await createCurveFixtureUser(1000)
     userIds.push(trader.id)

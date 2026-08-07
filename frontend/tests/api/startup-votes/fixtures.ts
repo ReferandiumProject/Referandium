@@ -106,6 +106,16 @@ export async function cleanupFixtures(
     // table or column may not exist; fixture cleanup is best-effort here
   }
 
+  try {
+    if (startupIds.length > 0) {
+      await supabaseAdmin.from('startup_curve_trades').delete().in('startup_id', startupIds)
+      await supabaseAdmin.from('startup_holdings').delete().in('startup_id', startupIds)
+      await supabaseAdmin.from('startup_curves').delete().in('startup_id', startupIds)
+    }
+  } catch {
+    // a startup that never crossed into phase 2 has no curve rows; best-effort cleanup
+  }
+
   await supabaseAdmin
     .from('startup_vote_allocations')
     .delete()

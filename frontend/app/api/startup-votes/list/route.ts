@@ -14,8 +14,27 @@ export async function GET(request: Request) {
   try {
     const { data: startups, error: startupsError } = await supabaseAdmin
       .from('startup_startups')
-      .select('id, name, slug, description, logo_url, total_yes_votes, total_no_votes, vote_threshold')
-      .eq('phase', 1)
+      .select(
+        `
+        id,
+        name,
+        slug,
+        description,
+        logo_url,
+        phase,
+        total_yes_votes,
+        total_no_votes,
+        vote_threshold,
+        startup_curve_state (
+          pool_usdc::text,
+          price::text,
+          capital_target::text,
+          progress,
+          graduated_at,
+          frozen_at
+        )
+      `
+      )
       .is('deleted_at', null)
 
     if (startupsError) {
@@ -50,12 +69,8 @@ export async function GET(request: Request) {
     }
 
     const results = startupList
-      .map((s) => {
-        const totalYes = Number(s.total_yes_votes ?? 0)
-        const totalNo = Number(s.total_no_votes ?? 0)
-        const net = totalYes - totalNo
-        const threshold = Number(s.vote_threshold ?? 0)
-        const progress = threshold > 0 ? Math.min(100, Math.max(0, (net / threshold) * 100)) : 0
+      .map((s: any) => {
+        const phase = Number(s.phase ?? 1)
 
         const item: any = {
           id: s.id,
@@ -63,21 +78,45 @@ export async function GET(request: Request) {
           slug: s.slug,
           description: s.description,
           logo_url: s.logo_url,
-          total_yes_votes: totalYes,
-          total_no_votes: totalNo,
-          vote_threshold: threshold,
-          net,
-          progress,
+          phase,
         }
 
-        if (userId) {
-          const pos = allocations[s.id]
-          item.user_position = pos ? { direction: pos.direction, votes: pos.votes } : null
+        if (phase === 1) {
+          const totalYes = Number(s.total_yes_votes ?? 0)
+          const totalNo = Number(s.total_no_votes ?? 0)
+          const net = totalYes - totalNo
+          const threshold = Number(s.vote_threshold ?? 0)
+          const progress = threshold > 0 ? Math.min(100, Math.max(0, (net / threshold) * 100)) : 0
+
+          item.total_yes_votes = totalYes
+          item.total_no_votes = totalNo
+          item.vote_threshold = threshold
+          item.net = net
+          item.progress = progress
+
+          if (userId) {
+            const pos = allocations[s.id]
+            item.user_position = pos ? { direction: pos.direction, votes: pos.votes } : null
+          }
+        } else {
+          const curve = s.startup_curve_state
+          item.curve = {
+            pool_usdc: String(curve?.pool_usdc ?? 0),
+            capital_target: String(curve?.capital_target ?? 0),
+            current_price: String(curve?.price ?? 0),
+            progress: Number(curve?.progress ?? 0),
+            graduated: Boolean(curve?.graduated_at),
+            frozen: Boolean(curve?.frozen_at),
+          }
         }
 
         return item
       })
-      .sort((a, b) => b.total_yes_votes + b.total_no_votes - (a.total_yes_votes + a.total_no_votes))
+      .sort((a, b) => {
+        const aVotes = (a.total_yes_votes ?? 0) + (a.total_no_votes ?? 0)
+        const bVotes = (b.total_yes_votes ?? 0) + (b.total_no_votes ?? 0)
+        return bVotes - aVotes
+      })
 
     return NextResponse.json(results)
   } catch (err: any) {

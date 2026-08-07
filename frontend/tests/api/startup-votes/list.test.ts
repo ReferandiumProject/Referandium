@@ -49,16 +49,42 @@ describe('GET /api/startup-votes/list', () => {
     await cleanupFixtures(user.id, [activeStartup.id, closedStartup.id, negativeStartup.id])
   })
 
-  it('returns only phase-1 startups and excludes the closed one', async () => {
+  it('returns startups across all phases, with phase and curve data for the one that closed into phase 2', async () => {
     const req = new Request('http://localhost:3000/api/startup-votes/list')
     const res = await listStartups(req)
     expect(res.status).toBe(200)
-    const body = (await res.json()) as Array<{ id: string; slug: string; phase: number }>
+    const body = (await res.json()) as Array<{
+      id: string
+      slug: string
+      phase: number
+      total_yes_votes?: number
+      curve?: {
+        pool_usdc: string
+        capital_target: string
+        current_price: string
+        progress: number
+        graduated: boolean
+        frozen: boolean
+      }
+    }>
 
     const ids = body.map((s) => s.id)
     expect(ids).toContain(activeStartup.id)
     expect(ids).toContain(negativeStartup.id)
-    expect(ids).not.toContain(closedStartup.id)
+    expect(ids).toContain(closedStartup.id)
+
+    const active = body.find((s) => s.id === activeStartup.id)
+    expect(active).toBeDefined()
+    expect(active!.phase).toBe(1)
+    expect(active!.total_yes_votes).toBeDefined()
+    expect(active!.curve).toBeUndefined()
+
+    const closed = body.find((s) => s.id === closedStartup.id)
+    expect(closed).toBeDefined()
+    expect(closed!.phase).toBe(2)
+    expect(closed!.total_yes_votes).toBeUndefined()
+    expect(closed!.curve).toBeDefined()
+    expect(Number(closed!.curve!.capital_target)).toBeGreaterThan(0)
   })
 
   it('clamps progress to 0 when net is negative', async () => {
