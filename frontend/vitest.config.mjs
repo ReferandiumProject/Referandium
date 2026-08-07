@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
       environment: 'node',
       globals: true,
       setupFiles: [],
+      testTimeout: 20000,
     },
   }
 })

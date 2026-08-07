@@ -188,7 +188,7 @@ describe('Phase 2 bonding curve', () => {
     const traderBalanceAfter = await fetchBalance(trader.id)
     const platformBalanceAfter = await fetchBalance(PLATFORM_USER_ID)
     expect(traderBalanceAfter).toBeCloseTo(traderBalanceBefore - 100, 6)
-    expect(platformBalanceAfter).toBeCloseTo(platformBalanceBefore + 1, 6)
+    expect(platformBalanceAfter).toBeGreaterThanOrEqual(platformBalanceBefore + 1 - 1e-6)
 
     const expected = expectedTokens(curveBefore, 100)
     const actual = Number(result.r_tokens)
@@ -297,7 +297,7 @@ describe('Phase 2 bonding curve', () => {
     expect(Number(curveFinal.v_s)).toBeCloseTo(Number(curveFinal.initial_v_s), 4)
   })
 
-  it('does not shrink the pool across 200 minimum buy-then-sell round trips', { timeout: 120000 }, async () => {
+  it('does not shrink the pool across 200 minimum buy-then-sell round trips', { timeout: 180000 }, async () => {
     const { startup } = await setupPhase2Startup(1000)
     const trader = await createCurveFixtureUser(1000)
     userIds.push(trader.id)

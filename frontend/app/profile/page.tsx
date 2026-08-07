@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePrivy, useFundWallet, useHeadlessDelegatedActions } from '@privy-io/react-auth'
 import { useUser } from '../context/UserContext'
+import { Decimal } from '@/lib/decimal'
 
 type Balance = {
   available_usdc: number
@@ -44,6 +45,23 @@ type VoteState = {
   burned: VotePosition[]
 }
 
+type CurveHolding = {
+  startup_id: string
+  name: string
+  slug: string
+  logo_url: string | null
+  phase: number
+  tokens: string
+  cost_basis: string
+  current_price: string
+  pool_usdc: string
+  capital_target: string
+  progress: number
+  graduated: boolean
+  frozen: boolean
+  spot_value_estimate: string
+}
+
 const formatUsd = (n: number | null | undefined) => {
   const v = Number(n ?? 0)
   return Number.isFinite(v) ? `$${v.toFixed(2)}` : '—'
@@ -52,6 +70,32 @@ const formatUsd = (n: number | null | undefined) => {
 const formatVotes = (n: number | null | undefined) => {
   const v = Number(n ?? 0)
   return Number.isFinite(v) ? v.toLocaleString() : '—'
+}
+
+const formatTokens = (s: string | null | undefined) => {
+  if (!s) return '—'
+  try {
+    return Decimal.parse(String(s)).toString()
+  } catch {
+    return String(s)
+  }
+}
+
+const formatUsdDecimal = (s: string | null | undefined) => {
+  if (!s) return '—'
+  try {
+    return `$${Decimal.parse(String(s)).toFixed(2)}`
+  } catch {
+    return `$${s}`
+  }
+}
+
+const decimalUsd = (s: string | null | undefined) => {
+  try {
+    return Decimal.parse(String(s ?? 0))
+  } catch {
+    return new Decimal(BigInt(0), 2)
+  }
 }
 
 function getInitials(name: string) {
@@ -91,6 +135,8 @@ export default function ProfilePage() {
 
   const [balance, setBalance] = useState<Balance | null>(null)
   const [voteState, setVoteState] = useState<VoteState | null>(null)
+  const [holdings, setHoldings] = useState<CurveHolding[] | null>(null)
+  const [holdingsLoading, setHoldingsLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -118,17 +164,21 @@ export default function ProfilePage() {
     setError(null)
 
     try {
-      const [balanceRes, voteRes] = await Promise.all([
+      const [balanceRes, voteRes, holdingsRes] = await Promise.all([
         fetch('/api/balance', {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch('/api/startup-votes/mine', {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch('/api/curve/mine', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ])
 
       const balanceJson = await balanceRes.json().catch(() => ({}))
       const voteJson = await voteRes.json().catch(() => ({}))
+      const holdingsJson = await holdingsRes.json().catch(() => ({}))
 
       if (!balanceRes.ok) {
         setError(balanceJson.error || 'Failed to load balance')
@@ -145,10 +195,38 @@ export default function ProfilePage() {
           burned: voteJson.burned || [],
         })
       }
+
+      if (!holdingsRes.ok) {
+        setError((prev) => prev || holdingsJson.error || 'Failed to load token holdings')
+      } else {
+        setHoldings(holdingsJson.holdings || [])
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load profile')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchHoldings = async () => {
+    const token = await getAccessToken()
+    if (!token) return
+
+    setHoldingsLoading(true)
+    try {
+      const res = await fetch('/api/curve/mine', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError((prev) => prev || json.error || 'Failed to load token holdings')
+      } else {
+        setHoldings(json.holdings || [])
+      }
+    } catch (err: any) {
+      setError((prev) => prev || err.message || 'Failed to load token holdings')
+    } finally {
+      setHoldingsLoading(false)
     }
   }
 
@@ -317,7 +395,7 @@ export default function ProfilePage() {
         <div className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
           <h1 className="mb-2 text-3xl font-semibold text-[#111827]">Profile</h1>
           <p className="mb-6 text-sm text-[#6B7280]">
-            Sign in to view your balance, voting power, and positions.
+            Sign in to view your balance, voting power, and token holdings.
           </p>
           <button
             onClick={() => login()}
@@ -479,6 +557,143 @@ export default function ProfilePage() {
                   </div>
                 </Link>
               ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+          <div className="mb-4 flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-[#111827]">Token holdings</h2>
+            <p className="text-sm text-[#6B7280]">
+              Startup tokens you bought with real money. These are positions in active or completed raises, not voting tokens.
+            </p>
+          </div>
+
+          {holdings === null || holdingsLoading ? (
+            <p className="text-sm text-[#6B7280]">Loading token holdings...</p>
+          ) : holdings.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-6 text-center">
+              <p className="text-sm text-[#6B7280]">You don&apos;t hold any startup tokens yet.</p>
+              <Link
+                href="/"
+                className="mt-3 inline-block text-sm font-semibold text-[#3B82F6] hover:text-blue-700"
+              >
+                Browse startups
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {holdings.map((h) => {
+                const cost = decimalUsd(h.cost_basis)
+                const spot = decimalUsd(h.spot_value_estimate)
+                const gainLoss = spot.sub(cost)
+                const zeroDecimal = new Decimal(BigInt(0), 0)
+                const isGain = gainLoss.cmp(zeroDecimal) > 0
+                const isLoss = gainLoss.cmp(zeroDecimal) < 0
+                const gainLossAbs =
+                  gainLoss.value < BigInt(0)
+                    ? new Decimal(-gainLoss.value, gainLoss.scale)
+                    : gainLoss
+
+                let percentChange = zeroDecimal
+                if (!cost.isZero()) {
+                  percentChange = gainLoss.div(cost, 6).mul(Decimal.parse('100'), 6)
+                }
+
+                return (
+                  <Link
+                    key={h.startup_id}
+                    href={`/startup/${h.slug}`}
+                    className="flex flex-col gap-4 rounded-lg border border-[#E5E7EB] p-4 transition-colors hover:bg-[#F9FAFB] sm:flex-row sm:items-start"
+                  >
+                    <Avatar name={h.name} src={h.logo_url} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate font-medium text-[#111827]">{h.name}</p>
+                        {h.graduated && (
+                          <span className="inline-flex rounded-full bg-[#10B981]/10 px-2 py-0.5 text-xs font-semibold text-[#10B981]">
+                            Raise completed
+                          </span>
+                        )}
+                        {h.frozen && (
+                          <span className="inline-flex rounded-full bg-[#F59E0B]/10 px-2 py-0.5 text-xs font-semibold text-[#B45309]">
+                            Halted
+                          </span>
+                        )}
+                      </div>
+
+                      {h.graduated && (
+                        <p className="mt-1 text-xs text-[#10B981]">
+                          The raise completed and the on-chain token is being prepared.
+                        </p>
+                      )}
+                      {h.frozen && !h.graduated && (
+                        <p className="mt-1 text-xs text-[#B45309]">
+                          Trading is halted. Selling is still possible.
+                        </p>
+                      )}
+
+                      <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs text-[#6B7280]">Tokens</p>
+                          <p className="font-medium text-[#111827]">{formatTokens(h.tokens)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[#6B7280]">Current price</p>
+                          <p className="font-medium text-[#111827]">{formatUsdDecimal(h.current_price)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[#6B7280]">Cost basis</p>
+                          <p className="font-medium text-[#111827]">{formatUsdDecimal(h.cost_basis)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[#6B7280]">Estimated value</p>
+                          <p className="font-medium text-[#111827]">{formatUsdDecimal(h.spot_value_estimate)}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center gap-2 text-sm">
+                        <span className="text-xs text-[#6B7280]">vs cost basis:</span>
+                        <span
+                          className={`font-semibold ${
+                            isGain ? 'text-[#10B981]' : isLoss ? 'text-[#EF4444]' : 'text-[#6B7280]'
+                          }`}
+                        >
+                          {isGain ? '+' : isLoss ? '-' : ''}
+                          {formatUsdDecimal(gainLossAbs.toString())}
+                        </span>
+                        {!cost.isZero() && (
+                          <span
+                            className={`text-xs ${
+                              isGain ? 'text-[#10B981]' : isLoss ? 'text-[#EF4444]' : 'text-[#6B7280]'
+                            }`}
+                          >
+                            ({isGain ? '+' : ''}
+                            {percentChange.toString()})
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-2 text-xs italic text-[#9CA3AF]">
+                        Estimated value is not a cash-out amount. Selling moves the price down the curve, so a large holding may realise less.
+                      </p>
+
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-[#6B7280]">
+                          <span>Raise progress</span>
+                          <span>{Math.round(h.progress * 100)}%</span>
+                        </div>
+                        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+                          <div
+                            className="h-full bg-[#3B82F6]"
+                            style={{ width: `${Math.min(100, Math.max(0, h.progress * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           )}
         </section>
