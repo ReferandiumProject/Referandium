@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import Link from 'next/link'
+import { formatUsd, formatVoteCount } from '@/lib/format'
 
 type Startup = {
   id: string
@@ -32,11 +33,6 @@ type AuditAction = {
   startup_id: string | null
   details: any
   created_at: string
-}
-
-const formatNumber = (n: number | null | undefined) => {
-  const v = Number(n ?? 0)
-  return Number.isFinite(v) ? v.toLocaleString() : '—'
 }
 
 const formatDate = (d: string | null) => {
@@ -502,11 +498,11 @@ export default function AdminPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-[#111827]">{s.phase}</td>
-                        <td className="px-4 py-3 text-right text-[#111827]">{formatNumber(s.vote_threshold)}</td>
-                        <td className="px-4 py-3 text-right text-[#111827]">{formatNumber(s.capital_target)}</td>
-                        <td className="px-4 py-3 text-right text-[#111827]">{formatNumber(s.total_yes_votes)}</td>
-                        <td className="px-4 py-3 text-right text-[#111827]">{formatNumber(s.total_no_votes)}</td>
-                        <td className="px-4 py-3 text-right text-[#111827]">{formatNumber(net)}</td>
+                        <td className="px-4 py-3 text-right text-[#111827]">{formatVoteCount(s.vote_threshold)}</td>
+                        <td className="px-4 py-3 text-right text-[#111827]">{formatUsd(s.capital_target)}</td>
+                        <td className="px-4 py-3 text-right text-[#111827]">{formatVoteCount(s.total_yes_votes)}</td>
+                        <td className="px-4 py-3 text-right text-[#111827]">{formatVoteCount(s.total_no_votes)}</td>
+                        <td className="px-4 py-3 text-right text-[#111827]">{formatVoteCount(net)}</td>
                         <td className="px-4 py-3 text-[#6B7280]">{formatDate(s.created_at)}</td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-2">

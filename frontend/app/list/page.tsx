@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
 import { useUser } from '@/app/context/UserContext'
+import { formatUsd, formatVoteCount } from '@/lib/format'
 
 const STAGE_OPTIONS = ['Idea', 'MVP', 'Seed', 'Series A+']
 
@@ -94,7 +95,7 @@ export default function ListStartupPage() {
       threshold < VOTE_THRESHOLD_MIN ||
       threshold > VOTE_THRESHOLD_MAX
     ) {
-      next.vote_threshold = `Vote threshold must be between ${VOTE_THRESHOLD_MIN.toLocaleString()} and ${VOTE_THRESHOLD_MAX.toLocaleString()}`
+      next.vote_threshold = `Vote threshold must be between ${formatVoteCount(VOTE_THRESHOLD_MIN)} and ${formatVoteCount(VOTE_THRESHOLD_MAX)}`
     }
 
     const target = Number(capitalTarget.replace(/,/g, ''))
@@ -103,7 +104,7 @@ export default function ListStartupPage() {
       target < CAPITAL_TARGET_MIN ||
       target > CAPITAL_TARGET_MAX
     ) {
-      next.capital_target = `Capital target must be between ${CAPITAL_TARGET_MIN.toLocaleString()} and ${CAPITAL_TARGET_MAX.toLocaleString()} USDC`
+      next.capital_target = `Capital target must be between ${formatUsd(CAPITAL_TARGET_MIN)} and ${formatUsd(CAPITAL_TARGET_MAX)}`
     }
 
     setErrors(next)
@@ -415,7 +416,7 @@ export default function ListStartupPage() {
                   ? 'Loading balance...'
                   : balance === null
                   ? 'Balance unavailable'
-                  : `Available balance: ${balance.toLocaleString()} USDC`}
+                  : `Available balance: ${formatUsd(balance)}`}
               </p>
               <Link
                 href="/profile"

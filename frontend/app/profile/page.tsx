@@ -63,13 +63,10 @@ type CurveHolding = {
   spot_value_estimate: string
 }
 
-const decimalUsd = (s: string | null | undefined) => {
-  try {
-    return Decimal.parse(String(s ?? 0))
-  } catch {
-    return new Decimal(BigInt(0), 2)
-  }
-}
+// Throws if `s` cannot be parsed. Callers must catch this and
+// surface the failure instead of silently computing gain/loss
+// against a fabricated zero.
+const decimalUsdOrThrow = (s: string | null | undefined) => Decimal.parse(String(s ?? 0))
 
 function getInitials(name: string) {
   return name
@@ -557,19 +554,32 @@ export default function ProfilePage() {
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {holdings.map((h) => {
-                const cost = decimalUsd(h.cost_basis)
-                const spot = decimalUsd(h.spot_value_estimate)
-                const gainLoss = spot.sub(cost)
                 const zeroDecimal = new Decimal(BigInt(0), 0)
-                const isGain = gainLoss.cmp(zeroDecimal) > 0
-                const isLoss = gainLoss.cmp(zeroDecimal) < 0
+                let cost = zeroDecimal
+                let spot = zeroDecimal
+                let gainLossFailed = false
+                try {
+                  cost = decimalUsdOrThrow(h.cost_basis)
+                  spot = decimalUsdOrThrow(h.spot_value_estimate)
+                } catch (err) {
+                  console.error('[profile] failed to parse holding cost/spot value', {
+                    startup_id: h.startup_id,
+                    cost_basis: h.cost_basis,
+                    spot_value_estimate: h.spot_value_estimate,
+                    err,
+                  })
+                  gainLossFailed = true
+                }
+                const gainLoss = spot.sub(cost)
+                const isGain = !gainLossFailed && gainLoss.cmp(zeroDecimal) > 0
+                const isLoss = !gainLossFailed && gainLoss.cmp(zeroDecimal) < 0
                 const gainLossAbs =
                   gainLoss.value < BigInt(0)
                     ? new Decimal(-gainLoss.value, gainLoss.scale)
                     : gainLoss
 
                 let percentChange = zeroDecimal
-                if (!cost.isZero()) {
+                if (!gainLossFailed && !cost.isZero()) {
                   percentChange = gainLoss.div(cost, 6).mul(Decimal.parse('100'), 6)
                 }
 
@@ -632,10 +642,11 @@ export default function ProfilePage() {
                             isGain ? 'text-[#10B981]' : isLoss ? 'text-[#EF4444]' : 'text-[#6B7280]'
                           }`}
                         >
-                          {isGain ? '+' : isLoss ? '-' : ''}
-                          {formatUsd(gainLossAbs.toString())}
+                          {gainLossFailed
+                            ? '—'
+                            : `${isGain ? '+' : isLoss ? '-' : ''}${formatUsd(gainLossAbs.toString())}`}
                         </span>
-                        {!cost.isZero() && (
+                        {!gainLossFailed && !cost.isZero() && (
                           <span
                             className={`text-xs ${
                               isGain ? 'text-[#10B981]' : isLoss ? 'text-[#EF4444]' : 'text-[#6B7280]'
