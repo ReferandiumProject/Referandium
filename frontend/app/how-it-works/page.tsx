@@ -62,12 +62,12 @@ export default function HowItWorksPage() {
                 2
               </span>
               <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">
-                Raising — coming soon
+                Raising — live now
               </h2>
             </div>
             <p className="mt-4 text-[#6B7280]">
               When a startup reaches its vote threshold, voting closes permanently
-              and it opens a capital raise. This is the first point at which real
+              and a capital raise opens. This is the first point at which real
               money enters — and only into startups the community has already
               validated.
             </p>
@@ -78,9 +78,25 @@ export default function HowItWorksPage() {
               has real community support. This is how the model works, not a
               penalty.
             </p>
-            <p className="mt-4 inline-flex rounded-lg bg-[#F3F4F6] px-3 py-1 text-sm font-medium text-[#6B7280]">
-              Not available yet
+            <p className="mt-4 text-[#6B7280]">
+              Anyone can buy into the raise using USDC from their platform balance.
+              The price rises as more is bought and falls when people sell. Buyers
+              hold tokens representing their stake in that raise, and can sell back
+              at any time while the raise is open — but selling returns USDC at
+              the current price, which may be lower than what was originally paid.
+              There is no guaranteed exit at cost.
             </p>
+            <p className="mt-4 text-[#6B7280]">
+              A 1% fee applies to each buy and each sell. The raise completes when
+              it reaches the startup&apos;s capital target.
+            </p>
+            <div className="mt-4 rounded-lg border border-[#F59E0B]/30 bg-[#FEF3C7] p-3 text-sm text-[#92400E]">
+              When the raise completes, a portion of the pool — roughly a third —
+              is paid out to the startup, and the virtual reserve that supported
+              the price during the raise ends. Both of these cause the price to
+              drop substantially at that moment. Anyone buying late in the raise
+              is the most exposed to this drop.
+            </div>
           </section>
 
           <section className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
@@ -93,12 +109,13 @@ export default function HowItWorksPage() {
               </h2>
             </div>
             <p className="mt-4 text-[#6B7280]">
-              If a raise reaches the startup&apos;s capital target, the startup
-              graduates. A real token is issued on Solana, the startup receives
-              its capital, and the remainder becomes tradeable liquidity.
+              When a raise completes, the startup will graduate. A real token
+              will be issued on Solana, the startup will receive its share of
+              the raised capital, and the remainder will become tradeable
+              liquidity.
             </p>
             <p className="mt-4 text-[#6B7280]">
-              This stage depends on the raise completing successfully. There are
+              This stage depends on a raise completing successfully. There are
               no guaranteed outcomes, and participation in earlier voting does
               not grant any allocation, priority, discount, or financial return.
             </p>
