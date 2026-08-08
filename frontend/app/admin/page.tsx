@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import Link from 'next/link'
 import { formatUsd, formatVoteCount } from '@/lib/format'
+import { getFreezeActionBody } from '@/lib/admin-freeze'
 
 type Startup = {
   id: string
@@ -70,8 +71,18 @@ export default function AdminPage() {
   const [showDeleted, setShowDeleted] = useState(true)
 
   const [modal, setModal] = useState<{
-    type: 'edit' | 'delete' | 'restore' | 'force-phase2' | 'freeze'
+    type: 'edit' | 'delete' | 'restore' | 'force-phase2'
     startup: Startup
+  } | {
+    type: 'freeze'
+    startup: Startup
+    // Computed once, at the moment the row's action button is clicked, from
+    // that row's current frozen state. Every place that needs to know "is
+    // this modal about to freeze or unfreeze" — the title, the warning copy,
+    // the button label, and the request body — reads this single value
+    // instead of re-deriving it from modal.startup.frozen independently, so
+    // the label and the payload can never disagree.
+    intendedFrozen: boolean
   } | null>(null)
   const [reason, setReason] = useState('')
   const [editForm, setEditForm] = useState<Partial<Startup>>({})
@@ -215,7 +226,8 @@ export default function AdminPage() {
   const openFreeze = (s: Startup) => {
     setReason('')
     setActionError(null)
-    setModal({ type: 'freeze', startup: s })
+    const { frozen: intendedFrozen } = getFreezeActionBody(s.frozen)
+    setModal({ type: 'freeze', startup: s, intendedFrozen })
   }
 
   const closeModal = () => {
@@ -397,8 +409,8 @@ export default function AdminPage() {
   }
 
   const handleFreeze = async () => {
-    if (!modal) return
-    const nextFrozen = !modal.startup.frozen
+    if (!modal || modal.type !== 'freeze') return
+    const { intendedFrozen, startup } = modal
     setActionLoading(true)
     setActionError(null)
     const token = await getToken()
@@ -408,27 +420,35 @@ export default function AdminPage() {
       return
     }
     try {
-      const res = await fetch(`/api/admin/startups/${modal.startup.id}/freeze`, {
+      const res = await fetch(`/api/admin/startups/${startup.id}/freeze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ frozen: nextFrozen, reason }),
+        body: JSON.stringify({ frozen: intendedFrozen, reason }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
         console.error(`[admin page] freeze failed — HTTP ${res.status}:`, json)
-        setActionError(json.error || `${nextFrozen ? 'Freeze' : 'Unfreeze'} failed (${res.status})`)
+        setActionError(json.error || `${intendedFrozen ? 'Halt' : 'Resume'} failed (${res.status})`)
         setActionLoading(false)
         return
       }
+      // Update local state immediately rather than relying solely on the
+      // follow-up refresh(): if that fetch is slow or silently fails (e.g. a
+      // transient token refresh issue), the row would keep showing the old
+      // frozen state and label, and a second click would send the same
+      // value again — which is exactly how this bug happened in practice.
+      setStartups((prev) =>
+        (prev ?? []).map((s) => (s.id === startup.id ? { ...s, frozen: intendedFrozen } : s))
+      )
       closeModal()
       await refresh()
-      setSuccessMessage(nextFrozen ? 'Raise frozen successfully.' : 'Raise unfrozen successfully.')
+      setSuccessMessage(intendedFrozen ? 'New purchases halted successfully.' : 'New purchases resumed successfully.')
     } catch (e: any) {
       console.error('[admin page] freeze exception:', e)
-      setActionError(e.message || `${nextFrozen ? 'Freeze' : 'Unfreeze'} failed`)
+      setActionError(e.message || `${intendedFrozen ? 'Halt' : 'Resume'} failed`)
     } finally {
       setActionLoading(false)
     }
@@ -584,7 +604,7 @@ export default function AdminPage() {
                                   s.frozen ? 'text-[#10B981] hover:text-green-700' : 'text-[#B45309] hover:text-amber-700'
                                 }`}
                               >
-                                {s.frozen ? 'Unfreeze' : 'Freeze'}
+                                {s.frozen ? 'Resume purchases' : 'Halt purchases'}
                               </button>
                             )}
                           </div>
@@ -817,26 +837,26 @@ export default function AdminPage() {
             {modal.type === 'freeze' && (
               <>
                 <h3 className="mb-2 text-lg font-semibold text-[#111827]">
-                  {modal.startup.frozen ? 'Unfreeze' : 'Freeze'} {modal.startup.name}?
+                  {modal.intendedFrozen ? 'Halt new purchases' : 'Resume new purchases'} on {modal.startup.name}?
                 </h3>
-                {modal.startup.frozen ? (
-                  <p className="mb-4 text-sm text-[#6B7280]">
-                    This reopens the raise to new purchases. Existing holders were never blocked from selling, so
-                    nothing changes for them.
-                  </p>
-                ) : (
+                {modal.intendedFrozen ? (
                   <div className="mb-4 rounded-lg border border-[#F59E0B]/30 bg-[#FEF3C7] p-3 text-sm text-[#92400E]">
-                    Freezing halts <strong>new purchases only</strong>. Selling stays open, so anyone already
-                    holding tokens can still exit. This is deliberate: the correct response to a suspected problem
-                    is to close the entrance, not to trap the people already inside.
+                    This halts <strong>new purchases only</strong>. Selling stays open, so anyone already holding
+                    tokens can still exit. This is deliberate: the correct response to a suspected problem is to
+                    close the entrance, not to trap the people already inside.
                   </div>
+                ) : (
+                  <p className="mb-4 text-sm text-[#6B7280]">
+                    This resumes new purchases on the raise. Selling was never blocked while halted, so nothing
+                    changes for existing holders.
+                  </p>
                 )}
                 <label className={labelClass}>Reason (optional)</label>
                 <input
                   className={inputClass}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder={modal.startup.frozen ? 'Reason for unfreezing' : 'Reason for freezing'}
+                  placeholder={modal.intendedFrozen ? 'Reason for halting purchases' : 'Reason for resuming purchases'}
                 />
                 {actionError && <p className="mt-4 text-sm text-[#EF4444]">{actionError}</p>}
                 <div className="mt-6 flex justify-end gap-3">
@@ -847,13 +867,13 @@ export default function AdminPage() {
                     type="button"
                     onClick={handleFreeze}
                     disabled={actionLoading}
-                    className={modal.startup.frozen ? buttonPrimary : buttonWarning}
+                    className={modal.intendedFrozen ? buttonWarning : buttonPrimary}
                   >
                     {actionLoading
                       ? 'Processing...'
-                      : modal.startup.frozen
-                      ? 'Unfreeze raise'
-                      : 'Freeze raise'}
+                      : modal.intendedFrozen
+                      ? 'Halt new purchases'
+                      : 'Resume new purchases'}
                   </button>
                 </div>
               </>
