@@ -4,6 +4,7 @@ import { PATCH as patchStartup } from '@/app/api/admin/startups/[id]/route'
 import { POST as deleteStartup } from '@/app/api/admin/startups/[id]/delete/route'
 import { POST as restoreStartup } from '@/app/api/admin/startups/[id]/restore/route'
 import { POST as forcePhase2 } from '@/app/api/admin/startups/[id]/force-phase2/route'
+import { POST as freezeStartup } from '@/app/api/admin/startups/[id]/freeze/route'
 import { GET as listActions } from '@/app/api/admin/actions/route'
 import { GET as publicList } from '@/app/api/startup-votes/list/route'
 import { GET as publicSlug } from '@/app/api/startup-votes/[slug]/route'
@@ -11,6 +12,12 @@ import { GET as getBalance } from '@/app/api/startup-votes/balance/route'
 import { POST as castVote } from '@/app/api/startup-votes/cast/route'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { createFixtureUser, createFixtureStartup, cleanupAdminFixtures } from './fixtures'
+import {
+  createCurveFixtureUser,
+  createCurveFixtureStartup,
+  crossToPhase2,
+  cleanupCurveFixtures,
+} from '../curve/fixtures'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 
 vi.mock('@/lib/auth-helpers', () => ({
@@ -79,6 +86,7 @@ describe('admin routes', () => {
         { method: deleteStartup, path: `/api/admin/startups/${phase1Startup.id}/delete`, ctx: { params: { id: phase1Startup.id } } },
         { method: restoreStartup, path: `/api/admin/startups/${phase1Startup.id}/restore`, ctx: { params: { id: phase1Startup.id } } },
         { method: forcePhase2, path: `/api/admin/startups/${phase1Startup.id}/force-phase2`, ctx: { params: { id: phase1Startup.id } } },
+        { method: freezeStartup, path: `/api/admin/startups/${phase1Startup.id}/freeze`, body: { frozen: true }, ctx: { params: { id: phase1Startup.id } } },
       ]
 
       for (const e of endpoints) {
@@ -96,6 +104,7 @@ describe('admin routes', () => {
         { method: deleteStartup, path: `/api/admin/startups/${phase1Startup.id}/delete` },
         { method: restoreStartup, path: `/api/admin/startups/${phase1Startup.id}/restore` },
         { method: forcePhase2, path: `/api/admin/startups/${phase1Startup.id}/force-phase2` },
+        { method: freezeStartup, path: `/api/admin/startups/${phase1Startup.id}/freeze`, body: { frozen: true } },
       ]
 
       for (const e of endpoints) {
@@ -279,6 +288,129 @@ describe('admin routes', () => {
         { params: { id: phase2Startup.id } }
       )
       expect(res.status).toBe(409)
+    })
+  })
+
+  describe('freeze / unfreeze curve', () => {
+    let owner: Awaited<ReturnType<typeof createCurveFixtureUser>>
+    let voter: Awaited<ReturnType<typeof createCurveFixtureUser>>
+    let trader: Awaited<ReturnType<typeof createCurveFixtureUser>>
+    let curveStartup: Awaited<ReturnType<typeof createCurveFixtureStartup>>
+    const curveUserIds: string[] = []
+    const curveStartupIds: string[] = []
+
+    beforeAll(async () => {
+      owner = await createCurveFixtureUser()
+      voter = await createCurveFixtureUser()
+      trader = await createCurveFixtureUser(1000)
+      curveUserIds.push(owner.id, voter.id, trader.id)
+
+      curveStartup = await createCurveFixtureStartup(owner.id, { capitalTarget: 100, voteThreshold: 10 })
+      curveStartupIds.push(curveStartup.id)
+
+      await crossToPhase2(curveStartup, voter.id)
+
+      const buyRes = await supabaseAdmin.rpc('buy_curve_tokens', {
+        p_user_id: trader.id,
+        p_startup_id: curveStartup.id,
+        p_usdc: 10,
+      })
+      if (buyRes.error) throw new Error(`Failed initial buy: ${buyRes.error.message}`)
+    })
+
+    afterAll(async () => {
+      await cleanupCurveFixtures(curveUserIds, curveStartupIds)
+    })
+
+    it('returns 404 when freezing a startup with no curve', async () => {
+      vi.mocked(getAuthenticatedUser).mockResolvedValue(admin as any)
+      const res = await freezeStartup(
+        req('POST', `/api/admin/startups/${phase2Startup.id}/freeze`, { frozen: true }, admin),
+        { params: { id: phase2Startup.id } }
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it('freezes a phase-2 startup and sets frozen_at', async () => {
+      vi.mocked(getAuthenticatedUser).mockResolvedValue(admin as any)
+      const res = await freezeStartup(
+        req(
+          'POST',
+          `/api/admin/startups/${curveStartup.id}/freeze`,
+          { frozen: true, reason: 'test freeze' },
+          admin
+        ),
+        { params: { id: curveStartup.id } }
+      )
+      expect(res.status).toBe(200)
+
+      const { data: row, error } = await supabaseAdmin
+        .from('startup_curves')
+        .select('frozen_at')
+        .eq('startup_id', curveStartup.id)
+        .single()
+      expect(error).toBeNull()
+      expect(row?.frozen_at).not.toBeNull()
+
+      const { data: actionRows, error: actionsError } = await supabaseAdmin
+        .from('admin_actions')
+        .select('*')
+        .eq('startup_id', curveStartup.id)
+      expect(actionsError).toBeNull()
+      expect((actionRows ?? []).length).toBeGreaterThan(0)
+    })
+
+    it('rejects a buy while frozen but still allows a sell', async () => {
+      const buyRes = await supabaseAdmin.rpc('buy_curve_tokens', {
+        p_user_id: trader.id,
+        p_startup_id: curveStartup.id,
+        p_usdc: 10,
+      })
+      expect(buyRes.error).not.toBeNull()
+
+      const { data: holding, error: holdingError } = await supabaseAdmin
+        .from('startup_holdings')
+        .select('tokens::text')
+        .eq('user_id', trader.id)
+        .eq('startup_id', curveStartup.id)
+        .single()
+      expect(holdingError).toBeNull()
+
+      const sellRes = await supabaseAdmin.rpc('sell_curve_tokens', {
+        p_user_id: trader.id,
+        p_startup_id: curveStartup.id,
+        p_tokens: holding!.tokens,
+      })
+      expect(sellRes.error).toBeNull()
+    })
+
+    it('unfreezes, clears frozen_at, and allows buys again', async () => {
+      vi.mocked(getAuthenticatedUser).mockResolvedValue(admin as any)
+      const res = await freezeStartup(
+        req(
+          'POST',
+          `/api/admin/startups/${curveStartup.id}/freeze`,
+          { frozen: false, reason: 'test unfreeze' },
+          admin
+        ),
+        { params: { id: curveStartup.id } }
+      )
+      expect(res.status).toBe(200)
+
+      const { data: row, error } = await supabaseAdmin
+        .from('startup_curves')
+        .select('frozen_at')
+        .eq('startup_id', curveStartup.id)
+        .single()
+      expect(error).toBeNull()
+      expect(row?.frozen_at).toBeNull()
+
+      const buyRes = await supabaseAdmin.rpc('buy_curve_tokens', {
+        p_user_id: trader.id,
+        p_startup_id: curveStartup.id,
+        p_usdc: 10,
+      })
+      expect(buyRes.error).toBeNull()
     })
   })
 })

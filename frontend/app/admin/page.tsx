@@ -23,6 +23,8 @@ type Startup = {
   created_at: string
   deleted_at: string | null
   owner_id?: string
+  frozen?: boolean
+  graduated?: boolean
 }
 
 type AuditAction = {
@@ -68,7 +70,7 @@ export default function AdminPage() {
   const [showDeleted, setShowDeleted] = useState(true)
 
   const [modal, setModal] = useState<{
-    type: 'edit' | 'delete' | 'restore' | 'force-phase2'
+    type: 'edit' | 'delete' | 'restore' | 'force-phase2' | 'freeze'
     startup: Startup
   } | null>(null)
   const [reason, setReason] = useState('')
@@ -208,6 +210,12 @@ export default function AdminPage() {
     setReason('')
     setActionError(null)
     setModal({ type: 'force-phase2', startup: s })
+  }
+
+  const openFreeze = (s: Startup) => {
+    setReason('')
+    setActionError(null)
+    setModal({ type: 'freeze', startup: s })
   }
 
   const closeModal = () => {
@@ -388,6 +396,44 @@ export default function AdminPage() {
     }
   }
 
+  const handleFreeze = async () => {
+    if (!modal) return
+    const nextFrozen = !modal.startup.frozen
+    setActionLoading(true)
+    setActionError(null)
+    const token = await getToken()
+    if (!token) {
+      setActionError('Not authenticated')
+      setActionLoading(false)
+      return
+    }
+    try {
+      const res = await fetch(`/api/admin/startups/${modal.startup.id}/freeze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ frozen: nextFrozen, reason }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        console.error(`[admin page] freeze failed — HTTP ${res.status}:`, json)
+        setActionError(json.error || `${nextFrozen ? 'Freeze' : 'Unfreeze'} failed (${res.status})`)
+        setActionLoading(false)
+        return
+      }
+      closeModal()
+      await refresh()
+      setSuccessMessage(nextFrozen ? 'Raise frozen successfully.' : 'Raise unfrozen successfully.')
+    } catch (e: any) {
+      console.error('[admin page] freeze exception:', e)
+      setActionError(e.message || `${nextFrozen ? 'Freeze' : 'Unfreeze'} failed`)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   if (!ready || status === 'loading') {
     return (
       <main className="min-h-screen bg-[#F9FAFB] px-4 py-12 text-[#111827]">
@@ -491,11 +537,18 @@ export default function AdminPage() {
                         <td className="px-4 py-3">
                           <div className="font-medium text-[#111827]">{s.name}</div>
                           <div className="text-xs text-[#6B7280]">{s.slug}</div>
-                          {isDeleted && (
-                            <span className="mt-1 inline-flex rounded bg-[#EF4444]/10 px-2 py-0.5 text-xs font-semibold text-[#EF4444]">
-                              Deleted
-                            </span>
-                          )}
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {isDeleted && (
+                              <span className="inline-flex rounded bg-[#EF4444]/10 px-2 py-0.5 text-xs font-semibold text-[#EF4444]">
+                                Deleted
+                              </span>
+                            )}
+                            {s.phase === 2 && s.frozen && (
+                              <span className="inline-flex rounded bg-[#F59E0B]/10 px-2 py-0.5 text-xs font-semibold text-[#B45309]">
+                                Frozen
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-[#111827]">{s.phase}</td>
                         <td className="px-4 py-3 text-right text-[#111827]">{formatVoteCount(s.vote_threshold)}</td>
@@ -521,6 +574,17 @@ export default function AdminPage() {
                             {s.phase === 1 && !s.deleted_at && (
                               <button type="button" onClick={() => openForcePhase2(s)} className="text-xs font-semibold text-[#F59E0B] hover:text-amber-700">
                                 Force Phase 2
+                              </button>
+                            )}
+                            {s.phase === 2 && !s.deleted_at && (
+                              <button
+                                type="button"
+                                onClick={() => openFreeze(s)}
+                                className={`text-xs font-semibold ${
+                                  s.frozen ? 'text-[#10B981] hover:text-green-700' : 'text-[#B45309] hover:text-amber-700'
+                                }`}
+                              >
+                                {s.frozen ? 'Unfreeze' : 'Freeze'}
                               </button>
                             )}
                           </div>
@@ -745,6 +809,51 @@ export default function AdminPage() {
                   </button>
                   <button type="button" onClick={handleForcePhase2} disabled={actionLoading} className={buttonWarning}>
                     {actionLoading ? 'Processing...' : 'Force to phase 2'}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {modal.type === 'freeze' && (
+              <>
+                <h3 className="mb-2 text-lg font-semibold text-[#111827]">
+                  {modal.startup.frozen ? 'Unfreeze' : 'Freeze'} {modal.startup.name}?
+                </h3>
+                {modal.startup.frozen ? (
+                  <p className="mb-4 text-sm text-[#6B7280]">
+                    This reopens the raise to new purchases. Existing holders were never blocked from selling, so
+                    nothing changes for them.
+                  </p>
+                ) : (
+                  <div className="mb-4 rounded-lg border border-[#F59E0B]/30 bg-[#FEF3C7] p-3 text-sm text-[#92400E]">
+                    Freezing halts <strong>new purchases only</strong>. Selling stays open, so anyone already
+                    holding tokens can still exit. This is deliberate: the correct response to a suspected problem
+                    is to close the entrance, not to trap the people already inside.
+                  </div>
+                )}
+                <label className={labelClass}>Reason (optional)</label>
+                <input
+                  className={inputClass}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder={modal.startup.frozen ? 'Reason for unfreezing' : 'Reason for freezing'}
+                />
+                {actionError && <p className="mt-4 text-sm text-[#EF4444]">{actionError}</p>}
+                <div className="mt-6 flex justify-end gap-3">
+                  <button type="button" onClick={closeModal} className={buttonSecondary}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleFreeze}
+                    disabled={actionLoading}
+                    className={modal.startup.frozen ? buttonPrimary : buttonWarning}
+                  >
+                    {actionLoading
+                      ? 'Processing...'
+                      : modal.startup.frozen
+                      ? 'Unfreeze raise'
+                      : 'Freeze raise'}
                   </button>
                 </div>
               </>

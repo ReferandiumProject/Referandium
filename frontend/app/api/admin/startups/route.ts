@@ -23,7 +23,15 @@ export async function GET(request: Request) {
     const { data, error } = await supabaseAdmin
       .from('startup_startups')
       .select(
-        'id, user_id, name, slug, description, pitch, website, twitter, logo_url, stage, created_at, phase, vote_threshold, capital_target, total_yes_votes, total_no_votes, phase1_closed_at, deleted_at'
+        `
+        id, user_id, name, slug, description, pitch, website, twitter, logo_url, stage,
+        created_at, phase, vote_threshold, capital_target, total_yes_votes, total_no_votes,
+        phase1_closed_at, deleted_at,
+        startup_curve_state (
+          frozen_at,
+          graduated_at
+        )
+        `
       )
       .order('created_at', { ascending: false })
 
@@ -32,7 +40,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data ?? [])
+    const result = (data ?? []).map((row: any) => {
+      const curve = row.startup_curve_state
+      const { startup_curve_state, ...rest } = row
+      return {
+        ...rest,
+        frozen: Boolean(curve?.frozen_at),
+        graduated: Boolean(curve?.graduated_at),
+      }
+    })
+
+    return NextResponse.json(result)
   } catch (err: any) {
     console.error('[api/admin/startups] unexpected error:', err)
     return NextResponse.json({ error: err?.message || 'Internal server error' }, { status: 500 })
