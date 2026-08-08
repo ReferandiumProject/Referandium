@@ -35,6 +35,8 @@ export default defineConfig(({ mode }) => {
     'tests/api/curve/**/*.test.ts',
     'tests/api/startup-listings/**/*.test.ts',
     'tests/api/admin/**/*.test.ts',
+    'tests/api/my-startups/**/*.test.ts',
+    'tests/api/auth/**/*.test.ts',
   ]
 
   return {

@@ -63,6 +63,53 @@ type CurveHolding = {
   spot_value_estimate: string
 }
 
+type FounderStats = {
+  active_voters: number
+  lifetime_voters: number
+  token_holders: number
+  trade_count: number
+  platform_fees_generated: string
+}
+
+type FounderCurve = {
+  pool_usdc: string
+  capital_target: string
+  price: string
+  progress: number
+  graduated: boolean
+  frozen: boolean
+} | null
+
+type MyStartup = {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  pitch: string | null
+  website: string | null
+  twitter: string | null
+  logo_url: string | null
+  stage: string | null
+  phase: number
+  vote_threshold: number
+  capital_target: string
+  total_yes_votes: number
+  total_no_votes: number
+  created_at: string
+  phase1_closed_at: string | null
+  founder_stats: FounderStats
+  curve: FounderCurve
+}
+
+type EditableStartupFields = {
+  description: string
+  pitch: string
+  website: string
+  twitter: string
+  logo_url: string
+  stage: string
+}
+
 // Throws if `s` cannot be parsed. Callers must catch this and
 // surface the failure instead of silently computing gain/loss
 // against a fabricated zero.
@@ -95,6 +142,218 @@ function Avatar({ name, src }: { name: string; src: string | null }) {
   )
 }
 
+const STAGE_OPTIONS = ['Idea', 'Pre-seed', 'Seed', 'Series A', 'Series B+', 'Growth'] as const
+
+function PhaseBadge({ phase }: { phase: number }) {
+  const labels: Record<number, string> = { 1: 'Validating', 2: 'Raising', 3: 'Completed' }
+  const colors: Record<number, string> = {
+    1: 'bg-[#3B82F6]/10 text-[#3B82F6]',
+    2: 'bg-[#F59E0B]/10 text-[#B45309]',
+    3: 'bg-[#10B981]/10 text-[#10B981]',
+  }
+  return (
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${colors[phase] ?? 'bg-[#E5E7EB] text-[#6B7280]'}`}>
+      {labels[phase] ?? `Phase ${phase}`}
+    </span>
+  )
+}
+
+function MyStartupStats({ startup }: { startup: MyStartup }) {
+  if (startup.phase === 1) {
+    return (
+      <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+        <div>
+          <p className="text-xs text-[#6B7280]">Distinct voters</p>
+          <p className="font-semibold text-[#111827]">{formatVoteCount(startup.founder_stats.active_voters)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-[#6B7280]">Lifetime voters</p>
+          <p className="font-semibold text-[#111827]">{formatVoteCount(startup.founder_stats.lifetime_voters)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-[#6B7280]">Yes votes</p>
+          <p className="font-medium text-[#111827]">{formatVoteCount(startup.total_yes_votes)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-[#6B7280]">No votes</p>
+          <p className="font-medium text-[#111827]">{formatVoteCount(startup.total_no_votes)}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (startup.phase === 2 && startup.curve) {
+    return (
+      <>
+        <div className="mt-3 flex items-center justify-between text-xs text-[#6B7280]">
+          <span>Raised</span>
+          <span>
+            {formatUsd(startup.curve.pool_usdc)} / {formatUsd(startup.curve.capital_target)}
+          </span>
+        </div>
+        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+          <div
+            className="h-full bg-[#3B82F6]"
+            style={{ width: `${Math.min(100, Math.max(0, startup.curve.progress))}%` }}
+          />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+          <div>
+            <p className="text-xs text-[#6B7280]">Distinct holders</p>
+            <p className="font-semibold text-[#111827]">{formatVoteCount(startup.founder_stats.token_holders)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-[#6B7280]">Trades</p>
+            <p className="font-medium text-[#111827]">{formatVoteCount(startup.founder_stats.trade_count)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-[#6B7280]">Platform fees generated</p>
+            <p className="font-medium text-[#111827]">{formatUsd(startup.founder_stats.platform_fees_generated)}</p>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // Phase 3: final totals.
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+      <div>
+        <p className="text-xs text-[#6B7280]">Final amount raised</p>
+        <p className="font-semibold text-[#111827]">
+          {startup.curve ? formatUsd(startup.curve.pool_usdc) : '—'}
+        </p>
+      </div>
+      <div>
+        <p className="text-xs text-[#6B7280]">Distinct holders</p>
+        <p className="font-medium text-[#111827]">{formatVoteCount(startup.founder_stats.token_holders)}</p>
+      </div>
+      <div>
+        <p className="text-xs text-[#6B7280]">Platform fees generated</p>
+        <p className="font-medium text-[#111827]">{formatUsd(startup.founder_stats.platform_fees_generated)}</p>
+      </div>
+    </div>
+  )
+}
+
+function MyStartupEditForm({
+  form,
+  saving,
+  error,
+  onChange,
+  onSave,
+  onCancel,
+}: {
+  form: EditableStartupFields
+  saving: boolean
+  error: string | null
+  onChange: (fields: Partial<EditableStartupFields>) => void
+  onSave: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="mt-4 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+      {error && (
+        <div className="mb-3 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 p-2 text-xs text-[#EF4444]">
+          {error}
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="sm:col-span-2">
+          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+            Description
+          </span>
+          <textarea
+            value={form.description}
+            onChange={(e) => onChange({ description: e.target.value })}
+            rows={3}
+            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+          />
+        </label>
+        <label className="sm:col-span-2">
+          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+            Pitch
+          </span>
+          <textarea
+            value={form.pitch}
+            onChange={(e) => onChange({ pitch: e.target.value })}
+            rows={3}
+            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+          />
+        </label>
+        <label>
+          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+            Website
+          </span>
+          <input
+            type="text"
+            value={form.website}
+            onChange={(e) => onChange({ website: e.target.value })}
+            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+          />
+        </label>
+        <label>
+          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+            Twitter
+          </span>
+          <input
+            type="text"
+            value={form.twitter}
+            onChange={(e) => onChange({ twitter: e.target.value })}
+            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+          />
+        </label>
+        <label>
+          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+            Logo URL
+          </span>
+          <input
+            type="text"
+            value={form.logo_url}
+            onChange={(e) => onChange({ logo_url: e.target.value })}
+            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+          />
+        </label>
+        <label>
+          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+            Stage
+          </span>
+          <select
+            value={form.stage}
+            onChange={(e) => onChange({ stage: e.target.value })}
+            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+          >
+            <option value="">—</option>
+            {STAGE_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="mt-4 flex gap-2">
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {saving ? 'Saving...' : 'Save changes'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="rounded-lg border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#6B7280] transition-colors hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function ProfilePage() {
   const { authenticated, getAccessToken, login, user } = usePrivy()
   const { dbUser } = useUser()
@@ -110,6 +369,13 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+
+  const [myStartups, setMyStartups] = useState<MyStartup[] | null>(null)
+  const [myStartupsError, setMyStartupsError] = useState<string | null>(null)
+  const [editingStartupId, setEditingStartupId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<EditableStartupFields | null>(null)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   const [depositMode, setDepositMode] = useState<'devnet' | 'wallet' | 'card'>('devnet')
   const [depositAmount, setDepositAmount] = useState('')
@@ -134,7 +400,7 @@ export default function ProfilePage() {
     setError(null)
 
     try {
-      const [balanceRes, voteRes, holdingsRes] = await Promise.all([
+      const [balanceRes, voteRes, holdingsRes, myStartupsRes] = await Promise.all([
         fetch('/api/balance', {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -144,11 +410,15 @@ export default function ProfilePage() {
         fetch('/api/curve/mine', {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch('/api/my-startups', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ])
 
       const balanceJson = await balanceRes.json().catch(() => ({}))
       const voteJson = await voteRes.json().catch(() => ({}))
       const holdingsJson = await holdingsRes.json().catch(() => ({}))
+      const myStartupsJson = await myStartupsRes.json().catch(() => ({}))
 
       if (!balanceRes.ok) {
         setError(balanceJson.error || 'Failed to load balance')
@@ -171,10 +441,91 @@ export default function ProfilePage() {
       } else {
         setHoldings(holdingsJson.holdings || [])
       }
+
+      if (!myStartupsRes.ok) {
+        setMyStartupsError(myStartupsJson.error || 'Failed to load your startups')
+      } else {
+        setMyStartupsError(null)
+        setMyStartups(Array.isArray(myStartupsJson) ? myStartupsJson : [])
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load profile')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchMyStartups = async () => {
+    const token = await getAccessToken()
+    if (!token) return
+    try {
+      const res = await fetch('/api/my-startups', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMyStartupsError(json.error || 'Failed to load your startups')
+      } else {
+        setMyStartupsError(null)
+        setMyStartups(Array.isArray(json) ? json : [])
+      }
+    } catch (err: any) {
+      setMyStartupsError(err.message || 'Failed to load your startups')
+    }
+  }
+
+  const startEditingStartup = (startup: MyStartup) => {
+    setEditingStartupId(startup.id)
+    setEditError(null)
+    setEditForm({
+      description: startup.description ?? '',
+      pitch: startup.pitch ?? '',
+      website: startup.website ?? '',
+      twitter: startup.twitter ?? '',
+      logo_url: startup.logo_url ?? '',
+      stage: startup.stage ?? '',
+    })
+  }
+
+  const cancelEditingStartup = () => {
+    setEditingStartupId(null)
+    setEditForm(null)
+    setEditError(null)
+  }
+
+  const saveEditingStartup = async (startupId: string) => {
+    if (!editForm) return
+    setEditSaving(true)
+    setEditError(null)
+
+    const token = await getAccessToken()
+    if (!token) {
+      setEditError('Not authenticated')
+      setEditSaving(false)
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/my-startups/${startupId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(editForm),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setEditError(json.error || 'Failed to save changes')
+        return
+      }
+      setEditingStartupId(null)
+      setEditForm(null)
+      await fetchMyStartups()
+    } catch (err: any) {
+      setEditError(err.message || 'Failed to save changes')
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -678,6 +1029,95 @@ export default function ProfilePage() {
                   </Link>
                 )
               })}
+            </div>
+          )}
+        </section>
+
+        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+          <div className="mb-4 flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-[#111827]">My startups</h2>
+            <p className="text-sm text-[#6B7280]">
+              Startups you&apos;ve listed. Name, slug, vote threshold, and capital target cannot be
+              changed here — see each field&apos;s note below for why.
+            </p>
+          </div>
+
+          {myStartupsError && (
+            <div className="mb-4 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
+              {myStartupsError}
+            </div>
+          )}
+
+          {myStartups === null ? (
+            <p className="text-sm text-[#6B7280]">Loading your startups...</p>
+          ) : myStartups.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-6 text-center">
+              <p className="text-sm text-[#6B7280]">You haven&apos;t listed any startups yet.</p>
+              <Link
+                href="/list"
+                className="mt-3 inline-block text-sm font-semibold text-[#3B82F6] hover:text-blue-700"
+              >
+                List a startup
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {myStartups.map((s) => (
+                <div key={s.id} className="rounded-lg border border-[#E5E7EB] p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate font-medium text-[#111827]">{s.name}</p>
+                        <PhaseBadge phase={s.phase} />
+                      </div>
+                      <Link
+                        href={`/startup/${s.slug}`}
+                        className="mt-1 inline-block text-xs font-semibold text-[#3B82F6] hover:text-blue-700"
+                      >
+                        View public page →
+                      </Link>
+
+                      <MyStartupStats startup={s} />
+                    </div>
+
+                    {editingStartupId !== s.id && (
+                      <button
+                        type="button"
+                        onClick={() => startEditingStartup(s)}
+                        className="rounded-lg border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 gap-2 rounded-lg bg-[#F9FAFB] p-3 text-xs text-[#6B7280] sm:grid-cols-2">
+                    <p>
+                      <span className="font-medium text-[#111827]">Name & slug fixed:</span> the
+                      slug is the public URL people have already shared, and renaming mid-raise
+                      would let a startup become something other than what backers evaluated.
+                    </p>
+                    <p>
+                      <span className="font-medium text-[#111827]">Threshold & target fixed:</span>{' '}
+                      lowering your own threshold would bypass the validation it represents, and
+                      the capital target sets the curve&apos;s virtual reserve, so changing it
+                      after a raise opens would alter the terms people already bought under. Only
+                      admins can change these.
+                    </p>
+                  </div>
+
+                  {editingStartupId === s.id && editForm && (
+                    <MyStartupEditForm
+                      form={editForm}
+                      saving={editSaving}
+                      error={editError}
+                      onChange={(fields) => setEditForm((prev) => (prev ? { ...prev, ...fields } : prev))}
+                      onSave={() => saveEditingStartup(s.id)}
+                      onCancel={cancelEditingStartup}
+                    />
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </section>

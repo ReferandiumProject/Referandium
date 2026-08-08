@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { privyClient } from '@/lib/privy-server'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { Decimal } from '@/lib/decimal'
 
 interface GoogleOAuthAccount {
   type: 'google_oauth'
@@ -19,6 +20,26 @@ function isGoogleOAuth(account: any): account is GoogleOAuthAccount {
 
 function isSolanaWallet(account: any): account is SolanaWalletAccount {
   return account?.type === 'wallet' && account?.chain === 'solana'
+}
+
+const ZERO = Decimal.parse('0')
+
+// DEVNET / STAGING TESTING ONLY.
+// This grants newly-created accounts a starting USDC balance so multi-user
+// testing on devnet is practical. The amount comes solely from server-side
+// configuration (SIGNUP_BONUS_USDC). NEVER set this in production: it would
+// hand out real money to anyone who signs up. Leaving the variable unset,
+// empty, unparseable, or zero disables the bonus and is the safe default.
+function getSignupBonusUsdc(): string | null {
+  const raw = process.env.SIGNUP_BONUS_USDC
+  if (!raw || raw.trim() === '') return null
+  try {
+    const amount = Decimal.parse(raw.trim())
+    if (!amount.gt(ZERO)) return null
+    return amount.toString()
+  } catch {
+    return null
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -76,28 +97,28 @@ export async function POST(req: NextRequest) {
 
     console.log('[auth/sync] upserted user, id:', userRecord.id)
 
-    const { data: existingBalance } = await supabaseAdmin
+    // Attempt to create the user's balance row exactly once. The bonus amount
+    // is included in this single insert, so a returning user cannot receive it
+    // again: the balances table's unique constraint on user_id guarantees the
+    // insert succeeds at most once.
+    const bonusUsdc = getSignupBonusUsdc()
+    const { error: balanceInsertError } = await supabaseAdmin
       .from('balances')
-      .select('*')
-      .eq('user_id', userRecord.id)
-      .maybeSingle()
+      .insert({
+        user_id: userRecord.id,
+        available_usdc: bonusUsdc ?? '0',
+        locked_usdc: 0,
+      })
 
-    if (!existingBalance) {
-      console.log('[auth/sync] no balance row found, creating one for user:', userRecord.id)
-      const { error: balanceInsertError } = await supabaseAdmin
-        .from('balances')
-        .insert({
-          user_id: userRecord.id,
-          available_usdc: 0,
-          locked_usdc: 0,
-        })
-
-      if (balanceInsertError) {
+    if (balanceInsertError) {
+      const isUniqueViolation = balanceInsertError.code === '23505'
+      if (!isUniqueViolation) {
         console.error('[auth/sync] balance insert failed:', balanceInsertError)
         throw balanceInsertError
       }
-    } else {
       console.log('[auth/sync] balance row already exists for user:', userRecord.id)
+    } else if (bonusUsdc) {
+      console.log(`[auth/sync] signup bonus granted: user=${userRecord.id}, amount=${bonusUsdc} USDC`)
     }
 
     const { data: balance, error: balanceFetchError } = await supabaseAdmin
