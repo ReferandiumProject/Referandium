@@ -84,6 +84,28 @@ function sanitizeTokenInput(value: string): string {
   return cleaned
 }
 
+// Candidate "quick buy" amounts, largest-first. Never shown as-is —
+// only the ones that fit under the current cap (min of available
+// balance and USDC remaining before the raise hits its target) are
+// used, so a $50-target raise never offers a nonsensical $1,000
+// button. If nothing on the ladder fits, the caller shows no presets
+// at all rather than clamping a hardcoded amount down to something
+// tiny and confusing.
+const BUY_PRESET_LADDER = ['1', '2', '5', '10', '25', '50', '100', '250', '500', '1000', '2500', '5000', '10000']
+const MAX_BUY_PRESETS = 4
+
+function computeBuyPresets(cap: Decimal): Decimal[] {
+  if (cap.isZero() || cap.value < BigInt(0)) return []
+  const fits = BUY_PRESET_LADDER.map((s) => Decimal.parse(s)).filter((d) => d.lte(cap))
+  return fits.slice(-MAX_BUY_PRESETS)
+}
+
+// Fixed ratio strings for the percentage-fill buttons, multiplied
+// through Decimal (never a JS number) to avoid float rounding on
+// financial amounts. 100% is always handled separately by callers,
+// using the exact source string rather than a multiplication result.
+const PERCENT_RATIOS = { 25: '0.25', 50: '0.5', 75: '0.75' } as const
+
 function Avatar({ name, src }: { name: string; src: string | null }) {
   if (src) {
     return (
@@ -576,6 +598,71 @@ function CurvePanel({
     }
   }
 
+  // USDC still needed to hit the capital target, floored at zero.
+  const remainingToTarget = useMemo(() => {
+    try {
+      const target = Decimal.parse(curve.capital_target)
+      const pool = Decimal.parse(curve.pool_usdc)
+      const diff = target.sub(pool)
+      return diff.value < BigInt(0) ? new Decimal(BigInt(0), diff.scale) : diff
+    } catch {
+      return null
+    }
+  }, [curve.capital_target, curve.pool_usdc])
+
+  // The ceiling for "quick buy" presets: never more than the user can
+  // actually spend, and never more than the raise actually needs.
+  const buyCap = useMemo(() => {
+    let cap = remainingToTarget
+    if (curve.available_usdc) {
+      try {
+        const avail = Decimal.parse(curve.available_usdc)
+        cap = cap && cap.lt(avail) ? cap : avail
+      } catch {
+        // ignore malformed balance; fall back to remainingToTarget
+      }
+    }
+    return cap
+  }, [remainingToTarget, curve.available_usdc])
+
+  const buyPresets = useMemo(() => (buyCap ? computeBuyPresets(buyCap) : []), [buyCap])
+
+  const hasAvailableBalance = !!curve.available_usdc && !decimalIsZero(curve.available_usdc)
+
+  const fillBuyPercent = (pct: 25 | 50 | 100) => {
+    if (!curve.available_usdc) return
+    if (pct === 100) {
+      handleBuyChange(curve.available_usdc)
+      return
+    }
+    try {
+      const avail = Decimal.parse(curve.available_usdc)
+      const amount = avail.mul(Decimal.parse(PERCENT_RATIOS[pct]))
+      handleBuyChange(amount.toString())
+    } catch {
+      // ignore malformed balance; leave input unchanged
+    }
+  }
+
+  const fillSellPercent = (pct: 25 | 50 | 75 | 100) => {
+    if (!curve.user_holding) return
+    if (pct === 100) {
+      // Send the exact holding string, never a value re-derived by
+      // multiplying — multiplying and rounding back can either
+      // reject (asking to sell fractionally more than is held) or
+      // strand dust behind.
+      setSellAmount(curve.user_holding.tokens)
+      return
+    }
+    try {
+      const tokens = Decimal.parse(curve.user_holding.tokens)
+      const amount = tokens.mul(Decimal.parse(PERCENT_RATIOS[pct]))
+      handleSellChange(amount.toString())
+    } catch {
+      // ignore malformed holding; leave input unchanged
+    }
+  }
+
   const onSubmitBuy = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!buyAmount || decimalIsZero(buyAmount)) return
@@ -703,15 +790,50 @@ function CurvePanel({
               <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
                 USDC to spend
               </label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={buyAmount}
-                onChange={(e) => handleBuyChange(e.target.value)}
-                placeholder="0.00"
-                disabled={loading || curve.frozen}
-                className="mb-3 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition-colors focus:border-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
-              />
+              <div className="relative mb-3">
+                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-2xl font-semibold text-[#9CA3AF]">
+                  $
+                </span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={buyAmount}
+                  onChange={(e) => handleBuyChange(e.target.value)}
+                  placeholder="0.00"
+                  disabled={loading || curve.frozen}
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white py-3 pl-8 pr-3 text-2xl font-semibold text-[#111827] outline-none transition-colors focus:border-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+              {buyPresets.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {buyPresets.map((preset) => (
+                    <button
+                      key={preset.toString()}
+                      type="button"
+                      disabled={loading || curve.frozen}
+                      onClick={() => handleBuyChange(preset.toString())}
+                      className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-1.5 text-xs font-semibold text-[#111827] transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      ${preset.toString()}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {hasAvailableBalance && (
+                <div className="mb-3 flex gap-2">
+                  {([25, 50, 100] as const).map((pct) => (
+                    <button
+                      key={pct}
+                      type="button"
+                      disabled={loading || curve.frozen}
+                      onClick={() => fillBuyPercent(pct)}
+                      className="flex-1 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-1.5 text-xs font-semibold text-[#6B7280] transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {pct === 100 ? 'Max' : `${pct}%`}
+                    </button>
+                  ))}
+                </div>
+              )}
               {curve.available_usdc && (
                 <p className="mb-3 text-xs text-[#6B7280]">
                   Available: {formatUsd(curve.available_usdc)}
@@ -769,23 +891,25 @@ function CurvePanel({
                 onChange={(e) => handleSellChange(e.target.value)}
                 placeholder="0"
                 disabled={loading}
-                className="mb-3 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition-colors focus:border-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
+                className="mb-3 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-3 text-2xl font-semibold text-[#111827] outline-none transition-colors focus:border-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
               />
-              {hasHolding && curve.user_holding && (
-                <div className="mb-3 flex items-center justify-between text-xs text-[#6B7280]">
-                  <span>Available: {formatTokenAmount(curve.user_holding.tokens)}</span>
+              <div className="mb-3 flex gap-2">
+                {([25, 50, 75, 100] as const).map((pct) => (
                   <button
+                    key={pct}
                     type="button"
-                    onClick={() => {
-                      if (curve.user_holding) {
-                        setSellAmount(curve.user_holding.tokens)
-                      }
-                    }}
-                    className="font-medium text-[#3B82F6] hover:underline"
+                    disabled={loading || !hasHolding}
+                    onClick={() => fillSellPercent(pct)}
+                    className="flex-1 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-1.5 text-xs font-semibold text-[#6B7280] transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Sell all
+                    {pct === 100 ? 'Max' : `${pct}%`}
                   </button>
-                </div>
+                ))}
+              </div>
+              {hasHolding && curve.user_holding && (
+                <p className="mb-3 text-xs text-[#6B7280]">
+                  Available: {formatTokenAmount(curve.user_holding.tokens)}
+                </p>
               )}
               {sellEstimate && (
                 <div className="mb-4 rounded-lg bg-[#F9FAFB] p-3 text-xs text-[#6B7280]">
