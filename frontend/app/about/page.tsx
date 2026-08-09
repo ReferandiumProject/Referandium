@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function AboutPage() {
   return (
     <main className="min-h-screen bg-white px-4 py-12 text-[#111827] sm:py-16">
@@ -7,44 +9,92 @@ export default function AboutPage() {
             About Referandium
           </h1>
           <p className="mt-4 text-base text-[#6B7280]">
-            What it is, who it is for, and where it is today.
+            The thinking behind the platform, not the step-by-step mechanics.
           </p>
         </div>
 
         <div className="space-y-8">
           <section className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
             <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">
-              What Referandium is
+              Validation comes before money
             </h2>
             <p className="mt-4 text-[#6B7280]">
-              Referandium is a platform where early-stage startups are evaluated by a crowd before they can raise money.
+              On most platforms, a startup raises capital first and the market finds out later whether anyone wanted the thing. That is the conventional order: money, then evidence of demand.
             </p>
             <p className="mt-4 text-[#6B7280]">
-              Anyone can back or reject a listed startup using free daily voting tokens. These tokens carry no monetary value: they cannot be bought, sold, withdrawn, or converted into anything else. They exist only to let people signal whether they believe a startup should advance.
+              Referandium inverts it. A startup cannot raise any money until a crowd has already shown support, and that first stage costs participants nothing. The question is not whether the founder can sell the idea to a few backers, but whether the idea can win over a crowd before a single dollar is at stake.
             </p>
             <p className="mt-4 text-[#6B7280]">
-              A startup that reaches the vote threshold it set for itself opens a capital raise, where supporters can buy in with real funds. Reaching the capital target it set completes the raise.
+              This is not a tweak to the usual model. It is a different sequence: signal first, capital second. For the mechanics of how that sequence works in practice, see <Link href="/how-it-works" className="font-medium text-[#3B82F6] hover:text-blue-600">How it works</Link>.
             </p>
           </section>
 
           <section className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
             <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">
-              Who it is for
+              Why voting is free
             </h2>
             <p className="mt-4 text-[#6B7280]">
-              The platform is designed for small and local ventures: solo founders, small teams, and businesses solving a specific local problem. It is not aimed at startups chasing global scale.
+              Charging for the validation stage would select for people with money rather than people with judgment, and it would turn an opinion into a purchase. We want the signal to come from conviction, not from spending power.
             </p>
             <p className="mt-4 text-[#6B7280]">
-              This is a deliberate choice about the size of raise the platform can realistically support, not a limitation to work around. The model works best for ventures that can be understood and evaluated by the communities they serve.
+              That is why everyone receives the same daily allowance of voting tokens. They cannot be bought, sold, transferred, or converted into anything else. They have no monetary value, and a user cannot lose money by using them. They measure one thing: the attention and conviction of the people participating.
+            </p>
+            <p className="mt-4 text-[#6B7280]">
+              A free validation stage also means the risk of participation is not financial. The cost, such as it is, is the time and care it takes to form an opinion.
             </p>
           </section>
 
           <section className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
             <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">
-              What makes it different
+              Why rejection counts
             </h2>
             <p className="mt-4 text-[#6B7280]">
-              Money follows validation rather than preceding it. Nobody can put real funds into a startup the crowd has not already endorsed, and the validation stage costs participants nothing.
+              A startup progresses on net support: the difference between the votes that back it and the votes that reject it. Opposition genuinely subtracts. Without that, a validation stage measures popularity, not judgment. A project that inspires strong disagreement would look the same as one that simply went unnoticed.
+            </p>
+            <p className="mt-4 text-[#6B7280]">
+              Sentiment also needs to be reversible. Anyone can change their mind at any time, including moving support away from one startup and onto another. Sentiment that cannot be withdrawn is not sentiment; it is a one-way ratchet. The ability to revise keeps the signal honest as new information appears.
+            </p>
+          </section>
+
+          <section className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">
+              Why the price moves
+            </h2>
+            <p className="mt-4 text-[#6B7280]">
+              Once a raise opens, the price is not fixed. It rises as people buy and falls as people sell. This is by design. Earlier support is rewarded with a lower price because it carries more risk — at that point far less is known about whether the raise will complete.
+            </p>
+            <p className="mt-4 text-[#6B7280]">
+              That lower entry price is not a bonus or a promotion. It is the fair reflection of a risk trade: earlier participants accept more uncertainty, so they pay less per unit. Later participants have more information but pay more. The curve simply encodes that relationship.
+            </p>
+          </section>
+
+          <section className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">
+              What the platform charges
+            </h2>
+            <p className="mt-4 text-[#6B7280]">
+              Listing a startup costs 8 USDC. During a raise, the platform takes 1% on each purchase and 1% on each sale. There are no other fees.
+            </p>
+            <p className="mt-4 text-[#6B7280]">
+              We state this plainly because vagueness about fees is a warning sign on any platform that handles money. The list fee exists to discourage spam listings. The purchase and sale fees are the platform's revenue during a raise. No hidden charges, no tiered plans, and no percentage of the raise itself is taken from the startup.
+            </p>
+          </section>
+
+          <section className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">
+              Honest limits
+            </h2>
+            <p className="mt-4 text-[#6B7280]">
+              Backing a startup on Referandium is not an investment product and carries no guarantee of return. Participants can lose some or all of the funds they put in. That is simply the nature of early-stage support.
+            </p>
+            <p className="mt-4 text-[#6B7280]">
+              During a raise, selling returns funds at the current price, which may be lower than what was paid. The market price can go down as well as up while the raise is open.
+            </p>
+            <p className="mt-4 text-[#6B7280]">
+              When a raise completes, the price drops substantially, because part of the pool goes to the startup and the reserve supporting the price ends. Anyone buying late in the raise is most exposed to that drop, because they paid a higher price with less potential recovery.
+            </p>
+            <p className="mt-4 text-[#6B7280]">
+              Finally, community validation reflects the opinions of the people who participated. It is not a substitute for diligence, and it is not a prediction of whether the startup will succeed. It is one signal — an important one, but not the only one.
             </p>
           </section>
 
@@ -53,64 +103,7 @@ export default function AboutPage() {
               Current status
             </h2>
             <p className="mt-4 text-[#6B7280]">
-              The platform currently runs on Solana&apos;s devnet for testing. Voting and capital raises work today. On-chain token issuance for graduated startups is still in development.
-            </p>
-          </section>
-
-          {/*
-            PLACEHOLDER: Team or founder background.
-            Add the people behind Referandium here — names, roles, and short
-            background only. Do not invent anything.
-          */}
-          <section className="rounded-2xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-6 sm:p-8">
-            <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">
-              [TEAM — to be written]
-            </h2>
-            <p className="mt-4 text-[#6B7280]">
-              [Founder or team background to be added by the founders.]
-            </p>
-          </section>
-
-          {/*
-            PLACEHOLDER: Why the platform was built.
-            Add the origin story or motivation for building Referandium here.
-            Keep it factual and specific to the founders' own experience.
-          */}
-          <section className="rounded-2xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-6 sm:p-8">
-            <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">
-              [STORY — to be written]
-            </h2>
-            <p className="mt-4 text-[#6B7280]">
-              [The story of why Referandium was built, to be added by the founders.]
-            </p>
-          </section>
-
-          {/*
-            PLACEHOLDER: Contact details.
-            Add a real contact email, social link, or support channel here.
-            Do not use placeholder text that looks real, and do not invent any
-            address that does not exist.
-          */}
-          <section className="rounded-2xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-6 sm:p-8">
-            <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">
-              [CONTACT — to be written]
-            </h2>
-            <p className="mt-4 text-[#6B7280]">
-              [Contact information to be added by the founders.]
-            </p>
-          </section>
-
-          {/*
-            PLACEHOLDER: Company entity information.
-            Add legal entity name, registration country, or any other company
-            details here. Do not invent or assume any of this information.
-          */}
-          <section className="rounded-2xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-6 sm:p-8">
-            <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">
-              [COMPANY — to be written]
-            </h2>
-            <p className="mt-4 text-[#6B7280]">
-              [Company or entity information to be added by the founders.]
+              The platform currently runs on Solana&apos;s devnet for testing. Listing a startup, voting, and capital raises all work today. On-chain token issuance for startups that complete a raise is still in development.
             </p>
           </section>
         </div>
