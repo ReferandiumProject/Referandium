@@ -37,6 +37,7 @@ export default defineConfig(({ mode }) => {
     'tests/api/admin/**/*.test.ts',
     'tests/api/my-startups/**/*.test.ts',
     'tests/api/auth/**/*.test.ts',
+    'tests/api/deposit/**/*.test.ts',
   ]
 
   return {

@@ -20,6 +20,7 @@ async function cleanupByPrivyId(privyId: string) {
     .eq('privy_id', privyId)
     .maybeSingle()
   if (user) {
+    await supabaseAdmin.from('ledger_adjustments').delete().eq('user_id', user.id)
     await supabaseAdmin.from('balances').delete().eq('user_id', user.id)
     await supabaseAdmin.from('users').delete().eq('id', user.id)
   }
@@ -109,6 +110,16 @@ describe('/api/auth/sync signup bonus', () => {
       .eq('user_id', user!.id)
       .single()
     expect(Number(balance!.available_usdc)).toBe(1234.56)
+
+    const { data: adjustment } = await supabaseAdmin
+      .from('ledger_adjustments')
+      .select('amount, reason')
+      .eq('user_id', user!.id)
+      .eq('reason', 'signup_bonus')
+      .single()
+    expect(adjustment).not.toBeNull()
+    expect(Number(adjustment!.amount)).toBe(1234.56)
+    expect(adjustment!.reason).toBe('signup_bonus')
 
     await cleanupByPrivyId(privyId)
   })

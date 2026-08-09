@@ -119,6 +119,18 @@ export async function POST(req: NextRequest) {
       console.log('[auth/sync] balance row already exists for user:', userRecord.id)
     } else if (bonusUsdc) {
       console.log(`[auth/sync] signup bonus granted: user=${userRecord.id}, amount=${bonusUsdc} USDC`)
+
+      const { error: ledgerError } = await supabaseAdmin.from('ledger_adjustments').insert({
+        user_id: userRecord.id,
+        amount: bonusUsdc,
+        reason: 'signup_bonus',
+        note: 'Initial signup bonus credit',
+      })
+
+      if (ledgerError) {
+        console.error('[auth/sync] ledger adjustment insert failed:', ledgerError)
+        throw ledgerError
+      }
     }
 
     const { data: balance, error: balanceFetchError } = await supabaseAdmin
