@@ -76,8 +76,9 @@ describe('GET /api/startup-votes/mine', () => {
   })
 
   it('includes an active position after casting votes', async () => {
+    const founder = await createFixtureUser()
     const user = await createFixtureUser()
-    const startup = await createFixtureStartup(user.id)
+    const startup = await createFixtureStartup(founder.id)
     try {
       await seedGrant(user)
       await cast(user, startup.id, 12)
@@ -101,12 +102,14 @@ describe('GET /api/startup-votes/mine', () => {
       expect(body.balance.remaining_today).toBe(88)
     } finally {
       await cleanupFixtures(user.id, [startup.id])
+      await cleanupFixtures(founder.id, [])
     }
   })
 
   it('removes a position from active after it is fully withdrawn', async () => {
+    const founder = await createFixtureUser()
     const user = await createFixtureUser()
-    const startup = await createFixtureStartup(user.id)
+    const startup = await createFixtureStartup(founder.id)
     try {
       await seedGrant(user)
       await cast(user, startup.id, 10)
@@ -120,12 +123,14 @@ describe('GET /api/startup-votes/mine', () => {
       expect(body.burned).toEqual([])
     } finally {
       await cleanupFixtures(user.id, [startup.id])
+      await cleanupFixtures(founder.id, [])
     }
   })
 
   it('moves a position to burned after its startup crosses the threshold', async () => {
+    const founder = await createFixtureUser()
     const user = await createFixtureUser()
-    const startup = await createFixtureStartup(user.id, { vote_threshold: 5 })
+    const startup = await createFixtureStartup(founder.id, { vote_threshold: 5 })
     try {
       await seedGrant(user)
       await cast(user, startup.id, 5)
@@ -147,6 +152,7 @@ describe('GET /api/startup-votes/mine', () => {
       expect(body.balance.remaining_today).toBe(95)
     } finally {
       await cleanupFixtures(user.id, [startup.id])
+      await cleanupFixtures(founder.id, [])
     }
   })
 })

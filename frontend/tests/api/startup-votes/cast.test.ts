@@ -11,12 +11,14 @@ vi.mock('@/lib/auth-helpers', () => ({
 }))
 
 describe('POST /api/startup-votes/cast', () => {
+  let founder: Awaited<ReturnType<typeof createFixtureUser>>
   let user: Awaited<ReturnType<typeof createFixtureUser>>
   let startup: Awaited<ReturnType<typeof createFixtureStartup>>
 
   beforeAll(async () => {
+    founder = await createFixtureUser()
     user = await createFixtureUser()
-    startup = await createFixtureStartup(user.id)
+    startup = await createFixtureStartup(founder.id)
 
     vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
     const balanceRes = await getBalance(new Request('http://localhost:3000/api/startup-votes/balance', {
@@ -32,6 +34,7 @@ describe('POST /api/startup-votes/cast', () => {
 
   afterAll(async () => {
     await cleanupFixtures(user.id, [startup.id])
+    await supabaseAdmin.from('users').delete().eq('id', founder.id)
   })
 
   async function cast(direction: 'yes' | 'no', votes: number) {
@@ -146,5 +149,45 @@ describe('POST /api/startup-votes/cast', () => {
     expect(balance.remaining_today).toBe(0)
     expect(balance.pool_balance).toBe(5)
     expect(balance.total_spendable).toBe(5)
+  })
+
+  it('rejects a founder voting on their own startup with 403, leaving totals and balance unchanged', async () => {
+    const beforeStartup = await currentStartup()
+
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(founder as any)
+    const beforeBalanceRes = await getBalance(new Request('http://localhost:3000/api/startup-votes/balance', {
+      headers: { Authorization: 'Bearer mock-token' },
+    }))
+    const beforeBalance = await beforeBalanceRes.json()
+
+    const res = await cast('yes', 25)
+    expect(res.status).toBe(403)
+    const body = await res.json()
+    expect(body.error).toMatch(/cannot vote on your own startup/i)
+
+    const afterStartup = await currentStartup()
+    expect(afterStartup.total_yes_votes).toBe(beforeStartup.total_yes_votes)
+    expect(afterStartup.total_no_votes).toBe(beforeStartup.total_no_votes)
+
+    const afterBalanceRes = await getBalance(new Request('http://localhost:3000/api/startup-votes/balance', {
+      headers: { Authorization: 'Bearer mock-token' },
+    }))
+    const afterBalance = await afterBalanceRes.json()
+    expect(afterBalance.total_spendable).toBe(beforeBalance.total_spendable)
+    expect(afterBalance.remaining_today).toBe(beforeBalance.remaining_today)
+    expect(afterBalance.pool_balance).toBe(beforeBalance.pool_balance)
+  })
+
+  it('allows a different user to vote on a startup after the founder is blocked', async () => {
+    const beforeStartup = await currentStartup()
+
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+    const res = await cast('yes', 5)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.deployed).toBe(5)
+
+    const afterStartup = await currentStartup()
+    expect(afterStartup.total_yes_votes).toBe(beforeStartup.total_yes_votes + 5)
   })
 })

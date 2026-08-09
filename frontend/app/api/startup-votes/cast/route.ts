@@ -54,6 +54,9 @@ export async function POST(request: Request) {
       if (msg.includes('Startup not found')) {
         return NextResponse.json({ error: msg }, { status: 404 })
       }
+      if (msg.includes('cannot vote on your own startup')) {
+        return NextResponse.json({ error: msg }, { status: 403 })
+      }
 
       return NextResponse.json({ error: msg || 'Failed to cast vote' }, { status: 500 })
     }

@@ -12,12 +12,14 @@ vi.mock('@/lib/auth-helpers', () => ({
 
 describe('POST /api/startup-votes/flip', () => {
   describe('with an existing position', () => {
+    let founder: Awaited<ReturnType<typeof createFixtureUser>>
     let user: Awaited<ReturnType<typeof createFixtureUser>>
     let startup: Awaited<ReturnType<typeof createFixtureStartup>>
 
     beforeAll(async () => {
+      founder = await createFixtureUser()
       user = await createFixtureUser()
-      startup = await createFixtureStartup(user.id)
+      startup = await createFixtureStartup(founder.id)
 
       // seed the daily grant and a position to flip
       vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
@@ -42,6 +44,7 @@ describe('POST /api/startup-votes/flip', () => {
 
     afterAll(async () => {
       await cleanupFixtures(user.id, [startup.id])
+      await cleanupFixtures(founder.id, [])
     })
 
     it('moves the whole position to the other side, updates totals, and consumes no votes', async () => {
@@ -94,12 +97,14 @@ describe('POST /api/startup-votes/flip', () => {
   })
 
   describe('without an existing position', () => {
+    let founder: Awaited<ReturnType<typeof createFixtureUser>>
     let user: Awaited<ReturnType<typeof createFixtureUser>>
     let startup: Awaited<ReturnType<typeof createFixtureStartup>>
 
     beforeAll(async () => {
+      founder = await createFixtureUser()
       user = await createFixtureUser()
-      startup = await createFixtureStartup(user.id)
+      startup = await createFixtureStartup(founder.id)
     })
 
     beforeEach(() => {
@@ -108,6 +113,7 @@ describe('POST /api/startup-votes/flip', () => {
 
     afterAll(async () => {
       await cleanupFixtures(user.id, [startup.id])
+      await cleanupFixtures(founder.id, [])
     })
 
     it('returns 404', async () => {

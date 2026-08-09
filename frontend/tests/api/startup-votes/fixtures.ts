@@ -123,6 +123,8 @@ export async function cleanupFixtures(
 
   await supabaseAdmin.from('startup_vote_pool').delete().eq('user_id', userId)
   await supabaseAdmin.from('startup_vote_grants').delete().eq('user_id', userId)
-  await supabaseAdmin.from('startup_startups').delete().in('id', startupIds)
+  if (startupIds.length > 0) {
+    await supabaseAdmin.from('startup_startups').delete().in('id', startupIds)
+  }
   await supabaseAdmin.from('users').delete().eq('id', userId)
 }

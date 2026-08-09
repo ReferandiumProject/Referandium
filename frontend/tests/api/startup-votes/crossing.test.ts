@@ -10,14 +10,16 @@ vi.mock('@/lib/auth-helpers', () => ({
 }))
 
 describe('threshold crossing and burn', () => {
+  let founder: Awaited<ReturnType<typeof createFixtureUser>>
   let user: Awaited<ReturnType<typeof createFixtureUser>>
   let closingStartup: Awaited<ReturnType<typeof createFixtureStartup>>
   let otherStartup: Awaited<ReturnType<typeof createFixtureStartup>>
 
   beforeAll(async () => {
+    founder = await createFixtureUser()
     user = await createFixtureUser()
-    closingStartup = await createFixtureStartup(user.id, { vote_threshold: 10 })
-    otherStartup = await createFixtureStartup(user.id, { vote_threshold: 10 })
+    closingStartup = await createFixtureStartup(founder.id, { vote_threshold: 10 })
+    otherStartup = await createFixtureStartup(founder.id, { vote_threshold: 10 })
 
     vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
 
@@ -44,6 +46,7 @@ describe('threshold crossing and burn', () => {
 
   afterAll(async () => {
     await cleanupFixtures(user.id, [closingStartup.id, otherStartup.id])
+    await cleanupFixtures(founder.id, [])
   })
 
   async function cast(direction: 'yes' | 'no', votes: number, startupId: string) {

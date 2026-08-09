@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
+import { useUser } from '@/app/context/UserContext'
 import { Decimal } from '@/lib/decimal'
 import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
 
@@ -39,6 +40,7 @@ type Startup = {
   progress: number
   phase: number
   capital_target: number | null
+  owner_id: string
   user_position?: UserPosition | null
 }
 
@@ -198,6 +200,7 @@ function RaiseProgressBar({
 function VotePanel({
   startup,
   balance,
+  isOwner,
   onCast,
   onFlip,
   onWithdraw,
@@ -207,6 +210,7 @@ function VotePanel({
 }: {
   startup: Startup
   balance: Balance | null
+  isOwner: boolean
   onCast: (direction: 'yes' | 'no', votes: number) => Promise<void>
   onFlip: () => Promise<void>
   onWithdraw: (votes: number) => Promise<void>
@@ -239,6 +243,17 @@ function VotePanel({
         <h3 className="mb-2 text-lg font-semibold text-[#111827]">Voting is closed</h3>
         <p className="text-sm text-[#6B7280]">
           This startup passed community validation and has moved on to raising capital.
+        </p>
+      </div>
+    )
+  }
+
+  if (authenticated && isOwner) {
+    return (
+      <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+        <h3 className="mb-2 text-lg font-semibold text-[#111827]">Your listing</h3>
+        <p className="text-sm text-[#6B7280]">
+          You cannot vote on your own startup. This rule exists so founders do not influence the validation of their own listings.
         </p>
       </div>
     )
@@ -958,6 +973,7 @@ export default function StartupDetailPage() {
   const params = useParams() as { slug?: string } | null
   const slug = params?.slug ?? ''
   const { authenticated, getAccessToken, ready } = usePrivy()
+  const { dbUser } = useUser()
 
   const [startup, setStartup] = useState<Startup | null>(null)
   const [startupLoading, setStartupLoading] = useState(true)
@@ -1326,6 +1342,7 @@ export default function StartupDetailPage() {
               <VotePanel
                 startup={startup}
                 balance={balance}
+                isOwner={dbUser?.id === startup.owner_id}
                 onCast={(direction, votes) => {
                   const prior = startup?.user_position?.votes ?? 0
                   return handleAction(

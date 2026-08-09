@@ -10,16 +10,18 @@ vi.mock('@/lib/auth-helpers', () => ({
 }))
 
 describe('GET /api/startup-votes/list', () => {
+  let founder: Awaited<ReturnType<typeof createFixtureUser>>
   let user: Awaited<ReturnType<typeof createFixtureUser>>
   let activeStartup: Awaited<ReturnType<typeof createFixtureStartup>>
   let closedStartup: Awaited<ReturnType<typeof createFixtureStartup>>
   let negativeStartup: Awaited<ReturnType<typeof createFixtureStartup>>
 
   beforeAll(async () => {
+    founder = await createFixtureUser()
     user = await createFixtureUser()
-    activeStartup = await createFixtureStartup(user.id)
-    closedStartup = await createFixtureStartup(user.id, { vote_threshold: 5 })
-    negativeStartup = await createFixtureStartup(user.id, {
+    activeStartup = await createFixtureStartup(founder.id)
+    closedStartup = await createFixtureStartup(founder.id, { vote_threshold: 5 })
+    negativeStartup = await createFixtureStartup(founder.id, {
       vote_threshold: 10,
       total_yes_votes: 0,
       total_no_votes: 5,
@@ -47,6 +49,7 @@ describe('GET /api/startup-votes/list', () => {
 
   afterAll(async () => {
     await cleanupFixtures(user.id, [activeStartup.id, closedStartup.id, negativeStartup.id])
+    await cleanupFixtures(founder.id, [])
   })
 
   it('returns startups across all phases, with phase and curve data for the one that closed into phase 2', async () => {

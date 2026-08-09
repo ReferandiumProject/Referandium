@@ -20,7 +20,7 @@ export async function GET(
     const { data: startup, error: startupError } = await supabaseAdmin
       .from('startup_startups')
       .select(
-        'id, name, slug, description, logo_url, total_yes_votes, total_no_votes, vote_threshold, phase, capital_target'
+        'id, name, slug, description, logo_url, total_yes_votes, total_no_votes, vote_threshold, phase, capital_target, user_id'
       )
       .eq('slug', slug)
       .is('deleted_at', null)
@@ -57,6 +57,7 @@ export async function GET(
       progress,
       phase: startup.phase,
       capital_target: startup.capital_target,
+      owner_id: startup.user_id,
     }
 
     if (userId) {

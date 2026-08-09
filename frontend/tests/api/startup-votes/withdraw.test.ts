@@ -11,12 +11,14 @@ vi.mock('@/lib/auth-helpers', () => ({
 }))
 
 describe('POST /api/startup-votes/withdraw', () => {
+  let founder: Awaited<ReturnType<typeof createFixtureUser>>
   let user: Awaited<ReturnType<typeof createFixtureUser>>
   let startup: Awaited<ReturnType<typeof createFixtureStartup>>
 
   beforeAll(async () => {
+    founder = await createFixtureUser()
     user = await createFixtureUser()
-    startup = await createFixtureStartup(user.id)
+    startup = await createFixtureStartup(founder.id)
 
     vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
     const balanceRes = await getBalance(new Request('http://localhost:3000/api/startup-votes/balance', {
@@ -40,6 +42,7 @@ describe('POST /api/startup-votes/withdraw', () => {
 
   afterAll(async () => {
     await cleanupFixtures(user.id, [startup.id])
+    await cleanupFixtures(founder.id, [])
   })
 
   async function withdraw(votes: number) {
@@ -93,8 +96,9 @@ describe('POST /api/startup-votes/withdraw', () => {
 
   it('closes the startup when withdrawing NO votes raises net over the threshold', async () => {
     // Seed a startup where YES is just under threshold but a NO position is keeping net below it.
+    const crossFounder = await createFixtureUser()
     const crossUser = await createFixtureUser()
-    const crossStartup = await createFixtureStartup(crossUser.id, {
+    const crossStartup = await createFixtureStartup(crossFounder.id, {
       vote_threshold: 10,
       total_yes_votes: 12,
       total_no_votes: 0,
@@ -158,6 +162,7 @@ describe('POST /api/startup-votes/withdraw', () => {
       expect(finalBalance.pool_balance).toBe(3)
     } finally {
       await cleanupFixtures(crossUser.id, [crossStartup.id])
+      await cleanupFixtures(crossFounder.id, [])
     }
   })
 })

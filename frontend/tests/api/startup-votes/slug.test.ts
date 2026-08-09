@@ -10,12 +10,14 @@ vi.mock('@/lib/auth-helpers', () => ({
 }))
 
 describe('GET /api/startup-votes/[slug]', () => {
+  let founder: Awaited<ReturnType<typeof createFixtureUser>>
   let user: Awaited<ReturnType<typeof createFixtureUser>>
   let closedStartup: Awaited<ReturnType<typeof createFixtureStartup>>
 
   beforeAll(async () => {
+    founder = await createFixtureUser()
     user = await createFixtureUser()
-    closedStartup = await createFixtureStartup(user.id, { vote_threshold: 5 })
+    closedStartup = await createFixtureStartup(founder.id, { vote_threshold: 5 })
 
     vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
     const balanceRes = await getBalance(new Request('http://localhost:3000/api/startup-votes/balance', {
@@ -41,6 +43,7 @@ describe('GET /api/startup-votes/[slug]', () => {
 
   afterAll(async () => {
     await cleanupFixtures(user.id, [closedStartup.id])
+    await cleanupFixtures(founder.id, [])
   })
 
   it('returns 404 for an unknown slug', async () => {
