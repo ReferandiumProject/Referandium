@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { retractPlatformFees } from '@/tests/api/shared/cleanup'
 
 export interface CurveFixtureUser {
   id: string
@@ -133,6 +134,8 @@ export async function cleanupCurveFixtures(
   startupIds: string[]
 ): Promise<void> {
   if (startupIds.length === 0 && userIds.length === 0) return
+
+  await retractPlatformFees(startupIds, userIds)
 
   for (const startupId of startupIds) {
     await supabaseAdmin.from('startup_curve_trades').delete().eq('startup_id', startupId)

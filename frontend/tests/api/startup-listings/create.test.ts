@@ -50,13 +50,8 @@ describe('POST /api/startup-listings', () => {
   })
 
   afterAll(async () => {
-    await supabaseAdmin.from('startup_transactions').delete().eq('user_id', fundedUser.id)
-    if (createdStartupIds.length > 0) {
-      await supabaseAdmin.from('startup_markets').delete().in('startup_id', createdStartupIds)
-      await supabaseAdmin.from('startup_startups').delete().in('id', createdStartupIds)
-    }
     await supabaseAdmin.from('balances').delete().eq('user_id', fundedUser.id)
-    await cleanupFixtures(fundedUser.id, [])
+    await cleanupFixtures(fundedUser.id, createdStartupIds, createdStartupIds)
   })
 
   it('creates a listing and deducts the 8 USDC fee', async () => {
@@ -130,7 +125,6 @@ describe('POST /api/startup-listings', () => {
       const balance = await currentBalance(poorUser.id)
       expect(balance).toBe(5)
     } finally {
-      await supabaseAdmin.from('startup_transactions').delete().eq('user_id', poorUser.id)
       await supabaseAdmin.from('balances').delete().eq('user_id', poorUser.id)
       await cleanupFixtures(poorUser.id, [])
     }

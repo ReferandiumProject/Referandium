@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { retractPlatformFees } from '@/tests/api/shared/cleanup'
 
 export interface FixtureUser {
   id: string
@@ -95,6 +96,8 @@ export async function cleanupAdminFixtures(
   userIds: string[],
   startupIds: string[]
 ): Promise<void> {
+  await retractPlatformFees(startupIds, userIds)
+
   try {
     if (startupIds.length > 0) {
       await supabaseAdmin.from('startup_vote_events').delete().in('startup_id', startupIds)

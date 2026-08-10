@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { retractPlatformFees } from '@/tests/api/shared/cleanup'
 
 export interface FixtureUser {
   id: string
@@ -93,8 +94,11 @@ export async function createFixtureStartup(
 
 export async function cleanupFixtures(
   userId: string,
-  startupIds: string[]
+  startupIds: string[],
+  listingStartupIds: string[] = []
 ): Promise<void> {
+  await retractPlatformFees(startupIds, [userId], listingStartupIds)
+
   try {
     if (startupIds.length > 0) {
       await supabaseAdmin
@@ -123,7 +127,10 @@ export async function cleanupFixtures(
 
   await supabaseAdmin.from('startup_vote_pool').delete().eq('user_id', userId)
   await supabaseAdmin.from('startup_vote_grants').delete().eq('user_id', userId)
+  await supabaseAdmin.from('startup_transactions').delete().eq('user_id', userId)
+
   if (startupIds.length > 0) {
+    await supabaseAdmin.from('startup_markets').delete().in('startup_id', startupIds)
     await supabaseAdmin.from('startup_startups').delete().in('id', startupIds)
   }
   await supabaseAdmin.from('users').delete().eq('id', userId)
