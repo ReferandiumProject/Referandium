@@ -30,7 +30,26 @@ export async function retractPlatformFees(
     }
   }
 
-  const listingFees = Decimal.parse(String(listingStartupIds.length * 8))
+  let listingFees = Decimal.parse('0')
+
+  if (listingStartupIds.length > 0) {
+    const { data: creditEvents, error: creditError } = await supabaseAdmin
+      .from('listing_credit_events')
+      .select('startup_id')
+      .in('user_id', userIds)
+      .in('startup_id', listingStartupIds)
+      .eq('reason', 'listing')
+      .eq('delta', -1)
+
+    if (creditError) {
+      console.error('[cleanup] failed to read listing credit events:', creditError)
+      throw new Error(`Failed to read listing credit events: ${creditError.message}`)
+    }
+
+    const creditStartups = new Set((creditEvents ?? []).map((row) => row.startup_id))
+    const balanceListingCount = listingStartupIds.filter((id) => !creditStartups.has(id)).length
+    listingFees = Decimal.parse(String(balanceListingCount * 8))
+  }
 
   const totalFees = curveFees.add(listingFees)
   if (totalFees.isZero()) return

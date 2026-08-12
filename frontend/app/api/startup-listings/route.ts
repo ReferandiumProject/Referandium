@@ -89,7 +89,7 @@ export async function POST(request: Request) {
       const msg = listingError.message || ''
       console.error('[api/startup-listings] create_startup_listing error:', listingError)
 
-      if (msg.includes('Insufficient balance') || msg.includes('No balance found')) {
+      if (msg.includes('Insufficient balance') || msg.includes('No balance found') || msg.includes('listing credit')) {
         return NextResponse.json({ error: msg }, { status: 402 })
       }
       if (msg.includes('must be between') || msg.includes('is required')) {
@@ -109,7 +109,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       id: result.r_startup_id,
       slug: result.r_slug,
+      paid_with: result.r_paid_with,
       fee: Number(result.r_fee ?? 0),
+      credits_left: Number(result.r_credits_left ?? 0),
       available_after: Number(result.r_available_after ?? 0),
     })
   } catch (err: any) {

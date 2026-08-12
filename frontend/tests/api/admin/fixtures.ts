@@ -111,6 +111,9 @@ export async function cleanupAdminFixtures(
     await supabaseAdmin.from('startup_vote_pool').delete().in('user_id', userIds)
     await supabaseAdmin.from('startup_vote_grants').delete().in('user_id', userIds)
     await supabaseAdmin.from('startup_transactions').delete().in('user_id', userIds)
+    await supabaseAdmin.from('user_listing_credits').delete().in('user_id', userIds)
+    await supabaseAdmin.from('listing_credit_events').delete().in('user_id', userIds)
+    await supabaseAdmin.from('stripe_payments').delete().in('user_id', userIds)
     await supabaseAdmin.from('balances').delete().in('user_id', userIds)
     await supabaseAdmin.from('positions').delete().in('user_id', userIds)
   }
