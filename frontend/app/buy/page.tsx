@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { formatUsd } from '@/lib/format'
+import { PURCHASE_PACKAGES } from '@/lib/purchase-packages'
 
 type ListingCredits = { credits: number }
 type Balance = {
@@ -11,17 +12,8 @@ type Balance = {
   released?: { count: number; usdc: number }
 }
 
-const LISTING_PACKAGES = [
-  { id: 'listing_1', label: '1 listing', priceCents: 800, credits: 1 },
-  { id: 'listing_3', label: '3 listings', priceCents: 2400, credits: 3 },
-  { id: 'listing_5', label: '5 listings', priceCents: 4000, credits: 5 },
-] as const
-
-const INVESTMENT_PACKAGES = [
-  { id: 'investment_10', label: 'Add $10', usdc: 10, priceCents: 1000 },
-  { id: 'investment_25', label: 'Add $25', usdc: 25, priceCents: 2500 },
-  { id: 'investment_50', label: 'Add $50', usdc: 50, priceCents: 5000 },
-] as const
+const LISTING_PACKAGES = PURCHASE_PACKAGES.filter((p) => p.product === 'listing_pack')
+const INVESTMENT_PACKAGES = PURCHASE_PACKAGES.filter((p) => p.product === 'investment_pack')
 
 function formatPrice(cents: number) {
   return formatUsd(cents / 100)
@@ -90,13 +82,24 @@ export default function BuyPage() {
   const handleBuy = async (packageId: string) => {
     setError(null)
 
-    const token = await getAccessToken()
+    let token: string | null = null
+    try {
+      token = await getAccessToken()
+    } catch (err: any) {
+      console.error('[buy] getAccessToken failed:', err)
+      setError('Failed to get access token. Please sign in again.')
+      return
+    }
+
     if (!token) {
       login()
       return
     }
 
     setBuying(packageId)
+    let responseStatus = 0
+    let responseBody: any = null
+
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
@@ -107,19 +110,30 @@ export default function BuyPage() {
         body: JSON.stringify({ package_id: packageId }),
       })
 
-      const json = await res.json().catch(() => ({}))
+      responseStatus = res.status
+      const responseText = await res.text()
+
+      try {
+        responseBody = responseText ? JSON.parse(responseText) : {}
+      } catch {
+        responseBody = { raw: responseText }
+      }
+
+      console.log('[buy] checkout response:', responseStatus, responseBody)
 
       if (!res.ok) {
-        setError(json.error || 'Checkout failed')
+        const message = responseBody?.error || `Checkout failed (status ${responseStatus})`
+        setError(message)
         return
       }
 
-      if (json.url) {
-        window.location.href = json.url
+      if (responseBody?.url) {
+        window.location.href = responseBody.url
       } else {
-        setError('No checkout URL returned')
+        setError('No checkout URL returned. Please try again.')
       }
     } catch (err: any) {
+      console.error('[buy] checkout fetch failed:', err)
       setError(err.message || 'Checkout failed')
     } finally {
       setBuying(null)
@@ -202,8 +216,10 @@ export default function BuyPage() {
                 className="flex flex-col items-start rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-5 text-left transition-colors hover:border-[#3B82F6] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <span className="text-base font-semibold text-[#111827]">{pack.label}</span>
-                <span className="mt-1 text-2xl font-bold text-[#111827]">{formatPrice(pack.priceCents)}</span>
-                <span className="mt-2 text-sm text-[#6B7280]">1 credit per listing</span>
+                <span className="mt-1 text-2xl font-bold text-[#111827]">{formatPrice(pack.amount)}</span>
+                <span className="mt-2 text-sm text-[#6B7280]">
+                  {pack.credits === 1 ? '1 credit' : `${pack.credits} credits`}
+                </span>
                 {buying === pack.id ? (
                   <span className="mt-4 inline-flex items-center rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white">
                     Redirecting…
@@ -238,7 +254,7 @@ export default function BuyPage() {
                 className="flex flex-col items-start rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-5 text-left transition-colors hover:border-[#3B82F6] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <span className="text-base font-semibold text-[#111827]">{pack.label} to your balance</span>
-                <span className="mt-1 text-2xl font-bold text-[#111827]">{formatPrice(pack.priceCents)}</span>
+                <span className="mt-1 text-2xl font-bold text-[#111827]">{formatPrice(pack.amount)}</span>
                 <span className="mt-2 text-sm text-[#6B7280]">
                   Adds {formatUsd(pack.usdc)} to your spendable balance after settlement
                 </span>

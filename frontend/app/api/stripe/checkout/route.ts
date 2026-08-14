@@ -1,42 +1,33 @@
 import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { PURCHASE_PACKAGES, findPurchasePackage, PurchasePackage } from '@/lib/purchase-packages'
 import Stripe from 'stripe'
 import crypto from 'crypto'
 
 // Package prices are defined server-side only. The client sends only a package
 // identifier; the server resolves what it costs and what it grants. Never trust
 // price or quantity values from the request body.
-const PACKAGES = [
-  { id: 'listing_1', product: 'listing_pack' as const, credits: 1, amount: 800 },
-  { id: 'listing_3', product: 'listing_pack' as const, credits: 3, amount: 2400 },
-  { id: 'listing_5', product: 'listing_pack' as const, credits: 5, amount: 4000 },
-  { id: 'investment_10', product: 'investment_pack' as const, usdc: 10, amount: 1000 },
-  { id: 'investment_25', product: 'investment_pack' as const, usdc: 25, amount: 2500 },
-  { id: 'investment_50', product: 'investment_pack' as const, usdc: 50, amount: 5000 },
-] as const
-
-type Package = typeof PACKAGES[number]
-
-function findPackage(packageId: unknown): Package | undefined {
-  if (typeof packageId !== 'string') return undefined
-  return (PACKAGES as readonly Package[]).find((p) => p.id === packageId)
-}
 
 export async function POST(request: Request) {
   try {
     const user = await getAuthenticatedUser(request)
 
+    const rawBody = await request.text()
     let body: any
     try {
-      body = await request.json()
-    } catch {
+      body = rawBody ? JSON.parse(rawBody) : {}
+    } catch (err: any) {
+      console.error('[api/stripe/checkout] invalid JSON body:', rawBody, err?.message)
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const pack = findPackage(body?.package_id)
+    const packageId = body?.package_id
+    console.log('[api/stripe/checkout] received package_id:', packageId)
+    const pack = findPurchasePackage(packageId)
     if (!pack) {
-      return NextResponse.json({ error: 'Unknown package' }, { status: 400 })
+      console.error('[api/stripe/checkout] unknown package:', packageId, 'accepted:', PURCHASE_PACKAGES.map((p) => p.id))
+      return NextResponse.json({ error: `Unknown package: ${packageId}` }, { status: 400 })
     }
 
     const secret = process.env.STRIPE_SECRET_KEY
@@ -67,6 +58,8 @@ export async function POST(request: Request) {
       row.release_after = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
     }
 
+    console.log('[api/stripe/checkout] creating payment for user:', user.id, 'package:', pack.id)
+
     const { data: inserted, error: insertError } = await supabaseAdmin
       .from('stripe_payments')
       .insert(row)
@@ -74,7 +67,7 @@ export async function POST(request: Request) {
       .single()
 
     if (insertError || !inserted) {
-      console.error('[api/stripe/checkout] failed to insert stripe_payments:', insertError)
+      console.error('[api/stripe/checkout] failed to insert stripe_payments for user:', user.id, 'package:', pack.id, insertError)
       return NextResponse.json({ error: 'Failed to create payment record' }, { status: 500 })
     }
 
@@ -117,6 +110,7 @@ export async function POST(request: Request) {
   } catch (err: any) {
     const message = err?.message || 'Unauthorized'
     if (message === 'Unauthorized') {
+      console.error('[api/stripe/checkout] unauthorized request')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     console.error('[api/stripe/checkout] unexpected error:', err)

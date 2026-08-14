@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
 import { POST as checkout } from '@/app/api/stripe/checkout/route'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { PURCHASE_PACKAGES } from '@/lib/purchase-packages'
 import { createFixtureUser, cleanupFixtures } from '../startup-votes/fixtures'
 
 const TEST_SESSION_URL = 'https://checkout.stripe.com/test-session'
@@ -211,6 +212,19 @@ describe('POST /api/stripe/checkout', () => {
       )
     } finally {
       await cleanupFixtures(priceUser.id, [])
+    }
+  })
+
+  it('accepts every package id in the shared purchase package list', async () => {
+    for (const pack of PURCHASE_PACKAGES) {
+      mockCreate.mockResolvedValueOnce({
+        id: `cs_test_${pack.id}`,
+        url: TEST_SESSION_URL,
+      })
+      const res = await post({ package_id: pack.id })
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.url).toBe(TEST_SESSION_URL)
     }
   })
 })
