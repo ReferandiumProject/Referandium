@@ -397,6 +397,10 @@ export default function ProfilePage() {
   const [delegationError, setDelegationError] = useState<string | null>(null)
   const [enabled, setEnabled] = useState(false)
 
+  const [activeTab, setActiveTab] = useState<'account' | 'activity' | 'startups'>('account')
+  const [listingCredits, setListingCredits] = useState<number | null>(null)
+  const [listingCreditsLoading, setListingCreditsLoading] = useState(false)
+
   const fetchProfile = async () => {
     const token = await getAccessToken()
     if (!token) {
@@ -408,29 +412,35 @@ export default function ProfilePage() {
     setError(null)
 
     try {
-      const [balanceRes, voteRes, holdingsRes, myStartupsRes, pendingRes] = await Promise.all([
-        fetch('/api/balance', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch('/api/startup-votes/mine', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch('/api/curve/mine', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch('/api/my-startups', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch('/api/investment-packs/pending', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ])
+      const [balanceRes, voteRes, holdingsRes, myStartupsRes, pendingRes, listingCreditsRes] =
+        await Promise.all([
+          fetch('/api/balance', {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch('/api/startup-votes/mine', {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch('/api/curve/mine', {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch('/api/my-startups', {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch('/api/investment-packs/pending', {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch('/api/listing-credits', {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ])
 
+      setListingCreditsLoading(false)
       const balanceJson = await balanceRes.json().catch(() => ({}))
       const voteJson = await voteRes.json().catch(() => ({}))
       const holdingsJson = await holdingsRes.json().catch(() => ({}))
       const myStartupsJson = await myStartupsRes.json().catch(() => ({}))
       const pendingJson = await pendingRes.json().catch(() => ({}))
+      const listingCreditsJson = await listingCreditsRes.json().catch(() => ({}))
 
       if (!balanceRes.ok) {
         setError(balanceJson.error || 'Failed to load balance')
@@ -466,10 +476,17 @@ export default function ProfilePage() {
         setMyStartupsError(null)
         setMyStartups(Array.isArray(myStartupsJson) ? myStartupsJson : [])
       }
+
+      if (!listingCreditsRes.ok) {
+        setError((prev) => prev || listingCreditsJson.error || 'Failed to load listing credits')
+      } else {
+        setListingCredits(listingCreditsJson.credits ?? 0)
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load profile')
     } finally {
       setLoading(false)
+      setListingCreditsLoading(false)
     }
   }
 
@@ -764,26 +781,74 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+        <div className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-3 shadow-sm" role="tablist" aria-label="Profile tabs">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setActiveTab('account')}
+              aria-selected={activeTab === 'account'}
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                activeTab === 'account'
+                  ? 'bg-[#3B82F6] text-white'
+                  : 'text-[#6B7280] hover:bg-[#F9FAFB]'
+              }`}
+            >
+              Account
+              {(pendingPacks ?? []).length > 0 && (
+                <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
+                  {(pendingPacks ?? []).length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('activity')}
+              aria-selected={activeTab === 'activity'}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                activeTab === 'activity'
+                  ? 'bg-[#3B82F6] text-white'
+                  : 'text-[#6B7280] hover:bg-[#F9FAFB]'
+              }`}
+            >
+              Activity
+            </button>
+            <button
+              onClick={() => setActiveTab('startups')}
+              aria-selected={activeTab === 'startups'}
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                activeTab === 'startups'
+                  ? 'bg-[#3B82F6] text-white'
+                  : 'text-[#6B7280] hover:bg-[#F9FAFB]'
+              }`}
+            >
+              My startups
+              {(myStartups ?? []).length > 0 && (
+                <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
+                  {(myStartups ?? []).length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'account' ? '' : 'hidden'}`}>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-[#111827]">Profile</h1>
-              <p className="mt-1 text-sm text-[#6B7280]">Manage your balance and votes</p>
+              <h1 className="text-2xl font-semibold text-[#111827]">Account</h1>
+              <p className="mt-1 text-sm text-[#6B7280]">Your balance, credits, and investment packs</p>
               {balance?.released && (balance.released.count > 0 || balance.released.usdc > 0) && (
                 <div className="mt-4 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-3 text-sm text-[#10B981]">
                   Your funds have arrived: {formatUsd(balance.released.usdc)} from {balance.released.count} released investment pack{balance.released.count === 1 ? '' : 's'}.
                 </div>
               )}
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => document.getElementById('deposit')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => setActiveTab('account')}
                 className="rounded-lg bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
               >
                 Deposit
               </button>
               <button
-                onClick={() => document.getElementById('withdraw')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => setActiveTab('account')}
                 className="rounded-lg border border-[#3B82F6] bg-white px-5 py-2.5 text-sm font-semibold text-[#3B82F6] transition-colors hover:bg-[#F9FAFB]"
               >
                 Withdraw
@@ -797,31 +862,33 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Available USDC</p>
-              <p className="mt-1 text-lg font-semibold text-[#111827]">{formatUsd(balance?.available_usdc)}</p>
+              <p className="mt-1 text-2xl font-semibold text-[#111827]">{formatUsd(balance?.available_usdc)}</p>
+              <p className="mt-1 text-xs text-[#6B7280]">Real money deposited on the platform. Withdrawable.</p>
             </div>
             <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Locked USDC</p>
-              <p className="mt-1 text-lg font-semibold text-[#111827]">{formatUsd(balance?.locked_usdc)}</p>
+              <p className="mt-1 text-2xl font-semibold text-[#111827]">{formatUsd(balance?.locked_usdc)}</p>
+              <p className="mt-1 text-xs text-[#6B7280]">Held for pending votes and investment packs.</p>
             </div>
-            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Daily votes remaining</p>
-              <p className="mt-1 text-lg font-semibold text-[#111827]">
-                {voteState ? formatVoteCount(voteState.balance.remaining_today) : '—'}
+            <div className="rounded-lg border border-[#F59E0B] bg-[#FFFBEB] p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-[#92400E]">Listing credits</p>
+              <p className="mt-1 text-2xl font-semibold text-[#92400E]">
+                {listingCreditsLoading ? '—' : formatVoteCount(listingCredits ?? 0)}
               </p>
-            </div>
-            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Vote pool</p>
-              <p className="mt-1 text-lg font-semibold text-[#111827]">
-                {voteState ? formatVoteCount(voteState.balance.pool_balance) : '—'}
+              <p className="mt-1 text-xs text-[#92400E]">
+                Credits never expire and are spent when listing a startup.
+                <Link href="/buy" className="ml-1 font-semibold text-[#B45309] hover:text-[#92400E]">
+                  Buy more
+                </Link>
               </p>
             </div>
           </div>
         </section>
 
-        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'account' ? '' : 'hidden'}`}>
           <div className="mb-4 flex flex-col gap-1">
             <h2 className="text-lg font-semibold text-[#111827]">Pending investment packs</h2>
             <p className="text-sm text-[#6B7280]">
@@ -853,7 +920,7 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'activity' ? '' : 'hidden'}`}>
           <h2 className="mb-1 text-lg font-semibold text-[#111827]">Voting power</h2>
           <p className="mb-4 text-sm text-[#6B7280]">
             Votes are free tokens, not USDC. The daily grant resets each day if unused,
@@ -888,7 +955,7 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'activity' ? '' : 'hidden'}`}>
           <h2 className="mb-4 text-lg font-semibold text-[#111827]">Active votes</h2>
           {voteState === null ? (
             <p className="text-sm text-[#6B7280]">Loading active votes...</p>
@@ -943,7 +1010,7 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'activity' ? '' : 'hidden'}`}>
           <div className="mb-4 flex flex-col gap-1">
             <h2 className="text-lg font-semibold text-[#111827]">Token holdings</h2>
             <p className="text-sm text-[#6B7280]">
@@ -1094,7 +1161,7 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'startups' ? '' : 'hidden'}`}>
           <div className="mb-4 flex flex-col gap-1">
             <h2 className="text-lg font-semibold text-[#111827]">My startups</h2>
             <p className="text-sm text-[#6B7280]">
@@ -1113,7 +1180,9 @@ export default function ProfilePage() {
             <p className="text-sm text-[#6B7280]">Loading your startups...</p>
           ) : myStartups.length === 0 ? (
             <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-6 text-center">
-              <p className="text-sm text-[#6B7280]">You haven&apos;t listed any startups yet.</p>
+              <p className="text-sm text-[#6B7280]">
+                This is where startups you list will appear. Start building your founder page to get votes and raise capital.
+              </p>
               <Link
                 href="/list"
                 className="mt-3 inline-block text-sm font-semibold text-[#3B82F6] hover:text-blue-700"
@@ -1183,7 +1252,7 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'activity' ? '' : 'hidden'}`}>
           <h2 className="mb-1 text-lg font-semibold text-[#111827]">Past votes</h2>
           <p className="mb-4 text-sm text-[#6B7280]">
             Startups you backed that reached their vote threshold and moved on to raising capital.
@@ -1228,7 +1297,7 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section id="deposit" className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+        <section id="deposit" className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'account' ? '' : 'hidden'}`}>
           <h2 className="mb-4 text-lg font-semibold text-[#111827]">Deposit</h2>
           <div className="mb-4 inline-flex rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-1">
             {(['devnet', 'wallet', 'card'] as const).map((m) => (
@@ -1406,7 +1475,7 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section id="withdraw" className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+        <section id="withdraw" className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'account' ? '' : 'hidden'}`}>
           <h2 className="mb-4 text-lg font-semibold text-[#111827]">Withdraw</h2>
           <form onSubmit={handleWithdraw} className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
