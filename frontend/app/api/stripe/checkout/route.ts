@@ -9,6 +9,36 @@ import crypto from 'crypto'
 // identifier; the server resolves what it costs and what it grants. Never trust
 // price or quantity values from the request body.
 
+function getCheckoutBaseUrl(request: Request): string {
+  // The browser's `Origin` header is the real host the user is on. On
+  // platforms like Netlify, `request.url` is the deploy-specific permalink
+  // (e.g. DEPLOY_URL), which changes every deploy and is not in Privy's
+  // allowed origins. Never use `request.url` for redirect URLs.
+  const originHeader = request.headers.get('origin')
+  if (originHeader) {
+    return new URL(originHeader).origin
+  }
+
+  // Proxies such as Netlify pass the real host this way.
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const forwardedProto = request.headers.get('x-forwarded-proto') ?? 'https'
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`
+  }
+
+  // Netlify's own environment variables. DEPLOY_PRIME_URL is the branch
+  // alias, URL is the production site. Do not use DEPLOY_URL — that is the
+  // permalink that caused this bug.
+  if (process.env.DEPLOY_PRIME_URL) {
+    return process.env.DEPLOY_PRIME_URL.replace(/\/$/, '')
+  }
+  if (process.env.URL) {
+    return process.env.URL.replace(/\/$/, '')
+  }
+
+  throw new Error('No origin, forwarded host, or Netlify URL available')
+}
+
 export async function POST(request: Request) {
   try {
     const user = await getAuthenticatedUser(request)
@@ -38,14 +68,9 @@ export async function POST(request: Request) {
 
     let baseUrl: string
     try {
-      baseUrl = new URL(request.url).origin
+      baseUrl = getCheckoutBaseUrl(request)
     } catch (err: any) {
-      console.error('[api/stripe/checkout] could not parse request origin:', request.url, err?.message)
-      baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
-    }
-
-    if (!baseUrl) {
-      console.error('[api/stripe/checkout] cannot determine checkout redirect URL')
+      console.error('[api/stripe/checkout] cannot determine checkout base URL:', err?.message)
       return NextResponse.json({ error: 'Cannot determine checkout redirect URL' }, { status: 500 })
     }
 

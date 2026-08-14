@@ -27,11 +27,16 @@ vi.mock('stripe', () => ({
   },
 }))
 
-function post(body: Record<string, unknown>, url = 'http://localhost:3000/api/stripe/checkout') {
+function post(
+  body: Record<string, unknown>,
+  url = 'http://localhost:3000/api/stripe/checkout',
+  extraHeaders: Record<string, string> = {}
+) {
+  const origin = extraHeaders.origin ?? new URL(url).origin
   return checkout(
     new Request(url, {
       method: 'POST',
-      headers: { Authorization: 'Bearer mock-token', 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer mock-token', 'Content-Type': 'application/json', origin, ...extraHeaders },
       body: JSON.stringify(body),
     })
   )
@@ -215,20 +220,21 @@ describe('POST /api/stripe/checkout', () => {
     }
   })
 
-  it('uses the request origin for success and cancel URLs, not a hardcoded localhost', async () => {
+  it('uses the Origin header for success and cancel URLs, not request.url', async () => {
     const urlUser = await createFixtureUser()
     vi.mocked(getAuthenticatedUser).mockResolvedValueOnce(urlUser as any)
 
     try {
       const res = await post(
         { package_id: 'listing_1' },
-        'https://deployed.example.com/api/stripe/checkout'
+        'https://deployed.example.com/api/stripe/checkout',
+        { origin: 'https://v2--aesthetic-gecko-d62bc6.netlify.app' }
       )
       expect(res.status).toBe(200)
       expect(mockCreate).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          success_url: 'https://deployed.example.com/?checkout=success&session_id={CHECKOUT_SESSION_ID}',
-          cancel_url: 'https://deployed.example.com/?checkout=cancel',
+          success_url: 'https://v2--aesthetic-gecko-d62bc6.netlify.app/?checkout=success&session_id={CHECKOUT_SESSION_ID}',
+          cancel_url: 'https://v2--aesthetic-gecko-d62bc6.netlify.app/?checkout=cancel',
         })
       )
     } finally {
