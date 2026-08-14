@@ -36,17 +36,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Stripe is not configured' }, { status: 500 })
     }
 
-    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+    let baseUrl: string
+    try {
+      baseUrl = new URL(request.url).origin
+    } catch (err: any) {
+      console.error('[api/stripe/checkout] could not parse request origin:', request.url, err?.message)
+      baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
+    }
+
+    if (!baseUrl) {
+      console.error('[api/stripe/checkout] cannot determine checkout redirect URL')
+      return NextResponse.json({ error: 'Cannot determine checkout redirect URL' }, { status: 500 })
+    }
+
     const successUrl = `${baseUrl}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`
     const cancelUrl = `${baseUrl}/?checkout=cancel`
 
     const paymentId = crypto.randomUUID()
+    const amountCents = pack.amount
+    const amountDollars = pack.amount / 100
 
     const row: Record<string, any> = {
       id: paymentId,
       user_id: user.id,
       product: pack.product,
-      amount_charged: pack.amount,
+      amount_charged: amountDollars,
       currency: 'usd',
       status: 'pending',
     }
@@ -77,7 +91,7 @@ export async function POST(request: Request) {
         {
           price_data: {
             currency: 'usd',
-            unit_amount: pack.amount,
+            unit_amount: amountCents,
             product_data: {
               name: pack.product === 'listing_pack' ? 'Listing Credits' : 'Investment Pack',
             },

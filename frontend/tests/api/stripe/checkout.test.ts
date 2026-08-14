@@ -27,9 +27,9 @@ vi.mock('stripe', () => ({
   },
 }))
 
-function post(body: Record<string, unknown>) {
+function post(body: Record<string, unknown>, url = 'http://localhost:3000/api/stripe/checkout') {
   return checkout(
-    new Request('http://localhost:3000/api/stripe/checkout', {
+    new Request(url, {
       method: 'POST',
       headers: { Authorization: 'Bearer mock-token', 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -107,7 +107,7 @@ describe('POST /api/stripe/checkout', () => {
       const row = await paymentForUser(listingUser.id)
       expect(row).not.toBeNull()
       expect(row!.product).toBe('listing_pack')
-      expect(row!.amount_charged).toBe(2400)
+      expect(row!.amount_charged).toBe(24)
       expect(row!.currency).toBe('usd')
       expect(row!.credits_granted).toBe(3)
       expect(row!.usdc_granted).toBeNull()
@@ -150,7 +150,7 @@ describe('POST /api/stripe/checkout', () => {
       const row = await paymentForUser(investmentUser.id)
       expect(row).not.toBeNull()
       expect(row!.product).toBe('investment_pack')
-      expect(row!.amount_charged).toBe(2500)
+      expect(row!.amount_charged).toBe(25)
       expect(row!.currency).toBe('usd')
       expect(row!.usdc_granted).toBe(25)
       expect(row!.credits_granted).toBeNull()
@@ -196,7 +196,7 @@ describe('POST /api/stripe/checkout', () => {
 
       const row = await paymentForUser(priceUser.id)
       expect(row).not.toBeNull()
-      expect(row!.amount_charged).toBe(800)
+      expect(row!.amount_charged).toBe(8)
       expect(row!.credits_granted).toBe(1)
 
       expect(mockCreate).toHaveBeenLastCalledWith(
@@ -212,6 +212,27 @@ describe('POST /api/stripe/checkout', () => {
       )
     } finally {
       await cleanupFixtures(priceUser.id, [])
+    }
+  })
+
+  it('uses the request origin for success and cancel URLs, not a hardcoded localhost', async () => {
+    const urlUser = await createFixtureUser()
+    vi.mocked(getAuthenticatedUser).mockResolvedValueOnce(urlUser as any)
+
+    try {
+      const res = await post(
+        { package_id: 'listing_1' },
+        'https://deployed.example.com/api/stripe/checkout'
+      )
+      expect(res.status).toBe(200)
+      expect(mockCreate).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          success_url: 'https://deployed.example.com/?checkout=success&session_id={CHECKOUT_SESSION_ID}',
+          cancel_url: 'https://deployed.example.com/?checkout=cancel',
+        })
+      )
+    } finally {
+      await cleanupFixtures(urlUser.id, [])
     }
   })
 
