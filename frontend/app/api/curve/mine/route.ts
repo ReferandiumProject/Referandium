@@ -43,6 +43,17 @@ export async function GET(request: Request) {
       )
     }
 
+    const { data: releaseData, error: releaseError } = await supabaseAdmin.rpc(
+      'release_due_investment_packs',
+      { p_user_id: user.id }
+    )
+
+    if (releaseError) {
+      console.error('[api/curve/mine] release_due_investment_packs error:', releaseError)
+    }
+
+    const release = Array.isArray(releaseData) ? releaseData[0] : releaseData
+
     const { data: balance, error: balanceError } = await supabaseAdmin
       .from('balances')
       .select('available_usdc::text')
@@ -93,6 +104,10 @@ export async function GET(request: Request) {
     return NextResponse.json({
       holdings: items,
       available_usdc: balance?.available_usdc ? String(balance.available_usdc) : '0',
+      released: {
+        count: release ? Number(release.r_released_count ?? 0) : 0,
+        usdc: release ? Number(release.r_released_usdc ?? 0) : 0,
+      },
     })
   } catch (err: any) {
     const message = err?.message || 'Unauthorized'

@@ -23,6 +23,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Failed to claim daily grant' }, { status: 500 })
     }
 
+    const { data: releaseData, error: releaseError } = await supabaseAdmin.rpc(
+      'release_due_investment_packs',
+      { p_user_id: user.id }
+    )
+
+    if (releaseError) {
+      console.error('[api/startup-votes/balance] release_due_investment_packs error:', releaseError)
+    }
+
+    const release = Array.isArray(releaseData) ? releaseData[0] : releaseData
+
     const { data: poolData, error: poolError } = await supabaseAdmin
       .from('startup_vote_pool')
       .select('available')
@@ -44,6 +55,10 @@ export async function GET(request: Request) {
       newly_granted: Boolean(grant.r_newly_granted),
       pool_balance: poolBalance,
       total_spendable: remainingToday + poolBalance,
+      released: {
+        count: release ? Number(release.r_released_count ?? 0) : 0,
+        usdc: release ? Number(release.r_released_usdc ?? 0) : 0,
+      },
     })
   } catch (err: any) {
     const message = err?.message || 'Unauthorized'
