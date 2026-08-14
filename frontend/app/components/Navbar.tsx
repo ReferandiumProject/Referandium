@@ -10,6 +10,7 @@ const navLinks = [
   { href: '/', label: 'Startups' },
   { href: '/how-it-works', label: 'How it works' },
   { href: '/about', label: 'About' },
+  { href: '/buy', label: 'Buy' },
 ]
 
 export default function Navbar() {

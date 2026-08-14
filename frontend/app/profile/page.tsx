@@ -10,6 +10,13 @@ import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/li
 type Balance = {
   available_usdc: number
   locked_usdc: number
+  released?: { count: number; usdc: number }
+}
+
+type PendingPack = {
+  id: string
+  usdc_granted: number
+  release_after: string
 }
 
 type DepositInfo = {
@@ -366,6 +373,7 @@ export default function ProfilePage() {
   const [voteState, setVoteState] = useState<VoteState | null>(null)
   const [holdings, setHoldings] = useState<CurveHolding[] | null>(null)
   const [holdingsLoading, setHoldingsLoading] = useState(false)
+  const [pendingPacks, setPendingPacks] = useState<PendingPack[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -400,7 +408,7 @@ export default function ProfilePage() {
     setError(null)
 
     try {
-      const [balanceRes, voteRes, holdingsRes, myStartupsRes] = await Promise.all([
+      const [balanceRes, voteRes, holdingsRes, myStartupsRes, pendingRes] = await Promise.all([
         fetch('/api/balance', {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -413,12 +421,16 @@ export default function ProfilePage() {
         fetch('/api/my-startups', {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch('/api/investment-packs/pending', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ])
 
       const balanceJson = await balanceRes.json().catch(() => ({}))
       const voteJson = await voteRes.json().catch(() => ({}))
       const holdingsJson = await holdingsRes.json().catch(() => ({}))
       const myStartupsJson = await myStartupsRes.json().catch(() => ({}))
+      const pendingJson = await pendingRes.json().catch(() => ({}))
 
       if (!balanceRes.ok) {
         setError(balanceJson.error || 'Failed to load balance')
@@ -440,6 +452,12 @@ export default function ProfilePage() {
         setError((prev) => prev || holdingsJson.error || 'Failed to load token holdings')
       } else {
         setHoldings(holdingsJson.holdings || [])
+      }
+
+      if (!pendingRes.ok) {
+        setError((prev) => prev || pendingJson.error || 'Failed to load pending investment packs')
+      } else {
+        setPendingPacks(pendingJson.packs || [])
       }
 
       if (!myStartupsRes.ok) {
@@ -751,6 +769,11 @@ export default function ProfilePage() {
             <div>
               <h1 className="text-2xl font-semibold text-[#111827]">Profile</h1>
               <p className="mt-1 text-sm text-[#6B7280]">Manage your balance and votes</p>
+              {balance?.released && (balance.released.count > 0 || balance.released.usdc > 0) && (
+                <div className="mt-4 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-3 text-sm text-[#10B981]">
+                  Your funds have arrived: {formatUsd(balance.released.usdc)} from {balance.released.count} released investment pack{balance.released.count === 1 ? '' : 's'}.
+                </div>
+              )}
             </div>
             <div className="flex gap-3">
               <button
@@ -765,6 +788,12 @@ export default function ProfilePage() {
               >
                 Withdraw
               </button>
+              <Link
+                href="/buy"
+                className="rounded-lg border border-[#3B82F6] bg-white px-5 py-2.5 text-center text-sm font-semibold text-[#3B82F6] transition-colors hover:bg-[#F9FAFB]"
+              >
+                Buy packs
+              </Link>
             </div>
           </div>
 
@@ -790,6 +819,38 @@ export default function ProfilePage() {
               </p>
             </div>
           </div>
+        </section>
+
+        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+          <div className="mb-4 flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-[#111827]">Pending investment packs</h2>
+            <p className="text-sm text-[#6B7280]">
+              Money you&apos;ve paid that is still settling. Funds become spendable on the date shown.
+            </p>
+          </div>
+          {pendingPacks === null ? (
+            <p className="text-sm text-[#6B7280]">Loading pending packs...</p>
+          ) : pendingPacks.length === 0 ? (
+            <p className="text-sm text-[#6B7280]">No investment packs currently pending.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {pendingPacks.map((pack) => (
+                <div
+                  key={pack.id}
+                  className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4"
+                >
+                  <p className="text-sm font-semibold text-[#111827]">{formatUsd(pack.usdc_granted)}</p>
+                  <p className="mt-1 text-xs text-[#6B7280]">
+                    Available {new Date(pack.release_after).toLocaleDateString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
