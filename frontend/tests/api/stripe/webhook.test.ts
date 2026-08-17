@@ -152,6 +152,32 @@ function makeDisputeEvent() {
   return { payload, signature: sign(payload) }
 }
 
+function makeCheckoutExpiredEvent(paymentId: string, eventId: string) {
+  const event = {
+    id: eventId,
+    object: 'event',
+    api_version: '2026-07-29.dahlia',
+    created: Math.floor(Date.now() / 1000),
+    livemode: false,
+    pending_webhooks: 1,
+    request: { id: 'req_test' },
+    type: 'checkout.session.expired',
+    data: {
+      object: {
+        id: 'cs_test_expired',
+        object: 'checkout.session',
+        amount_total: 2500,
+        currency: 'usd',
+        metadata: { payment_id: paymentId },
+        payment_status: 'unpaid',
+        status: 'expired',
+      },
+    },
+  }
+  const payload = JSON.stringify(event)
+  return { payload, signature: sign(payload) }
+}
+
 function makeUnknownEvent() {
   const event = {
     id: 'evt_unknown_test',
@@ -409,5 +435,58 @@ describe('POST /api/stripe/webhook', () => {
     const { payload, signature } = makeDisputeEvent()
     const res = await post(payload, signature)
     expect(res.status).toBe(200)
+  })
+
+  it('moves a pending row to failed on checkout.session.expired', async () => {
+    const user = await createFixtureUser()
+    const paymentId = await createInvestmentPayment(user.id)
+    const eventId = 'evt_expired_test_1'
+
+    try {
+      const { payload, signature } = makeCheckoutExpiredEvent(paymentId, eventId)
+      const res = await post(payload, signature)
+      expect(res.status).toBe(200)
+
+      const row = await getPayment(paymentId)
+      expect(row.status).toBe('failed')
+      expect(row.stripe_event_id).toBe(eventId)
+      expect(new Date(row.updated_at).getTime()).toBeGreaterThan(new Date(row.created_at).getTime())
+    } finally {
+      await cleanupFixtures(user.id, [])
+    }
+  })
+
+  it('does not fail a granted row on checkout.session.expired', async () => {
+    const user = await createFixtureUser()
+    const paymentId = await createListingPayment(user.id)
+    const grantEventId = 'evt_expired_grant_first'
+    const expiredEventId = 'evt_expired_granted_test'
+
+    try {
+      const { payload: grantPayload, signature: grantSignature } = makeCheckoutCompletedEvent(
+        paymentId,
+        2400,
+        grantEventId
+      )
+      const grantRes = await post(grantPayload, grantSignature)
+      expect(grantRes.status).toBe(200)
+
+      const rowAfterGrant = await getPayment(paymentId)
+      expect(rowAfterGrant.status).toBe('granted')
+      expect(rowAfterGrant.stripe_event_id).toBe(grantEventId)
+
+      const { payload: expiredPayload, signature: expiredSignature } = makeCheckoutExpiredEvent(
+        paymentId,
+        expiredEventId
+      )
+      const expiredRes = await post(expiredPayload, expiredSignature)
+      expect(expiredRes.status).toBe(200)
+
+      const rowAfterExpiry = await getPayment(paymentId)
+      expect(rowAfterExpiry.status).toBe('granted')
+      expect(rowAfterExpiry.stripe_event_id).toBe(grantEventId)
+    } finally {
+      await cleanupFixtures(user.id, [])
+    }
   })
 })

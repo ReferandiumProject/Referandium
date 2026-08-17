@@ -32,6 +32,7 @@ export async function POST(request: Request) {
   if (
     !CHECKOUT_SUCCESS_EVENTS.has(event.type) &&
     event.type !== 'checkout.session.async_payment_failed' &&
+    event.type !== 'checkout.session.expired' &&
     event.type !== 'charge.dispute.created'
   ) {
     return new NextResponse(null, { status: 200 })
@@ -78,6 +79,24 @@ export async function POST(request: Request) {
       .from('stripe_payments')
       .update({ status: 'failed', stripe_event_id: event.id, updated_at: now })
       .eq('id', paymentId)
+    return new NextResponse(null, { status: 200 })
+  }
+
+  if (event.type === 'checkout.session.expired') {
+    const { error: updateError } = await supabaseAdmin
+      .from('stripe_payments')
+      .update({ status: 'failed', stripe_event_id: event.id, updated_at: now })
+      .eq('id', paymentId)
+      .eq('status', 'pending')
+
+    if (updateError) {
+      if (updateError.message?.includes('unique')) {
+        return new NextResponse(null, { status: 200 })
+      }
+      console.error('[api/stripe/webhook] failed to update expired payment:', updateError)
+      return new NextResponse('Update failed', { status: 500 })
+    }
+
     return new NextResponse(null, { status: 200 })
   }
 
