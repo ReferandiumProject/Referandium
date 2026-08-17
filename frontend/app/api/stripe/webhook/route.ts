@@ -19,9 +19,10 @@ export async function POST(request: Request) {
     return new NextResponse('Webhook configuration error', { status: 500 })
   }
 
+  const stripe = new Stripe(apiKey, { apiVersion: '2026-07-29.dahlia' })
+
   let event: Stripe.Event
   try {
-    const stripe = new Stripe(apiKey, { apiVersion: '2026-07-29.dahlia' })
     event = stripe.webhooks.constructEvent(payload, sig, secret)
   } catch (err: any) {
     console.error('[api/stripe/webhook] signature verification failed:', err.message)
@@ -82,6 +83,51 @@ export async function POST(request: Request) {
     return new NextResponse(null, { status: 200 })
   }
 
+  let expandedSession: Stripe.Checkout.Session
+  try {
+    expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
+      expand: ['payment_intent.latest_charge.balance_transaction'],
+    })
+  } catch (err: any) {
+    console.error('[api/stripe/webhook] failed to retrieve checkout session:', err.message)
+    return new NextResponse('Failed to retrieve payment details', { status: 500 })
+  }
+
+  const paymentIntent = expandedSession.payment_intent
+  if (
+    typeof paymentIntent !== 'object' ||
+    !paymentIntent ||
+    typeof paymentIntent.latest_charge !== 'object' ||
+    !paymentIntent.latest_charge
+  ) {
+    console.error('[api/stripe/webhook] payment_intent or charge not expanded')
+    return new NextResponse('Payment details incomplete', { status: 500 })
+  }
+
+  const charge = paymentIntent.latest_charge as Stripe.Charge
+  const balanceTransaction = charge.balance_transaction
+  if (typeof balanceTransaction !== 'object' || !balanceTransaction) {
+    console.error('[api/stripe/webhook] balance_transaction not expanded')
+    return new NextResponse('Payment details incomplete', { status: 500 })
+  }
+
+  const grossCents = expandedSession.amount_total
+  const feeCents = balanceTransaction.fee
+  const availableOn = balanceTransaction.available_on
+  if (
+    typeof grossCents !== 'number' ||
+    typeof feeCents !== 'number' ||
+    typeof availableOn !== 'number'
+  ) {
+    console.error('[api/stripe/webhook] missing amount, fee, or availability')
+    return new NextResponse('Payment details incomplete', { status: 500 })
+  }
+
+  const availableAt = new Date(availableOn * 1000).toISOString()
+  const stripeFee = Number((feeCents / 100).toFixed(6))
+  const netCents = grossCents - feeCents
+  const netUsdc = Number((netCents / 100).toFixed(6))
+
   if (row.product === 'listing_pack') {
     try {
       const { error: grantError } = await supabaseAdmin.rpc('grant_listing_credits', {
@@ -102,7 +148,12 @@ export async function POST(request: Request) {
 
     const { error: updateError } = await supabaseAdmin
       .from('stripe_payments')
-      .update({ status: 'granted', stripe_event_id: event.id })
+      .update({
+        status: 'granted',
+        stripe_event_id: event.id,
+        stripe_fee: stripeFee,
+        funds_available_on: availableAt,
+      })
       .eq('id', paymentId)
 
     if (updateError) {
@@ -118,7 +169,14 @@ export async function POST(request: Request) {
 
   const { error: updateError } = await supabaseAdmin
     .from('stripe_payments')
-    .update({ status: 'paid', stripe_event_id: event.id })
+    .update({
+      status: 'paid',
+      stripe_event_id: event.id,
+      usdc_granted: netUsdc,
+      release_after: availableAt,
+      stripe_fee: stripeFee,
+      funds_available_on: availableAt,
+    })
     .eq('id', paymentId)
 
   if (updateError) {

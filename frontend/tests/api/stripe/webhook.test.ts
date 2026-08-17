@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { POST as webhook } from '@/app/api/stripe/webhook/route'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { createFixtureUser, cleanupFixtures } from '../startup-votes/fixtures'
@@ -6,6 +6,45 @@ import Stripe from 'stripe'
 
 const WEBHOOK_SECRET = 'whsec_test_webhook_secret'
 const STRIPE_API_KEY = 'sk_test_dummy'
+
+const mockRetrieve = vi.hoisted(() => vi.fn())
+
+vi.mock('stripe', () => ({
+  default: class Stripe {
+    constructor(_apiKey: string, _opts?: any) {}
+    get webhooks() {
+      const signPayload = (payload: string, secret: string, timestamp: number) => {
+        const base = `${timestamp}.${payload}.${secret}`
+        return Buffer.from(base).toString('hex')
+      }
+      return {
+        generateTestHeaderString({ payload, secret, timestamp }: any) {
+          const v1 = signPayload(payload, secret, timestamp)
+          return `t=${timestamp},v1=${v1}`
+        },
+        constructEvent(payload: string, sig: string, secret: string) {
+          const parts: Record<string, string> = {}
+          for (const part of sig.split(',')) {
+            const [key, ...rest] = part.split('=')
+            parts[key] = rest.join('=')
+          }
+          const expected = signPayload(payload, secret, parseInt(parts.t, 10))
+          if (parts.v1 !== expected) {
+            throw new Error('Invalid signature')
+          }
+          return JSON.parse(payload)
+        },
+      }
+    }
+    get checkout() {
+      return {
+        sessions: {
+          retrieve: mockRetrieve,
+        },
+      }
+    }
+  },
+}))
 
 function post(payload: string, signature: string) {
   return webhook(
@@ -29,10 +68,40 @@ function sign(payload: string) {
   })
 }
 
+function makeExpandedSession(
+  sessionId: string,
+  amountTotal: number,
+  fee: number,
+  availableOn: number
+) {
+  return {
+    id: sessionId,
+    object: 'checkout.session',
+    amount_total: amountTotal,
+    currency: 'usd',
+    payment_intent: {
+      id: 'pi_test',
+      object: 'payment_intent',
+      latest_charge: {
+        id: 'ch_test',
+        object: 'charge',
+        balance_transaction: {
+          id: 'txn_test',
+          object: 'balance_transaction',
+          fee,
+          available_on: availableOn,
+        },
+      },
+    },
+  }
+}
+
 function makeCheckoutCompletedEvent(
   paymentId: string,
   amountTotal: number,
-  eventId: string
+  eventId: string,
+  fee = 0,
+  availableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60
 ) {
   const event = {
     id: eventId,
@@ -55,6 +124,7 @@ function makeCheckoutCompletedEvent(
       },
     },
   }
+  mockRetrieve.mockResolvedValueOnce(makeExpandedSession('cs_test_session', amountTotal, fee, availableOn))
   const payload = JSON.stringify(event)
   return { payload, signature: sign(payload) }
 }
@@ -177,6 +247,14 @@ describe('POST /api/stripe/webhook', () => {
     process.env.STRIPE_WEBHOOK_SECRET = WEBHOOK_SECRET
   })
 
+  beforeEach(() => {
+    mockRetrieve.mockReset()
+    const defaultAvailableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60
+    mockRetrieve.mockResolvedValue(
+      makeExpandedSession('cs_test_session', 2500, 0, defaultAvailableOn)
+    )
+  })
+
   it('returns 400 and does nothing on an invalid signature', async () => {
     const user = await createFixtureUser()
     const paymentId = await createListingPayment(user.id)
@@ -255,6 +333,33 @@ describe('POST /api/stripe/webhook', () => {
       const row = await getPayment(paymentId)
       expect(row.status).toBe('paid')
       expect(row.stripe_event_id).toBe(eventId)
+
+      expect(await currentCredits(user.id)).toBe(0)
+      expect(await creditEventCount(user.id)).toBe(0)
+      expect(await balanceExists(user.id)).toBe(false)
+    } finally {
+      await cleanupFixtures(user.id, [])
+    }
+  })
+
+  it('grants net USDC for an investment pack after Stripe fees', async () => {
+    const user = await createFixtureUser()
+    const paymentId = await createInvestmentPayment(user.id)
+    const eventId = 'evt_investment_fee_test'
+    const availableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60
+
+    try {
+      const { payload, signature } = makeCheckoutCompletedEvent(paymentId, 2500, eventId, 103, availableOn)
+      const res = await post(payload, signature)
+      expect(res.status).toBe(200)
+
+      const row = await getPayment(paymentId)
+      expect(row.status).toBe('paid')
+      expect(row.stripe_event_id).toBe(eventId)
+      expect(Number(row.usdc_granted)).toBe(23.97)
+      expect(Number(row.stripe_fee)).toBe(1.03)
+      expect(new Date(row.release_after).getTime()).toBe(availableOn * 1000)
+      expect(new Date(row.funds_available_on).getTime()).toBe(availableOn * 1000)
 
       expect(await currentCredits(user.id)).toBe(0)
       expect(await creditEventCount(user.id)).toBe(0)
