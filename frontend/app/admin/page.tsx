@@ -28,6 +28,14 @@ type Startup = {
   graduated?: boolean
 }
 
+type StuckPack = {
+  id: string
+  email: string
+  amount_charged: number
+  created_at: string
+  stuck_for: string
+}
+
 type AuditAction = {
   id: number
   action: string
@@ -67,6 +75,8 @@ export default function AdminPage() {
   const [actions, setActions] = useState<AuditAction[] | null>(null)
   const [loadingStartups, setLoadingStartups] = useState(false)
   const [loadingActions, setLoadingActions] = useState(false)
+  const [stuckPacks, setStuckPacks] = useState<StuckPack[] | null>(null)
+  const [loadingStuck, setLoadingStuck] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleted, setShowDeleted] = useState(true)
 
@@ -125,7 +135,7 @@ export default function AdminPage() {
       const json = await res.json().catch(() => ({}))
       if (json.isAdmin) {
         setStatus('admin')
-        await Promise.all([fetchStartups(token), fetchActions(token)])
+        await Promise.all([fetchStartups(token), fetchActions(token), fetchStuckPacks(token)])
       } else {
         setStatus('not-authorized')
       }
@@ -158,6 +168,31 @@ export default function AdminPage() {
     }
   }
 
+  const fetchStuckPacks = async (tokenOverride?: string) => {
+    const token = tokenOverride || (await getToken())
+    if (!token) return
+    setLoadingStuck(true)
+    try {
+      const res = await fetch('/api/admin/stuck-investment-packs', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        console.error(`[admin page] fetchStuckPacks HTTP ${res.status}:`, json)
+        setError(json.error || 'Failed to load stuck investment packs')
+        return
+      }
+      const json = await res.json()
+      setStuckPacks(json || [])
+    } catch (e) {
+      console.error('[admin page] fetchStuckPacks failed:', e)
+      setError('Failed to load stuck investment packs')
+    } finally {
+      setLoadingStuck(false)
+    }
+  }
+
   const fetchActions = async (tokenOverride?: string) => {
     const token = tokenOverride || (await getToken())
     if (!token) return
@@ -186,7 +221,7 @@ export default function AdminPage() {
   const refresh = async () => {
     const token = await getToken()
     if (!token) return
-    await Promise.all([fetchStartups(token), fetchActions(token)])
+    await Promise.all([fetchStartups(token), fetchActions(token), fetchStuckPacks(token)])
   }
 
   const openEdit = (s: Startup) => {
@@ -615,6 +650,57 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+          )}
+        </section>
+
+        <section
+          className={`mb-8 rounded-xl border p-5 shadow-sm ${
+            (stuckPacks || []).length > 0
+              ? 'border-[#F59E0B]/30 bg-[#FEF3C7]'
+              : 'border-[#E5E7EB] bg-white'
+          }`}
+        >
+          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Stuck investment packs</h2>
+          <p className="mb-4 text-sm text-[#6B7280]">
+            Paid investment packs with no net amount. This should always be zero.
+          </p>
+
+          {loadingStuck ? (
+            <p className="text-sm text-[#6B7280]">Loading stuck packs...</p>
+          ) : (
+            <>
+              <div className="mb-4">
+                <span className="text-3xl font-bold text-[#111827]">{(stuckPacks || []).length}</span>
+                <span className="ml-2 text-sm text-[#6B7280]">stuck</span>
+              </div>
+
+              {(stuckPacks || []).length === 0 ? (
+                <p className="text-sm text-[#6B7280]">No stuck investment packs. The view ran successfully.</p>
+              ) : (
+                <div className="-mx-5 overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="bg-[#F9FAFB] text-[#6B7280]">
+                      <tr>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Email</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Amount</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Created</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Stuck for</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E5E7EB]">
+                      {(stuckPacks || []).map((p) => (
+                        <tr key={p.id} className="hover:bg-[#F9FAFB]">
+                          <td className="px-4 py-3 text-[#111827]">{p.email}</td>
+                          <td className="px-4 py-3 text-right text-[#111827]">{formatUsd(p.amount_charged)}</td>
+                          <td className="px-4 py-3 text-[#6B7280]">{formatDate(p.created_at)}</td>
+                          <td className="px-4 py-3 text-[#B45309] font-medium">{p.stuck_for}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </section>
 
