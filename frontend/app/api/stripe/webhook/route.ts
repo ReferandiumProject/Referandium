@@ -40,12 +40,47 @@ export async function POST(request: Request) {
 
   if (event.type === 'charge.dispute.created') {
     const dispute = event.data.object as Stripe.Dispute
-    console.log(
-      '[api/stripe/webhook] dispute created:',
-      dispute.id,
-      'for charge:',
-      (dispute as any).charge
-    )
+    const disputeChargeId = (dispute as any).charge
+    const disputeAmount = dispute.amount
+
+    if (typeof disputeChargeId !== 'string' || typeof disputeAmount !== 'number') {
+      console.error('[api/stripe/webhook] dispute missing charge or amount')
+      return new NextResponse('Dispute details incomplete', { status: 500 })
+    }
+
+    const { data: payment } = await supabaseAdmin
+      .from('stripe_payments')
+      .select('id, stripe_payment_intent_id')
+      .eq('stripe_charge_id', disputeChargeId)
+      .maybeSingle()
+
+    const disputeRow: Record<string, any> = {
+      stripe_dispute_id: dispute.id,
+      stripe_charge_id: disputeChargeId,
+      amount: Number((disputeAmount / 100).toFixed(2)),
+      currency: (dispute.currency || 'usd').toLowerCase(),
+      reason: dispute.reason ?? null,
+      status: dispute.status ?? null,
+      stripe_created_at: new Date(dispute.created * 1000).toISOString(),
+      raw: event,
+    }
+
+    if (payment) {
+      disputeRow.payment_id = payment.id
+      disputeRow.stripe_payment_intent_id = payment.stripe_payment_intent_id
+    }
+
+    const { error: insertError } = await supabaseAdmin.from('stripe_disputes').insert(disputeRow)
+
+    if (insertError) {
+      if (insertError.message?.includes('unique')) {
+        return new NextResponse(null, { status: 200 })
+      }
+      console.error('[api/stripe/webhook] failed to insert dispute:', insertError)
+      return new NextResponse('Dispute insert failed', { status: 500 })
+    }
+
+    console.log('[api/stripe/webhook] dispute recorded:', dispute.id, 'for charge:', disputeChargeId)
     return new NextResponse(null, { status: 200 })
   }
 
@@ -173,6 +208,8 @@ export async function POST(request: Request) {
         status: 'granted',
         stripe_event_id: event.id,
         updated_at: now,
+        stripe_charge_id: charge.id,
+        stripe_payment_intent_id: (paymentIntent as any).id,
         stripe_fee: stripeFee,
         funds_available_on: availableAt,
       })
@@ -195,6 +232,8 @@ export async function POST(request: Request) {
       status: 'paid',
       stripe_event_id: event.id,
       updated_at: now,
+      stripe_charge_id: charge.id,
+      stripe_payment_intent_id: (paymentIntent as any).id,
       usdc_granted: netUsdc,
       release_after: availableAt,
       stripe_fee: stripeFee,

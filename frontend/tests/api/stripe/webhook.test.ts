@@ -129,9 +129,14 @@ function makeCheckoutCompletedEvent(
   return { payload, signature: sign(payload) }
 }
 
-function makeDisputeEvent() {
+function makeDisputeEvent(
+  chargeId = 'ch_test',
+  amount = 2400,
+  disputeId = 'dp_test',
+  reason = 'fraudulent'
+) {
   const event = {
-    id: 'evt_dispute_test',
+    id: `evt_${disputeId}`,
     object: 'event',
     api_version: '2026-07-29.dahlia',
     created: Math.floor(Date.now() / 1000),
@@ -141,10 +146,14 @@ function makeDisputeEvent() {
     type: 'charge.dispute.created',
     data: {
       object: {
-        id: 'dp_test',
+        id: disputeId,
         object: 'dispute',
-        charge: 'ch_test',
+        charge: chargeId,
+        amount,
+        currency: 'usd',
+        reason,
         status: 'needs_response',
+        created: Math.floor(Date.now() / 1000),
       },
     },
   }
@@ -236,6 +245,20 @@ async function getPayment(paymentId: string) {
     .single()
   if (error) throw new Error(`get payment failed: ${error.message}`)
   return data
+}
+
+async function getDispute(disputeId: string) {
+  const { data, error } = await supabaseAdmin
+    .from('stripe_disputes')
+    .select('*')
+    .eq('stripe_dispute_id', disputeId)
+    .maybeSingle()
+  if (error) throw new Error(`get dispute failed: ${error.message}`)
+  return data
+}
+
+async function removeDispute(disputeId: string) {
+  await supabaseAdmin.from('stripe_disputes').delete().eq('stripe_dispute_id', disputeId)
 }
 
 async function currentCredits(userId: string) {
@@ -487,6 +510,63 @@ describe('POST /api/stripe/webhook', () => {
       expect(rowAfterExpiry.stripe_event_id).toBe(grantEventId)
     } finally {
       await cleanupFixtures(user.id, [])
+    }
+  })
+
+  it('records a dispute for a known charge and links it to the right payment', async () => {
+    const user = await createFixtureUser()
+    const paymentId = await createListingPayment(user.id)
+    const completedEventId = 'evt_dispute_completed_test'
+    const disputeId = 'dp_known_test'
+
+    try {
+      const { payload: completedPayload, signature: completedSignature } = makeCheckoutCompletedEvent(
+        paymentId,
+        2400,
+        completedEventId
+      )
+      const completedRes = await post(completedPayload, completedSignature)
+      expect(completedRes.status).toBe(200)
+
+      const { payload, signature } = makeDisputeEvent('ch_test', 2400, disputeId)
+      const res = await post(payload, signature)
+      expect(res.status).toBe(200)
+
+      const row = await getDispute(disputeId)
+      expect(row).not.toBeNull()
+      expect(row!.payment_id).toBe(paymentId)
+      expect(row!.stripe_charge_id).toBe('ch_test')
+      expect(row!.stripe_payment_intent_id).toBe('pi_test')
+      expect(Number(row!.amount)).toBe(24)
+      expect(row!.currency).toBe('usd')
+      expect(row!.reason).toBe('fraudulent')
+      expect(row!.status).toBe('needs_response')
+      expect(row!.raw).toBeDefined()
+    } finally {
+      await removeDispute(disputeId)
+      await cleanupFixtures(user.id, [])
+    }
+  })
+
+  it('records a dispute for an unknown charge with a null payment_id', async () => {
+    const disputeId = 'dp_unknown_test'
+
+    try {
+      const { payload, signature } = makeDisputeEvent('ch_unknown', 1250, disputeId, 'duplicate')
+      const res = await post(payload, signature)
+      expect(res.status).toBe(200)
+
+      const row = await getDispute(disputeId)
+      expect(row).not.toBeNull()
+      expect(row!.payment_id).toBeNull()
+      expect(row!.stripe_charge_id).toBe('ch_unknown')
+      expect(row!.stripe_payment_intent_id).toBeNull()
+      expect(Number(row!.amount)).toBe(12.5)
+      expect(row!.currency).toBe('usd')
+      expect(row!.reason).toBe('duplicate')
+      expect(row!.status).toBe('needs_response')
+    } finally {
+      await removeDispute(disputeId)
     }
   })
 })
