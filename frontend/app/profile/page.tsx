@@ -842,13 +842,21 @@ export default function ProfilePage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => setActiveTab('account')}
+                type="button"
+                onClick={() => {
+                  setActiveTab('account')
+                  setTimeout(() => document.getElementById('deposit')?.scrollIntoView({ behavior: 'smooth' }), 0)
+                }}
                 className="rounded-lg bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
               >
                 Deposit
               </button>
               <button
-                onClick={() => setActiveTab('account')}
+                type="button"
+                onClick={() => {
+                  setActiveTab('account')
+                  setTimeout(() => document.getElementById('withdraw')?.scrollIntoView({ behavior: 'smooth' }), 0)
+                }}
                 className="rounded-lg border border-[#3B82F6] bg-white px-5 py-2.5 text-sm font-semibold text-[#3B82F6] transition-colors hover:bg-[#F9FAFB]"
               >
                 Withdraw
