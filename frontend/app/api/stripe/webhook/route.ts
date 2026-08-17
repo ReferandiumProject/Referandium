@@ -71,10 +71,12 @@ export async function POST(request: Request) {
     return new NextResponse(null, { status: 200 })
   }
 
+  const now = new Date().toISOString()
+
   if (event.type === 'checkout.session.async_payment_failed') {
     await supabaseAdmin
       .from('stripe_payments')
-      .update({ status: 'failed', stripe_event_id: event.id })
+      .update({ status: 'failed', stripe_event_id: event.id, updated_at: now })
       .eq('id', paymentId)
     return new NextResponse(null, { status: 200 })
   }
@@ -151,6 +153,7 @@ export async function POST(request: Request) {
       .update({
         status: 'granted',
         stripe_event_id: event.id,
+        updated_at: now,
         stripe_fee: stripeFee,
         funds_available_on: availableAt,
       })
@@ -172,6 +175,7 @@ export async function POST(request: Request) {
     .update({
       status: 'paid',
       stripe_event_id: event.id,
+      updated_at: now,
       usdc_granted: netUsdc,
       release_after: availableAt,
       stripe_fee: stripeFee,

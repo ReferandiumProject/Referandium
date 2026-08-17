@@ -292,6 +292,7 @@ describe('POST /api/stripe/webhook', () => {
       const row = await getPayment(paymentId)
       expect(row.status).toBe('granted')
       expect(row.stripe_event_id).toBe(eventId)
+      expect(new Date(row.updated_at).getTime()).toBeGreaterThan(new Date(row.created_at).getTime())
 
       expect(await currentCredits(user.id)).toBe(3)
       expect(await creditEventCount(user.id)).toBe(1)

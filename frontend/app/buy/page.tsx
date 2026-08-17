@@ -240,9 +240,8 @@ export default function BuyPage() {
             Add USDC to the balance you use for backing startups. Choose the amount you want to add.
           </p>
           <div className="mt-2 rounded-lg border border-[#F59E0B]/30 bg-[#F59E0B]/10 p-3 text-sm text-[#B45309]">
-            Investment pack funds are held for three days before they appear in your balance.
-            This is the settlement period — real money being converted before it becomes spendable,
-            not an arbitrary delay.
+            Funds are held until Stripe reports them as available. This is the settlement period
+            — real money being converted before it becomes spendable, not an arbitrary delay.
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -253,10 +252,10 @@ export default function BuyPage() {
                 disabled={buying === pack.id}
                 className="flex flex-col items-start rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-5 text-left transition-colors hover:border-[#3B82F6] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <span className="text-base font-semibold text-[#111827]">{pack.label} to your balance</span>
-                <span className="mt-1 text-2xl font-bold text-[#111827]">{formatPrice(pack.amount)}</span>
+                <span className="text-2xl font-bold text-[#111827]">{formatPrice(pack.amount)}</span>
                 <span className="mt-2 text-sm text-[#6B7280]">
-                  Adds {formatUsd(pack.usdc)} to your spendable balance after settlement
+                  Card fees are deducted from this — whatever remains is added to your balance
+                  once the payment settles.
                 </span>
                 {buying === pack.id ? (
                   <span className="mt-4 inline-flex items-center rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white">
