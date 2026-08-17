@@ -244,6 +244,10 @@ export default function BuyPage() {
             — real money being converted before it becomes spendable, not an arbitrary delay.
           </div>
 
+          <p className="mt-2 text-xs text-[#6B7280]">
+            Card fees include a fixed charge, so smaller amounts lose a larger share to fees.
+          </p>
+
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
             {INVESTMENT_PACKAGES.map((pack) => (
               <button
