@@ -4,6 +4,7 @@ import './globals.css'
 import AppWalletProvider from './components/AppWalletProvider'
 import { UserProvider } from './context/UserContext'
 import Navbar from './components/Navbar'
+import TestBanner from './components/TestBanner'
 import Footer from './components/Footer'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -23,6 +24,7 @@ export default function RootLayout({
       <body className={inter.className} style={{ backgroundColor: '#FFFFFF', color: '#0F172A' }}>
         <AppWalletProvider>
           <UserProvider>
+            <TestBanner />
             <Navbar />
             <main>{children}</main>
             <Footer />
