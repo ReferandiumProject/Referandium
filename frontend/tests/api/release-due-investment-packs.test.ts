@@ -48,14 +48,13 @@ async function createInvestmentPayment(
   releaseOffsetMs: number
 ) {
   const paymentId = crypto.randomUUID()
-  const amountCents = usdc * 100
   const releaseAfter = new Date(Date.now() + releaseOffsetMs).toISOString()
 
   const { error } = await supabaseAdmin.from('stripe_payments').insert({
     id: paymentId,
     user_id: userId,
     product: 'investment_pack',
-    amount_charged: amountCents,
+    amount_charged: usdc,
     currency: 'usd',
     usdc_granted: usdc,
     status: 'paid',

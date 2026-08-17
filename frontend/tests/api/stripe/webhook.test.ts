@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from 'vites
 import { POST as webhook } from '@/app/api/stripe/webhook/route'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { backfillInvestmentPacks } from '@/lib/backfill-investment-packs'
+import { Money } from '@/lib/money'
 import { createFixtureUser, cleanupFixtures } from '../startup-votes/fixtures'
 import Stripe from 'stripe'
 
@@ -276,7 +277,7 @@ async function createListingPayment(userId: string) {
     id,
     user_id: userId,
     product: 'listing_pack',
-    amount_charged: 2400,
+    amount_charged: Money.fromCents(2400).toDollars(),
     currency: 'usd',
     credits_granted: 3,
     status: 'pending',
@@ -285,7 +286,7 @@ async function createListingPayment(userId: string) {
   return id
 }
 
-async function createInvestmentPayment(userId: string, amountCharged = 2500, usdc = amountCharged / 100) {
+async function createInvestmentPayment(userId: string, amountCharged = 25, usdc = amountCharged) {
   const id = crypto.randomUUID()
   const releaseAfter = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
   const { error } = await supabaseAdmin.from('stripe_payments').insert({

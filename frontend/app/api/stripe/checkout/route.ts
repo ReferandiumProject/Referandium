@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { PURCHASE_PACKAGES, findPurchasePackage, PurchasePackage } from '@/lib/purchase-packages'
+import { Money } from '@/lib/money'
 import Stripe from 'stripe'
 import crypto from 'crypto'
 
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
 
     const paymentId = crypto.randomUUID()
     const amountCents = pack.amount
-    const amountDollars = pack.amount / 100
+    const amountDollars = Money.fromCents(pack.amount).toDollars()
 
     const row: Record<string, any> = {
       id: paymentId,

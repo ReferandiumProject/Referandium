@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { Money } from '@/lib/money'
 import Stripe from 'stripe'
 
 const CHECKOUT_SUCCESS_EVENTS = new Set([
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
     const disputeRow: Record<string, any> = {
       stripe_dispute_id: dispute.id,
       stripe_charge_id: disputeChargeId,
-      amount: Number((disputeAmount / 100).toFixed(2)),
+      amount: Money.fromCents(disputeAmount).toDollars(),
       currency: (dispute.currency || 'usd').toLowerCase(),
       reason: dispute.reason ?? null,
       status: dispute.status ?? null,

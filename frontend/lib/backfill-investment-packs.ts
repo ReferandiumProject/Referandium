@@ -1,5 +1,6 @@
 import Stripe from 'stripe'
 import { supabaseAdmin } from './supabaseServer'
+import { Money } from './money'
 
 export async function backfillInvestmentPacks(userId: string | null = null) {
   const apiKey = process.env.STRIPE_SECRET_KEY
@@ -47,17 +48,16 @@ export async function backfillInvestmentPacks(userId: string | null = null) {
         continue
       }
 
-      const amountCharged = Number(row.amount_charged)
-      const grossCents = Math.round(amountCharged * 100)
-      const settlementGrossCents = balance.amount
-      const feeCents = balance.fee
+      const amountCharged = Money.fromDollars(Number(row.amount_charged))
+      const settlementGross = Money.fromCents(balance.amount)
+      const fee = Money.fromCents(balance.fee)
+      const net = settlementGross.minus(fee)
       const settlementCurrency = (balance.currency || 'usd').toLowerCase()
       const availableOn = balance.available_on
       if (
-        !Number.isFinite(amountCharged) ||
-        !Number.isFinite(grossCents) ||
-        typeof settlementGrossCents !== 'number' ||
-        typeof feeCents !== 'number' ||
+        !Number.isFinite(amountCharged.toCents()) ||
+        !Number.isFinite(settlementGross.toCents()) ||
+        !Number.isFinite(fee.toCents()) ||
         typeof availableOn !== 'number'
       ) {
         console.warn(
@@ -68,19 +68,18 @@ export async function backfillInvestmentPacks(userId: string | null = null) {
       }
 
       const availableAt = new Date(availableOn * 1000).toISOString()
-      const stripeFee = Number((feeCents / 100).toFixed(6))
-      const settlementNetCents = settlementGrossCents - feeCents
-      const settlementGross = Number((settlementGrossCents / 100).toFixed(6))
-      const settlementNet = Number((settlementNetCents / 100).toFixed(6))
+      const stripeFee = fee.toDollars()
+      const settlementGrossDollars = settlementGross.toDollars()
+      const settlementNetDollars = net.toDollars()
 
       const chargeCurrency = (row.currency || 'usd').toLowerCase()
       let exchangeRate: number | null = null
       if (chargeCurrency === settlementCurrency) {
         exchangeRate = 1
       } else if (typeof balance.exchange_rate === 'number' && balance.exchange_rate > 0) {
-        exchangeRate = balance.exchange_rate
-      } else if (grossCents > 0 && settlementGrossCents > 0) {
-        exchangeRate = settlementGrossCents / grossCents
+        exchangeRate = Number(balance.exchange_rate.toFixed(6))
+      } else if (settlementGross.toCents() > 0 && amountCharged.toCents() > 0) {
+        exchangeRate = Number((settlementGross.toCents() / amountCharged.toCents()).toFixed(6))
       }
 
       if (exchangeRate === null || exchangeRate <= 0) {
@@ -91,12 +90,12 @@ export async function backfillInvestmentPacks(userId: string | null = null) {
         continue
       }
 
-      const netUsdCents = Math.round(settlementNetCents / exchangeRate)
-      const netUsdc = Number((netUsdCents / 100).toFixed(6))
+      const netUsdcMoney = net.dividedBy(exchangeRate)
+      const netUsdc = netUsdcMoney.toDollars()
 
-      const minUsdc = amountCharged * 0.8
-      const maxUsdc = amountCharged * 1.5
-      if (!Number.isFinite(netUsdc) || netUsdc < minUsdc || netUsdc > maxUsdc) {
+      const minUsdc = amountCharged.toDollars() * 0.8
+      const maxUsdc = amountCharged.toDollars() * 1.5
+      if (Number(netUsdc) < minUsdc || Number(netUsdc) > maxUsdc) {
         console.error(
           `[backfill-investment-packs] implausible usdc_granted ${netUsdc} for ${row.id} (allowed ${minUsdc}..${maxUsdc})`
         )
@@ -107,8 +106,8 @@ export async function backfillInvestmentPacks(userId: string | null = null) {
       const isInvestment = row.product === 'investment_pack'
       const updateValues: Record<string, any> = {
         settlement_currency: settlementCurrency,
-        settlement_gross: settlementGross,
-        settlement_net: settlementNet,
+        settlement_gross: settlementGrossDollars,
+        settlement_net: settlementNetDollars,
         stripe_exchange_rate: exchangeRate,
         stripe_fee: stripeFee,
         funds_available_on: availableAt,
