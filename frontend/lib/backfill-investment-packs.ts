@@ -11,7 +11,7 @@ export async function backfillInvestmentPacks(userId: string | null = null) {
 
   let query = supabaseAdmin
     .from('stripe_payments')
-    .select('id, product, user_id, amount_charged, stripe_charge_id')
+    .select('id, product, user_id, amount_charged, currency, stripe_charge_id')
     .or(
       'and(product.eq.investment_pack,usdc_granted.is.null),and(product.eq.listing_pack,settlement_gross.is.null)'
     )
@@ -47,13 +47,15 @@ export async function backfillInvestmentPacks(userId: string | null = null) {
         continue
       }
 
-      const grossCents = row.amount_charged
+      const amountCharged = Number(row.amount_charged)
+      const grossCents = Math.round(amountCharged * 100)
       const settlementGrossCents = balance.amount
       const feeCents = balance.fee
       const settlementCurrency = (balance.currency || 'usd').toLowerCase()
       const availableOn = balance.available_on
       if (
-        typeof grossCents !== 'number' ||
+        !Number.isFinite(amountCharged) ||
+        !Number.isFinite(grossCents) ||
         typeof settlementGrossCents !== 'number' ||
         typeof feeCents !== 'number' ||
         typeof availableOn !== 'number'
@@ -71,8 +73,11 @@ export async function backfillInvestmentPacks(userId: string | null = null) {
       const settlementGross = Number((settlementGrossCents / 100).toFixed(6))
       const settlementNet = Number((settlementNetCents / 100).toFixed(6))
 
+      const chargeCurrency = (row.currency || 'usd').toLowerCase()
       let exchangeRate: number | null = null
-      if (typeof balance.exchange_rate === 'number' && balance.exchange_rate > 0) {
+      if (chargeCurrency === settlementCurrency) {
+        exchangeRate = 1
+      } else if (typeof balance.exchange_rate === 'number' && balance.exchange_rate > 0) {
         exchangeRate = balance.exchange_rate
       } else if (grossCents > 0 && settlementGrossCents > 0) {
         exchangeRate = settlementGrossCents / grossCents
@@ -88,6 +93,16 @@ export async function backfillInvestmentPacks(userId: string | null = null) {
 
       const netUsdCents = Math.round(settlementNetCents / exchangeRate)
       const netUsdc = Number((netUsdCents / 100).toFixed(6))
+
+      const minUsdc = amountCharged * 0.8
+      const maxUsdc = amountCharged * 1.5
+      if (!Number.isFinite(netUsdc) || netUsdc < minUsdc || netUsdc > maxUsdc) {
+        console.error(
+          `[backfill-investment-packs] implausible usdc_granted ${netUsdc} for ${row.id} (allowed ${minUsdc}..${maxUsdc})`
+        )
+        skipped++
+        continue
+      }
 
       const isInvestment = row.product === 'investment_pack'
       const updateValues: Record<string, any> = {

@@ -304,7 +304,7 @@ async function createInvestmentPayment(userId: string, amountCharged = 2500, usd
 
 async function createPaidInvestmentPayment(
   userId: string,
-  amountCharged = 2500,
+  amountCharged = 25,
   chargeId = 'ch_test'
 ) {
   const id = crypto.randomUUID()
@@ -522,7 +522,7 @@ describe('POST /api/stripe/webhook', () => {
 
   it('backfill fills the six investment columns from a EUR balance transaction', async () => {
     const user = await createFixtureUser()
-    const paymentId = await createPaidInvestmentPayment(user.id, 1000, 'ch_eur')
+    const paymentId = await createPaidInvestmentPayment(user.id, 10, 'ch_eur')
     const availableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60
 
     try {
@@ -549,9 +549,9 @@ describe('POST /api/stripe/webhook', () => {
     }
   })
 
-  it('backfill is idempotent for a $10 pack with a 62-cent fee', async () => {
+  it('backfill fills a $10 USD pack with rate 1 and usdc_granted 9.38', async () => {
     const user = await createFixtureUser()
-    const paymentId = await createPaidInvestmentPayment(user.id, 1000, 'ch_usd')
+    const paymentId = await createPaidInvestmentPayment(user.id, 10, 'ch_usd')
     const availableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60
 
     try {
@@ -559,31 +559,47 @@ describe('POST /api/stripe/webhook', () => {
         makeCharge(62, availableOn, 1000, null, 'usd', 'usd')
       )
 
-      const first = await backfillInvestmentPacks(user.id)
-      expect(first.filled).toBe(1)
+      const result = await backfillInvestmentPacks(user.id)
+      expect(result.filled).toBe(1)
 
-      const rowAfterFirst = await getPayment(paymentId)
-      expect(rowAfterFirst.status).toBe('paid')
-      expect(Number(rowAfterFirst.usdc_granted)).toBe(9.38)
-      expect(rowAfterFirst.settlement_currency).toBe('usd')
-      expect(Number(rowAfterFirst.settlement_gross)).toBe(10)
-      expect(Number(rowAfterFirst.settlement_gross)).not.toBe(1000)
-      expect(Number(rowAfterFirst.settlement_net)).toBe(9.38)
-      expect(Number(rowAfterFirst.settlement_net)).not.toBe(938)
-      expect(new Date(rowAfterFirst.release_after).getTime()).toBe(availableOn * 1000)
-      expect(new Date(rowAfterFirst.funds_available_on).getTime()).toBe(availableOn * 1000)
-      expect(Number(rowAfterFirst.stripe_exchange_rate)).toBe(1)
-      expect(Number(rowAfterFirst.stripe_fee)).toBe(0.62)
+      const row = await getPayment(paymentId)
+      expect(row.status).toBe('paid')
+      expect(Number(row.usdc_granted)).toBe(9.38)
+      expect(row.settlement_currency).toBe('usd')
+      expect(Number(row.settlement_gross)).toBe(10)
+      expect(Number(row.settlement_gross)).not.toBe(1000)
+      expect(Number(row.settlement_net)).toBe(9.38)
+      expect(Number(row.settlement_net)).not.toBe(938)
+      expect(new Date(row.release_after).getTime()).toBe(availableOn * 1000)
+      expect(new Date(row.funds_available_on).getTime()).toBe(availableOn * 1000)
+      expect(Number(row.stripe_exchange_rate)).toBe(1)
+      expect(Number(row.stripe_fee)).toBe(0.62)
+    } finally {
+      await cleanupFixtures(user.id, [])
+    }
+  })
 
-      const second = await backfillInvestmentPacks(user.id)
-      expect(second.filled).toBe(0)
-      expect(second.skipped).toBe(0)
-      expect(mockChargeRetrieve).toHaveBeenCalledTimes(1)
+  it('backfill rejects an implausible result and leaves usdc_granted null', async () => {
+    const user = await createFixtureUser()
+    const paymentId = await createPaidInvestmentPayment(user.id, 10, 'ch_bad')
+    const availableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60
 
-      const rowAfterSecond = await getPayment(paymentId)
-      expect(rowAfterSecond.usdc_granted).toBe(rowAfterFirst.usdc_granted)
-      expect(rowAfterSecond.settlement_gross).toBe(rowAfterFirst.settlement_gross)
-      expect(rowAfterSecond.settlement_net).toBe(rowAfterFirst.settlement_net)
+    try {
+      mockChargeRetrieve.mockResolvedValueOnce(
+        makeCharge(62, availableOn, 100, null, 'usd', 'usd')
+      )
+
+      const result = await backfillInvestmentPacks(user.id)
+      expect(result.filled).toBe(0)
+      expect(result.skipped).toBe(1)
+
+      const row = await getPayment(paymentId)
+      expect(row.status).toBe('paid')
+      expect(row.usdc_granted).toBeNull()
+      expect(row.settlement_gross).toBeNull()
+      expect(row.settlement_net).toBeNull()
+      expect(row.settlement_currency).toBeNull()
+      expect(row.stripe_fee).toBeNull()
     } finally {
       await cleanupFixtures(user.id, [])
     }
