@@ -185,6 +185,8 @@ export async function POST(request: Request) {
   const availableAt = new Date(availableOn * 1000).toISOString()
   const stripeFee = Number((feeCents / 100).toFixed(6))
   const settlementNetCents = settlementGrossCents - feeCents
+  const settlementGross = Number((settlementGrossCents / 100).toFixed(6))
+  const settlementNet = Number((settlementNetCents / 100).toFixed(6))
 
   let exchangeRate: number | null = null
   if (typeof balanceTransaction.exchange_rate === 'number' && balanceTransaction.exchange_rate > 0) {
@@ -228,8 +230,8 @@ export async function POST(request: Request) {
         stripe_charge_id: charge.id,
         stripe_payment_intent_id: (paymentIntent as any).id,
         settlement_currency: settlementCurrency,
-        settlement_gross: settlementGrossCents,
-        settlement_net: settlementNetCents,
+        settlement_gross: settlementGross,
+        settlement_net: settlementNet,
         stripe_exchange_rate: exchangeRate,
         stripe_fee: stripeFee,
         funds_available_on: availableAt,
@@ -257,8 +259,8 @@ export async function POST(request: Request) {
       stripe_payment_intent_id: (paymentIntent as any).id,
       usdc_granted: netUsdc,
       settlement_currency: settlementCurrency,
-      settlement_gross: settlementGrossCents,
-      settlement_net: settlementNetCents,
+      settlement_gross: settlementGross,
+      settlement_net: settlementNet,
       stripe_exchange_rate: exchangeRate,
       release_after: availableAt,
       stripe_fee: stripeFee,

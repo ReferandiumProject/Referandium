@@ -468,8 +468,8 @@ describe('POST /api/stripe/webhook', () => {
       expect(Number(row.usdc_granted)).toBeCloseTo(9.20, 2)
       expect(Number(row.usdc_granted)).not.toBe(9.31)
       expect(row.settlement_currency).toBe('eur')
-      expect(Number(row.settlement_gross)).toBe(864)
-      expect(Number(row.settlement_net)).toBe(795)
+      expect(Number(row.settlement_gross)).toBe(8.64)
+      expect(Number(row.settlement_net)).toBe(7.95)
       expect(Number(row.stripe_exchange_rate)).toBeCloseTo(0.864, 5)
       expect(Number(row.stripe_fee)).toBe(0.69)
     } finally {
@@ -477,7 +477,7 @@ describe('POST /api/stripe/webhook', () => {
     }
   })
 
-  it('grants amount minus fee exactly when charge and settlement are both USD', async () => {
+  it('stores settlement gross and net in dollars for a $10 pack with a 62-cent fee', async () => {
     const user = await createFixtureUser()
     const paymentId = await createInvestmentPayment(user.id, 1000, 10)
     const eventId = 'evt_investment_usd_test'
@@ -488,7 +488,7 @@ describe('POST /api/stripe/webhook', () => {
         paymentId,
         1000,
         eventId,
-        103,
+        62,
         availableOn,
         1000,
         null,
@@ -500,12 +500,14 @@ describe('POST /api/stripe/webhook', () => {
 
       const row = await getPayment(paymentId)
       expect(row.status).toBe('paid')
-      expect(Number(row.usdc_granted)).toBe(8.97)
+      expect(Number(row.usdc_granted)).toBe(9.38)
       expect(row.settlement_currency).toBe('usd')
-      expect(Number(row.settlement_gross)).toBe(1000)
-      expect(Number(row.settlement_net)).toBe(897)
+      expect(Number(row.settlement_gross)).toBe(10)
+      expect(Number(row.settlement_gross)).not.toBe(1000)
+      expect(Number(row.settlement_net)).toBe(9.38)
+      expect(Number(row.settlement_net)).not.toBe(938)
       expect(Number(row.stripe_exchange_rate)).toBe(1)
-      expect(Number(row.stripe_fee)).toBe(1.03)
+      expect(Number(row.stripe_fee)).toBe(0.62)
     } finally {
       await cleanupFixtures(user.id, [])
     }
