@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { backfillInvestmentPacks } from '@/lib/backfill-investment-packs'
 
 export async function GET(request: Request) {
   try {
     const user = await getAuthenticatedUser(request)
+
+    try {
+      await backfillInvestmentPacks(user.id)
+    } catch (err: any) {
+      console.error('[api/startup-votes/balance] backfillInvestmentPacks error:', err?.message ?? err)
+    }
 
     const { data: grantData, error: grantError } = await supabaseAdmin.rpc(
       'claim_daily_grant',

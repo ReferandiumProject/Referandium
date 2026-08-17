@@ -142,7 +142,7 @@ export async function POST(request: Request) {
   let expandedSession: Stripe.Checkout.Session
   try {
     expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
-      expand: ['payment_intent.latest_charge.balance_transaction'],
+      expand: ['payment_intent.latest_charge'],
     })
   } catch (err: any) {
     console.error('[api/stripe/webhook] failed to retrieve checkout session:', err.message)
@@ -150,58 +150,23 @@ export async function POST(request: Request) {
   }
 
   const paymentIntent = expandedSession.payment_intent
-  if (
-    typeof paymentIntent !== 'object' ||
-    !paymentIntent ||
-    typeof paymentIntent.latest_charge !== 'object' ||
-    !paymentIntent.latest_charge
-  ) {
-    console.error('[api/stripe/webhook] payment_intent or charge not expanded')
+  if (typeof paymentIntent !== 'object' || !paymentIntent) {
+    console.error('[api/stripe/webhook] payment_intent not expanded')
     return new NextResponse('Payment details incomplete', { status: 500 })
   }
 
-  const charge = paymentIntent.latest_charge as Stripe.Charge
-  const balanceTransaction = charge.balance_transaction
-  if (typeof balanceTransaction !== 'object' || !balanceTransaction) {
-    console.error('[api/stripe/webhook] balance_transaction not expanded')
+  const rawCharge = paymentIntent.latest_charge
+  const chargeId =
+    typeof rawCharge === 'string'
+      ? rawCharge
+      : typeof rawCharge === 'object' && rawCharge
+        ? rawCharge.id
+        : null
+  if (!chargeId) {
+    console.error('[api/stripe/webhook] charge id not available')
     return new NextResponse('Payment details incomplete', { status: 500 })
   }
-
-  const grossCents = expandedSession.amount_total
-  const settlementGrossCents = balanceTransaction.amount
-  const feeCents = balanceTransaction.fee
-  const settlementCurrency = (balanceTransaction.currency || 'usd').toLowerCase()
-  const availableOn = balanceTransaction.available_on
-  if (
-    typeof grossCents !== 'number' ||
-    typeof settlementGrossCents !== 'number' ||
-    typeof feeCents !== 'number' ||
-    typeof availableOn !== 'number'
-  ) {
-    console.error('[api/stripe/webhook] missing amount, fee, or availability')
-    return new NextResponse('Payment details incomplete', { status: 500 })
-  }
-
-  const availableAt = new Date(availableOn * 1000).toISOString()
-  const stripeFee = Number((feeCents / 100).toFixed(6))
-  const settlementNetCents = settlementGrossCents - feeCents
-  const settlementGross = Number((settlementGrossCents / 100).toFixed(6))
-  const settlementNet = Number((settlementNetCents / 100).toFixed(6))
-
-  let exchangeRate: number | null = null
-  if (typeof balanceTransaction.exchange_rate === 'number' && balanceTransaction.exchange_rate > 0) {
-    exchangeRate = balanceTransaction.exchange_rate
-  } else if (grossCents > 0 && settlementGrossCents > 0) {
-    exchangeRate = settlementGrossCents / grossCents
-  }
-
-  if (exchangeRate === null || exchangeRate <= 0) {
-    console.error('[api/stripe/webhook] cannot determine exchange rate')
-    return new NextResponse('Exchange rate unavailable', { status: 500 })
-  }
-
-  const netUsdCents = Math.round(settlementNetCents / exchangeRate)
-  const netUsdc = Number((netUsdCents / 100).toFixed(6))
+  const paymentIntentId = paymentIntent.id
 
   if (row.product === 'listing_pack') {
     try {
@@ -227,14 +192,8 @@ export async function POST(request: Request) {
         status: 'granted',
         stripe_event_id: event.id,
         updated_at: now,
-        stripe_charge_id: charge.id,
-        stripe_payment_intent_id: (paymentIntent as any).id,
-        settlement_currency: settlementCurrency,
-        settlement_gross: settlementGross,
-        settlement_net: settlementNet,
-        stripe_exchange_rate: exchangeRate,
-        stripe_fee: stripeFee,
-        funds_available_on: availableAt,
+        stripe_charge_id: chargeId,
+        stripe_payment_intent_id: paymentIntentId,
       })
       .eq('id', paymentId)
 
@@ -255,16 +214,11 @@ export async function POST(request: Request) {
       status: 'paid',
       stripe_event_id: event.id,
       updated_at: now,
-      stripe_charge_id: charge.id,
-      stripe_payment_intent_id: (paymentIntent as any).id,
-      usdc_granted: netUsdc,
-      settlement_currency: settlementCurrency,
-      settlement_gross: settlementGross,
-      settlement_net: settlementNet,
-      stripe_exchange_rate: exchangeRate,
-      release_after: availableAt,
-      stripe_fee: stripeFee,
-      funds_available_on: availableAt,
+      stripe_charge_id: chargeId,
+      stripe_payment_intent_id: paymentIntentId,
+      usdc_granted: null,
+      release_after: null,
+      funds_available_on: null,
     })
     .eq('id', paymentId)
 

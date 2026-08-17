@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { backfillInvestmentPacks } from "@/lib/backfill-investment-packs";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthenticatedUser(request);
+
+    try {
+      await backfillInvestmentPacks(user.id)
+    } catch (err: any) {
+      console.error('[api/balance] backfillInvestmentPacks error:', err?.message ?? err)
+    }
 
     const { data: releaseData, error: releaseError } = await supabaseAdmin.rpc(
       'release_due_investment_packs',

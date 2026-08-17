@@ -1,6 +1,9 @@
 import { supabaseAdmin } from '../../lib/supabaseServer'
+import { backfillInvestmentPacks } from '../../lib/backfill-investment-packs'
 
 export default async (): Promise<Response> => {
+  await backfillInvestmentPacks(null)
+
   const { data, error } = await supabaseAdmin.rpc('release_due_investment_packs', {
     p_user_id: null,
   })

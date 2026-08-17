@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from 'vitest'
 import { POST as webhook } from '@/app/api/stripe/webhook/route'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { backfillInvestmentPacks } from '@/lib/backfill-investment-packs'
 import { createFixtureUser, cleanupFixtures } from '../startup-votes/fixtures'
 import Stripe from 'stripe'
 
@@ -8,6 +9,7 @@ const WEBHOOK_SECRET = 'whsec_test_webhook_secret'
 const STRIPE_API_KEY = 'sk_test_dummy'
 
 const mockRetrieve = vi.hoisted(() => vi.fn())
+const mockChargeRetrieve = vi.hoisted(() => vi.fn())
 
 vi.mock('stripe', () => ({
   default: class Stripe {
@@ -43,8 +45,18 @@ vi.mock('stripe', () => ({
         },
       }
     }
+    get charges() {
+      return {
+        retrieve: mockChargeRetrieve,
+      }
+    }
   },
 }))
+
+beforeEach(() => {
+  mockRetrieve.mockReset()
+  mockChargeRetrieve.mockReset()
+})
 
 function post(payload: string, signature: string) {
   return webhook(
@@ -76,8 +88,20 @@ function makeExpandedSession(
   balanceAmount = amountTotal,
   exchangeRate: number | null = null,
   settlementCurrency = 'usd',
-  sessionCurrency = 'usd'
+  sessionCurrency = 'usd',
+  balanceTransactionId: string | null = null
 ) {
+  const balanceTransaction = balanceTransactionId
+    ? balanceTransactionId
+    : {
+        id: 'txn_test',
+        object: 'balance_transaction',
+        amount: balanceAmount,
+        currency: settlementCurrency,
+        fee,
+        exchange_rate: exchangeRate,
+        available_on: availableOn,
+      }
   return {
     id: sessionId,
     object: 'checkout.session',
@@ -90,16 +114,32 @@ function makeExpandedSession(
         id: 'ch_test',
         object: 'charge',
         currency: sessionCurrency,
-        balance_transaction: {
-          id: 'txn_test',
-          object: 'balance_transaction',
-          amount: balanceAmount,
-          currency: settlementCurrency,
-          fee,
-          exchange_rate: exchangeRate,
-          available_on: availableOn,
-        },
+        balance_transaction: balanceTransaction,
       },
+    },
+  }
+}
+
+function makeCharge(
+  fee: number,
+  availableOn: number,
+  balanceAmount = 1000,
+  exchangeRate: number | null = null,
+  settlementCurrency = 'usd',
+  sessionCurrency = 'usd'
+) {
+  return {
+    id: 'ch_test',
+    object: 'charge',
+    currency: sessionCurrency,
+    balance_transaction: {
+      id: 'txn_test',
+      object: 'balance_transaction',
+      amount: balanceAmount,
+      currency: settlementCurrency,
+      fee,
+      exchange_rate: exchangeRate,
+      available_on: availableOn,
     },
   }
 }
@@ -113,7 +153,8 @@ function makeCheckoutCompletedEvent(
   balanceAmount = amountTotal,
   exchangeRate: number | null = null,
   settlementCurrency = 'usd',
-  sessionCurrency = 'usd'
+  sessionCurrency = 'usd',
+  balanceTransactionId: string | null = null
 ) {
   const event = {
     id: eventId,
@@ -145,7 +186,8 @@ function makeCheckoutCompletedEvent(
       balanceAmount,
       exchangeRate,
       settlementCurrency,
-      sessionCurrency
+      sessionCurrency,
+      balanceTransactionId
     )
   )
   const payload = JSON.stringify(event)
@@ -257,6 +299,28 @@ async function createInvestmentPayment(userId: string, amountCharged = 2500, usd
     release_after: releaseAfter,
   } as any)
   if (error) throw new Error(`insert investment payment failed: ${error.message}`)
+  return id
+}
+
+async function createPaidInvestmentPayment(
+  userId: string,
+  amountCharged = 2500,
+  chargeId = 'ch_test'
+) {
+  const id = crypto.randomUUID()
+  const releaseAfter = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+  const { error } = await supabaseAdmin.from('stripe_payments').insert({
+    id,
+    user_id: userId,
+    product: 'investment_pack',
+    amount_charged: amountCharged,
+    currency: 'usd',
+    usdc_granted: null,
+    status: 'paid',
+    stripe_charge_id: chargeId,
+    release_after: releaseAfter,
+  } as any)
+  if (error) throw new Error(`insert paid investment payment failed: ${error.message}`)
   return id
 }
 
@@ -415,24 +479,38 @@ describe('POST /api/stripe/webhook', () => {
     }
   })
 
-  it('grants net USDC for an investment pack after Stripe fees', async () => {
+  it('records an investment pack as paid when the balance transaction is not yet available', async () => {
     const user = await createFixtureUser()
     const paymentId = await createInvestmentPayment(user.id)
-    const eventId = 'evt_investment_fee_test'
+    const eventId = 'evt_investment_pending_balance'
     const availableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60
 
     try {
-      const { payload, signature } = makeCheckoutCompletedEvent(paymentId, 2500, eventId, 103, availableOn)
+      const { payload, signature } = makeCheckoutCompletedEvent(
+        paymentId,
+        2500,
+        eventId,
+        103,
+        availableOn,
+        2500,
+        null,
+        'usd',
+        'usd',
+        'txn_not_yet'
+      )
       const res = await post(payload, signature)
       expect(res.status).toBe(200)
 
       const row = await getPayment(paymentId)
       expect(row.status).toBe('paid')
       expect(row.stripe_event_id).toBe(eventId)
-      expect(Number(row.usdc_granted)).toBe(23.97)
-      expect(Number(row.stripe_fee)).toBe(1.03)
-      expect(new Date(row.release_after).getTime()).toBe(availableOn * 1000)
-      expect(new Date(row.funds_available_on).getTime()).toBe(availableOn * 1000)
+      expect(row.stripe_charge_id).toBe('ch_test')
+      expect(row.stripe_payment_intent_id).toBe('pi_test')
+      expect(row.usdc_granted).toBeNull()
+      expect(row.stripe_fee).toBeNull()
+      expect(row.settlement_gross).toBeNull()
+      expect(row.settlement_net).toBeNull()
+      expect(row.funds_available_on).toBeNull()
 
       expect(await currentCredits(user.id)).toBe(0)
       expect(await creditEventCount(user.id)).toBe(0)
@@ -442,26 +520,18 @@ describe('POST /api/stripe/webhook', () => {
     }
   })
 
-  it('converts a EUR settlement to approximately $9.20 USD for a $10 pack', async () => {
+  it('backfill fills the six investment columns from a EUR balance transaction', async () => {
     const user = await createFixtureUser()
-    const paymentId = await createInvestmentPayment(user.id, 1000, 10)
-    const eventId = 'evt_investment_eur_test'
+    const paymentId = await createPaidInvestmentPayment(user.id, 1000, 'ch_eur')
     const availableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60
 
     try {
-      const { payload, signature } = makeCheckoutCompletedEvent(
-        paymentId,
-        1000,
-        eventId,
-        69,
-        availableOn,
-        864,
-        null,
-        'eur',
-        'usd'
+      mockChargeRetrieve.mockResolvedValueOnce(
+        makeCharge(69, availableOn, 864, null, 'eur', 'usd')
       )
-      const res = await post(payload, signature)
-      expect(res.status).toBe(200)
+
+      const result = await backfillInvestmentPacks(user.id)
+      expect(result.filled).toBe(1)
 
       const row = await getPayment(paymentId)
       expect(row.status).toBe('paid')
@@ -470,6 +540,8 @@ describe('POST /api/stripe/webhook', () => {
       expect(row.settlement_currency).toBe('eur')
       expect(Number(row.settlement_gross)).toBe(8.64)
       expect(Number(row.settlement_net)).toBe(7.95)
+      expect(new Date(row.release_after).getTime()).toBe(availableOn * 1000)
+      expect(new Date(row.funds_available_on).getTime()).toBe(availableOn * 1000)
       expect(Number(row.stripe_exchange_rate)).toBeCloseTo(0.864, 5)
       expect(Number(row.stripe_fee)).toBe(0.69)
     } finally {
@@ -477,37 +549,41 @@ describe('POST /api/stripe/webhook', () => {
     }
   })
 
-  it('stores settlement gross and net in dollars for a $10 pack with a 62-cent fee', async () => {
+  it('backfill is idempotent for a $10 pack with a 62-cent fee', async () => {
     const user = await createFixtureUser()
-    const paymentId = await createInvestmentPayment(user.id, 1000, 10)
-    const eventId = 'evt_investment_usd_test'
+    const paymentId = await createPaidInvestmentPayment(user.id, 1000, 'ch_usd')
     const availableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60
 
     try {
-      const { payload, signature } = makeCheckoutCompletedEvent(
-        paymentId,
-        1000,
-        eventId,
-        62,
-        availableOn,
-        1000,
-        null,
-        'usd',
-        'usd'
+      mockChargeRetrieve.mockResolvedValueOnce(
+        makeCharge(62, availableOn, 1000, null, 'usd', 'usd')
       )
-      const res = await post(payload, signature)
-      expect(res.status).toBe(200)
 
-      const row = await getPayment(paymentId)
-      expect(row.status).toBe('paid')
-      expect(Number(row.usdc_granted)).toBe(9.38)
-      expect(row.settlement_currency).toBe('usd')
-      expect(Number(row.settlement_gross)).toBe(10)
-      expect(Number(row.settlement_gross)).not.toBe(1000)
-      expect(Number(row.settlement_net)).toBe(9.38)
-      expect(Number(row.settlement_net)).not.toBe(938)
-      expect(Number(row.stripe_exchange_rate)).toBe(1)
-      expect(Number(row.stripe_fee)).toBe(0.62)
+      const first = await backfillInvestmentPacks(user.id)
+      expect(first.filled).toBe(1)
+
+      const rowAfterFirst = await getPayment(paymentId)
+      expect(rowAfterFirst.status).toBe('paid')
+      expect(Number(rowAfterFirst.usdc_granted)).toBe(9.38)
+      expect(rowAfterFirst.settlement_currency).toBe('usd')
+      expect(Number(rowAfterFirst.settlement_gross)).toBe(10)
+      expect(Number(rowAfterFirst.settlement_gross)).not.toBe(1000)
+      expect(Number(rowAfterFirst.settlement_net)).toBe(9.38)
+      expect(Number(rowAfterFirst.settlement_net)).not.toBe(938)
+      expect(new Date(rowAfterFirst.release_after).getTime()).toBe(availableOn * 1000)
+      expect(new Date(rowAfterFirst.funds_available_on).getTime()).toBe(availableOn * 1000)
+      expect(Number(rowAfterFirst.stripe_exchange_rate)).toBe(1)
+      expect(Number(rowAfterFirst.stripe_fee)).toBe(0.62)
+
+      const second = await backfillInvestmentPacks(user.id)
+      expect(second.filled).toBe(0)
+      expect(second.skipped).toBe(0)
+      expect(mockChargeRetrieve).toHaveBeenCalledTimes(1)
+
+      const rowAfterSecond = await getPayment(paymentId)
+      expect(rowAfterSecond.usdc_granted).toBe(rowAfterFirst.usdc_granted)
+      expect(rowAfterSecond.settlement_gross).toBe(rowAfterFirst.settlement_gross)
+      expect(rowAfterSecond.settlement_net).toBe(rowAfterFirst.settlement_net)
     } finally {
       await cleanupFixtures(user.id, [])
     }

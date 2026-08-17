@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { backfillInvestmentPacks } from '@/lib/backfill-investment-packs'
 import { Decimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
@@ -41,6 +42,12 @@ export async function GET(request: Request) {
         { error: holdingsError.message || 'Failed to load holdings' },
         { status: 500 }
       )
+    }
+
+    try {
+      await backfillInvestmentPacks(user.id)
+    } catch (err: any) {
+      console.error('[api/curve/mine] backfillInvestmentPacks error:', err?.message ?? err)
     }
 
     const { data: releaseData, error: releaseError } = await supabaseAdmin.rpc(
