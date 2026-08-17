@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     if (pack.product === 'listing_pack') {
       row.credits_granted = pack.credits
     } else {
-      row.usdc_granted = pack.usdc
+      row.usdc_granted = null
       row.release_after = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
     }
 

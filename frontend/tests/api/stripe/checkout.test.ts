@@ -157,7 +157,7 @@ describe('POST /api/stripe/checkout', () => {
       expect(row!.product).toBe('investment_pack')
       expect(row!.amount_charged).toBe(25)
       expect(row!.currency).toBe('usd')
-      expect(row!.usdc_granted).toBe(25)
+      expect(row!.usdc_granted).toBeNull()
       expect(row!.credits_granted).toBeNull()
       expect(row!.status).toBe('pending')
       expect(row!.session_id).toBe(TEST_SESSION_ID)
