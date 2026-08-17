@@ -168,10 +168,13 @@ export async function POST(request: Request) {
   }
 
   const grossCents = expandedSession.amount_total
+  const settlementGrossCents = balanceTransaction.amount
   const feeCents = balanceTransaction.fee
+  const settlementCurrency = (balanceTransaction.currency || 'usd').toLowerCase()
   const availableOn = balanceTransaction.available_on
   if (
     typeof grossCents !== 'number' ||
+    typeof settlementGrossCents !== 'number' ||
     typeof feeCents !== 'number' ||
     typeof availableOn !== 'number'
   ) {
@@ -181,8 +184,22 @@ export async function POST(request: Request) {
 
   const availableAt = new Date(availableOn * 1000).toISOString()
   const stripeFee = Number((feeCents / 100).toFixed(6))
-  const netCents = grossCents - feeCents
-  const netUsdc = Number((netCents / 100).toFixed(6))
+  const settlementNetCents = settlementGrossCents - feeCents
+
+  let exchangeRate: number | null = null
+  if (typeof balanceTransaction.exchange_rate === 'number' && balanceTransaction.exchange_rate > 0) {
+    exchangeRate = balanceTransaction.exchange_rate
+  } else if (grossCents > 0 && settlementGrossCents > 0) {
+    exchangeRate = settlementGrossCents / grossCents
+  }
+
+  if (exchangeRate === null || exchangeRate <= 0) {
+    console.error('[api/stripe/webhook] cannot determine exchange rate')
+    return new NextResponse('Exchange rate unavailable', { status: 500 })
+  }
+
+  const netUsdCents = Math.round(settlementNetCents / exchangeRate)
+  const netUsdc = Number((netUsdCents / 100).toFixed(6))
 
   if (row.product === 'listing_pack') {
     try {
@@ -210,6 +227,10 @@ export async function POST(request: Request) {
         updated_at: now,
         stripe_charge_id: charge.id,
         stripe_payment_intent_id: (paymentIntent as any).id,
+        settlement_currency: settlementCurrency,
+        settlement_gross: settlementGrossCents,
+        settlement_net: settlementNetCents,
+        stripe_exchange_rate: exchangeRate,
         stripe_fee: stripeFee,
         funds_available_on: availableAt,
       })
@@ -235,6 +256,10 @@ export async function POST(request: Request) {
       stripe_charge_id: charge.id,
       stripe_payment_intent_id: (paymentIntent as any).id,
       usdc_granted: netUsdc,
+      settlement_currency: settlementCurrency,
+      settlement_gross: settlementGrossCents,
+      settlement_net: settlementNetCents,
+      stripe_exchange_rate: exchangeRate,
       release_after: availableAt,
       stripe_fee: stripeFee,
       funds_available_on: availableAt,

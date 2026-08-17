@@ -72,23 +72,31 @@ function makeExpandedSession(
   sessionId: string,
   amountTotal: number,
   fee: number,
-  availableOn: number
+  availableOn: number,
+  balanceAmount = amountTotal,
+  exchangeRate: number | null = null,
+  settlementCurrency = 'usd',
+  sessionCurrency = 'usd'
 ) {
   return {
     id: sessionId,
     object: 'checkout.session',
     amount_total: amountTotal,
-    currency: 'usd',
+    currency: sessionCurrency,
     payment_intent: {
       id: 'pi_test',
       object: 'payment_intent',
       latest_charge: {
         id: 'ch_test',
         object: 'charge',
+        currency: sessionCurrency,
         balance_transaction: {
           id: 'txn_test',
           object: 'balance_transaction',
+          amount: balanceAmount,
+          currency: settlementCurrency,
           fee,
+          exchange_rate: exchangeRate,
           available_on: availableOn,
         },
       },
@@ -101,7 +109,11 @@ function makeCheckoutCompletedEvent(
   amountTotal: number,
   eventId: string,
   fee = 0,
-  availableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60
+  availableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60,
+  balanceAmount = amountTotal,
+  exchangeRate: number | null = null,
+  settlementCurrency = 'usd',
+  sessionCurrency = 'usd'
 ) {
   const event = {
     id: eventId,
@@ -117,14 +129,25 @@ function makeCheckoutCompletedEvent(
         id: 'cs_test_session',
         object: 'checkout.session',
         amount_total: amountTotal,
-        currency: 'usd',
+        currency: sessionCurrency,
         metadata: { payment_id: paymentId },
         payment_status: 'paid',
         status: 'complete',
       },
     },
   }
-  mockRetrieve.mockResolvedValueOnce(makeExpandedSession('cs_test_session', amountTotal, fee, availableOn))
+  mockRetrieve.mockResolvedValueOnce(
+    makeExpandedSession(
+      'cs_test_session',
+      amountTotal,
+      fee,
+      availableOn,
+      balanceAmount,
+      exchangeRate,
+      settlementCurrency,
+      sessionCurrency
+    )
+  )
   const payload = JSON.stringify(event)
   return { payload, signature: sign(payload) }
 }
@@ -220,16 +243,16 @@ async function createListingPayment(userId: string) {
   return id
 }
 
-async function createInvestmentPayment(userId: string) {
+async function createInvestmentPayment(userId: string, amountCharged = 2500, usdc = amountCharged / 100) {
   const id = crypto.randomUUID()
   const releaseAfter = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
   const { error } = await supabaseAdmin.from('stripe_payments').insert({
     id,
     user_id: userId,
     product: 'investment_pack',
-    amount_charged: 2500,
+    amount_charged: amountCharged,
     currency: 'usd',
-    usdc_granted: 25,
+    usdc_granted: usdc,
     status: 'pending',
     release_after: releaseAfter,
   } as any)
@@ -414,6 +437,75 @@ describe('POST /api/stripe/webhook', () => {
       expect(await currentCredits(user.id)).toBe(0)
       expect(await creditEventCount(user.id)).toBe(0)
       expect(await balanceExists(user.id)).toBe(false)
+    } finally {
+      await cleanupFixtures(user.id, [])
+    }
+  })
+
+  it('converts a EUR settlement to approximately $9.20 USD for a $10 pack', async () => {
+    const user = await createFixtureUser()
+    const paymentId = await createInvestmentPayment(user.id, 1000, 10)
+    const eventId = 'evt_investment_eur_test'
+    const availableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60
+
+    try {
+      const { payload, signature } = makeCheckoutCompletedEvent(
+        paymentId,
+        1000,
+        eventId,
+        69,
+        availableOn,
+        864,
+        null,
+        'eur',
+        'usd'
+      )
+      const res = await post(payload, signature)
+      expect(res.status).toBe(200)
+
+      const row = await getPayment(paymentId)
+      expect(row.status).toBe('paid')
+      expect(Number(row.usdc_granted)).toBeCloseTo(9.20, 2)
+      expect(Number(row.usdc_granted)).not.toBe(9.31)
+      expect(row.settlement_currency).toBe('eur')
+      expect(Number(row.settlement_gross)).toBe(864)
+      expect(Number(row.settlement_net)).toBe(795)
+      expect(Number(row.stripe_exchange_rate)).toBeCloseTo(0.864, 5)
+      expect(Number(row.stripe_fee)).toBe(0.69)
+    } finally {
+      await cleanupFixtures(user.id, [])
+    }
+  })
+
+  it('grants amount minus fee exactly when charge and settlement are both USD', async () => {
+    const user = await createFixtureUser()
+    const paymentId = await createInvestmentPayment(user.id, 1000, 10)
+    const eventId = 'evt_investment_usd_test'
+    const availableOn = Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60
+
+    try {
+      const { payload, signature } = makeCheckoutCompletedEvent(
+        paymentId,
+        1000,
+        eventId,
+        103,
+        availableOn,
+        1000,
+        null,
+        'usd',
+        'usd'
+      )
+      const res = await post(payload, signature)
+      expect(res.status).toBe(200)
+
+      const row = await getPayment(paymentId)
+      expect(row.status).toBe('paid')
+      expect(Number(row.usdc_granted)).toBe(8.97)
+      expect(row.settlement_currency).toBe('usd')
+      expect(Number(row.settlement_gross)).toBe(1000)
+      expect(Number(row.settlement_net)).toBe(897)
+      expect(Number(row.stripe_exchange_rate)).toBe(1)
+      expect(Number(row.stripe_fee)).toBe(1.03)
     } finally {
       await cleanupFixtures(user.id, [])
     }
