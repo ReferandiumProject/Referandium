@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from 'vitest'
 import { POST as webhook } from '@/app/api/stripe/webhook/route'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { createFixtureUser, cleanupFixtures } from '../startup-votes/fixtures'
@@ -455,9 +455,14 @@ describe('POST /api/stripe/webhook', () => {
   })
 
   it('records a dispute event without crashing', async () => {
-    const { payload, signature } = makeDisputeEvent()
-    const res = await post(payload, signature)
-    expect(res.status).toBe(200)
+    const disputeId = 'dp_test'
+    try {
+      const { payload, signature } = makeDisputeEvent()
+      const res = await post(payload, signature)
+      expect(res.status).toBe(200)
+    } finally {
+      await removeDispute(disputeId)
+    }
   })
 
   it('moves a pending row to failed on checkout.session.expired', async () => {
@@ -568,5 +573,12 @@ describe('POST /api/stripe/webhook', () => {
     } finally {
       await removeDispute(disputeId)
     }
+  })
+
+  afterAll(async () => {
+    await supabaseAdmin
+      .from('stripe_disputes')
+      .delete()
+      .in('stripe_dispute_id', ['dp_test', 'dp_known_test', 'dp_unknown_test'])
   })
 })
