@@ -8,6 +8,26 @@ const CHECKOUT_SUCCESS_EVENTS = new Set([
   'checkout.session.async_payment_succeeded',
 ])
 
+async function linkDisputesToPayment(
+  chargeId: string,
+  paymentId: string,
+  paymentIntentId: string
+) {
+  try {
+    const { error } = await supabaseAdmin
+      .from('stripe_disputes')
+      .update({ payment_id: paymentId, stripe_payment_intent_id: paymentIntentId })
+      .eq('stripe_charge_id', chargeId)
+      .is('payment_id', null)
+
+    if (error) {
+      console.error('[api/stripe/webhook] failed to back-link disputes:', error)
+    }
+  } catch (err: any) {
+    console.error('[api/stripe/webhook] unexpected error back-linking disputes:', err?.message ?? err)
+  }
+}
+
 export async function POST(request: Request) {
   const payload = await request.text()
   const sig = request.headers.get('stripe-signature') ?? ''
@@ -206,6 +226,8 @@ export async function POST(request: Request) {
       return new NextResponse('Update failed', { status: 500 })
     }
 
+    await linkDisputesToPayment(chargeId, paymentId, paymentIntentId)
+
     return new NextResponse(null, { status: 200 })
   }
 
@@ -230,6 +252,8 @@ export async function POST(request: Request) {
     console.error('[api/stripe/webhook] failed to update investment payment:', updateError)
     return new NextResponse('Update failed', { status: 500 })
   }
+
+  await linkDisputesToPayment(chargeId, paymentId, paymentIntentId)
 
   return new NextResponse(null, { status: 200 })
 }

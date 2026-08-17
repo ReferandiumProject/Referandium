@@ -90,7 +90,8 @@ function makeExpandedSession(
   exchangeRate: number | null = null,
   settlementCurrency = 'usd',
   sessionCurrency = 'usd',
-  balanceTransactionId: string | null = null
+  balanceTransactionId: string | null = null,
+  chargeId = 'ch_test'
 ) {
   const balanceTransaction = balanceTransactionId
     ? balanceTransactionId
@@ -112,7 +113,7 @@ function makeExpandedSession(
       id: 'pi_test',
       object: 'payment_intent',
       latest_charge: {
-        id: 'ch_test',
+        id: chargeId,
         object: 'charge',
         currency: sessionCurrency,
         balance_transaction: balanceTransaction,
@@ -155,7 +156,8 @@ function makeCheckoutCompletedEvent(
   exchangeRate: number | null = null,
   settlementCurrency = 'usd',
   sessionCurrency = 'usd',
-  balanceTransactionId: string | null = null
+  balanceTransactionId: string | null = null,
+  chargeId = 'ch_test'
 ) {
   const event = {
     id: eventId,
@@ -188,7 +190,8 @@ function makeCheckoutCompletedEvent(
       exchangeRate,
       settlementCurrency,
       sessionCurrency,
-      balanceTransactionId
+      balanceTransactionId,
+      chargeId
     )
   )
   const payload = JSON.stringify(event)
@@ -762,10 +765,114 @@ describe('POST /api/stripe/webhook', () => {
     }
   })
 
+  it('links a dispute that arrived before its payment when the payment is written', async () => {
+    const user = await createFixtureUser()
+    const paymentId = await createListingPayment(user.id)
+    const disputeId = 'dp_late_link'
+    const chargeId = 'ch_late_link'
+
+    try {
+      const { payload, signature } = makeDisputeEvent(chargeId, 2400, disputeId)
+      const res = await post(payload, signature)
+      expect(res.status).toBe(200)
+
+      let row = await getDispute(disputeId)
+      expect(row).not.toBeNull()
+      expect(row!.payment_id).toBeNull()
+
+      const { payload: completedPayload, signature: completedSignature } = makeCheckoutCompletedEvent(
+        paymentId,
+        2400,
+        'evt_late_link',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        chargeId
+      )
+      const completedRes = await post(completedPayload, completedSignature)
+      expect(completedRes.status).toBe(200)
+
+      row = await getDispute(disputeId)
+      expect(row!.payment_id).toBe(paymentId)
+      expect(row!.stripe_charge_id).toBe(chargeId)
+      expect(row!.stripe_payment_intent_id).toBe('pi_test')
+    } finally {
+      await removeDispute(disputeId)
+      await cleanupFixtures(user.id, [])
+    }
+  })
+
+  it('does not re-point an already-linked dispute when a later payment uses the same charge id', async () => {
+    const user1 = await createFixtureUser()
+    const payment1 = await createListingPayment(user1.id)
+    const user2 = await createFixtureUser()
+    const payment2 = await createListingPayment(user2.id)
+    const disputeId = 'dp_collision'
+    const chargeId = 'ch_collision'
+
+    try {
+      const { payload: p1, signature: s1 } = makeCheckoutCompletedEvent(
+        payment1,
+        2400,
+        'evt_collision_1',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        chargeId
+      )
+      const r1 = await post(p1, s1)
+      expect(r1.status).toBe(200)
+
+      const { payload: p2, signature: s2 } = makeDisputeEvent(chargeId, 2400, disputeId)
+      const r2 = await post(p2, s2)
+      expect(r2.status).toBe(200)
+
+      let row = await getDispute(disputeId)
+      expect(row!.payment_id).toBe(payment1)
+
+      const { payload: p3, signature: s3 } = makeCheckoutCompletedEvent(
+        payment2,
+        2400,
+        'evt_collision_2',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        chargeId
+      )
+      const r3 = await post(p3, s3)
+      expect(r3.status).toBe(200)
+
+      row = await getDispute(disputeId)
+      expect(row!.payment_id).toBe(payment1)
+    } finally {
+      await removeDispute(disputeId)
+      await cleanupFixtures(user1.id, [])
+      await cleanupFixtures(user2.id, [])
+    }
+  })
+
   afterAll(async () => {
     await supabaseAdmin
       .from('stripe_disputes')
       .delete()
-      .in('stripe_dispute_id', ['dp_test', 'dp_known_test', 'dp_unknown_test'])
+      .in('stripe_dispute_id', [
+        'dp_test',
+        'dp_known_test',
+        'dp_unknown_test',
+        'dp_late_link',
+        'dp_collision',
+      ])
   })
 })
