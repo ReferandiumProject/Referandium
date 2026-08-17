@@ -1,11 +1,7 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { closeStalePendingPayments } from '../../netlify/functions/release-investment-packs'
 import { createFixtureUser, cleanupFixtures } from '../api/startup-votes/fixtures'
-
-beforeAll(async () => {
-  await closeStalePendingPayments()
-})
 
 const HOURS = 60 * 60 * 1000
 
@@ -47,7 +43,7 @@ describe('closeStalePendingPayments', () => {
     const paymentId = await createPayment(user.id, 'pending', 49)
 
     try {
-      const closed = await closeStalePendingPayments()
+      const closed = await closeStalePendingPayments(user.id)
       expect(closed).toBe(1)
 
       const row = await getPayment(paymentId)
@@ -65,13 +61,36 @@ describe('closeStalePendingPayments', () => {
     const paymentId = await createPayment(user.id, 'paid', 49)
 
     try {
-      const closed = await closeStalePendingPayments()
+      const closed = await closeStalePendingPayments(user.id)
       expect(closed).toBe(0)
 
       const row = await getPayment(paymentId)
       expect(row.status).toBe('paid')
       expect(row.updated_at).toBe(row.created_at)
     } finally {
+      await cleanupFixtures(user.id, [])
+    }
+  })
+
+  it('does not touch another user\'s stale pending payment when scoped', async () => {
+    const otherUser = await createFixtureUser()
+    const otherPaymentId = await createPayment(otherUser.id, 'pending', 49)
+
+    const user = await createFixtureUser()
+    const paymentId = await createPayment(user.id, 'pending', 49)
+
+    try {
+      const closed = await closeStalePendingPayments(user.id)
+      expect(closed).toBe(1)
+
+      const row = await getPayment(paymentId)
+      expect(row.status).toBe('failed')
+
+      const otherRow = await getPayment(otherPaymentId)
+      expect(otherRow.status).toBe('pending')
+      expect(otherRow.updated_at).toBe(otherRow.created_at)
+    } finally {
+      await cleanupFixtures(otherUser.id, [])
       await cleanupFixtures(user.id, [])
     }
   })

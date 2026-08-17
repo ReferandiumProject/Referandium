@@ -3,16 +3,21 @@ import { backfillInvestmentPacks } from '../../lib/backfill-investment-packs'
 
 const STALE_PENDING_HOURS = 48
 
-export async function closeStalePendingPayments(): Promise<number> {
+export async function closeStalePendingPayments(userId?: string | null): Promise<number> {
   const now = new Date().toISOString()
   const cutoff = new Date(Date.now() - STALE_PENDING_HOURS * 60 * 60 * 1000).toISOString()
 
-  const { data, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from('stripe_payments')
     .update({ status: 'failed', updated_at: now })
     .eq('status', 'pending')
     .lt('created_at', cutoff)
-    .select('id')
+
+  if (userId) {
+    query = query.eq('user_id', userId)
+  }
+
+  const { data, error } = await query.select('id')
 
   if (error) {
     console.error('[netlify/scheduled] closeStalePendingPayments failed:', error)
