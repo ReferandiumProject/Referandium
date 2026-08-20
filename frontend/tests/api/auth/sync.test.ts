@@ -30,7 +30,7 @@ function makePrivyUser(privyId: string, email: string, wallet: string) {
   return {
     linkedAccounts: [
       { type: 'google_oauth', email },
-      { type: 'wallet', chain: 'solana', address: wallet },
+      { type: 'wallet', chainType: 'solana', walletClientType: 'privy', address: wallet },
     ],
   }
 }
@@ -39,6 +39,17 @@ function makeSyncRequest(): NextRequest {
   return new Request('http://localhost:3000/api/auth/sync', {
     method: 'POST',
     headers: { Authorization: 'Bearer mock-token' },
+  }) as unknown as NextRequest
+}
+
+function makeSyncRequestWithBody(body: Record<string, unknown>): NextRequest {
+  return new Request('http://localhost:3000/api/auth/sync', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer mock-token',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
   }) as unknown as NextRequest
 }
 
@@ -157,6 +168,34 @@ describe('/api/auth/sync signup bonus', () => {
       .eq('user_id', user!.id)
       .single()
     expect(Number(balance!.available_usdc)).toBe(500)
+
+    await cleanupByPrivyId(privyId)
+  })
+
+  it('ignores a wallet_address supplied in the request body', async () => {
+    const privyId = `did:privy:auth-sync-body-wallet-${crypto.randomUUID()}`
+    const email = `auth-sync-body-wallet-${crypto.randomUUID()}@example.com`
+    const privyWallet = `0xAuthSyncBodyWallet${crypto.randomUUID().slice(0, 8)}`
+    const bodyWallet = '0xBodyWalletShouldBeIgnored'
+    await cleanupByPrivyId(privyId)
+
+    vi.mocked(privyClient.verifyAuthToken).mockResolvedValue({ userId: privyId } as any)
+    vi.mocked(privyClient.getUser).mockResolvedValue(makePrivyUser(privyId, email, privyWallet) as any)
+
+    const res = await syncAuth(makeSyncRequestWithBody({ wallet_address: bodyWallet }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.custodial_wallet_address).toBe(privyWallet)
+    expect(json.wallet_address).toBe(privyWallet)
+
+    const { data: user } = await supabaseAdmin
+      .from('users')
+      .select('custodial_wallet_address, wallet_address')
+      .eq('privy_id', privyId)
+      .single()
+    expect(user).not.toBeNull()
+    expect(user!.custodial_wallet_address).toBe(privyWallet)
+    expect(user!.wallet_address).toBe(privyWallet)
 
     await cleanupByPrivyId(privyId)
   })

@@ -8,9 +8,10 @@ interface GoogleOAuthAccount {
   email: string
 }
 
-interface SolanaWalletAccount {
+interface EmbeddedSolanaWalletAccount {
   type: 'wallet'
-  chain: 'solana'
+  chainType: 'solana'
+  walletClientType: 'privy'
   address: string
 }
 
@@ -18,8 +19,12 @@ function isGoogleOAuth(account: any): account is GoogleOAuthAccount {
   return account?.type === 'google_oauth'
 }
 
-function isSolanaWallet(account: any): account is SolanaWalletAccount {
-  return account?.type === 'wallet' && account?.chain === 'solana'
+function isEmbeddedSolanaWallet(account: any): account is EmbeddedSolanaWalletAccount {
+  return (
+    account?.type === 'wallet' &&
+    (account?.chainType === 'solana' || account?.chain === 'solana') &&
+    account?.walletClientType === 'privy'
+  )
 }
 
 const ZERO = Decimal.parse('0')
@@ -72,27 +77,72 @@ export async function POST(req: NextRequest) {
     const email = googleAccount?.email ?? null
     console.log('[auth/sync] extracted email:', email)
 
-    const solanaWallet = privyUser.linkedAccounts.find(isSolanaWallet) as SolanaWalletAccount | undefined
-    const walletAddress = solanaWallet?.address ?? null
-    console.log('[auth/sync] extracted solana wallet address:', walletAddress)
+    const solanaWallet = privyUser.linkedAccounts.find(isEmbeddedSolanaWallet) as EmbeddedSolanaWalletAccount | undefined
+    const custodialAddress = solanaWallet?.address ?? null
+    console.log('[auth/sync] extracted custodial solana wallet address:', custodialAddress)
 
-    const { data: userRecord, error: upsertError } = await supabaseAdmin
+    const { data: existingUser, error: existingError } = await supabaseAdmin
       .from('users')
-      .upsert(
-        {
+      .select('id, custodial_wallet_address')
+      .eq('privy_id', did)
+      .maybeSingle()
+
+    if (existingError) {
+      console.error('[auth/sync] failed to fetch existing user:', existingError)
+      throw existingError
+    }
+
+    let userRecord: { id: string; custodial_wallet_address: string | null }
+    if (existingUser) {
+      userRecord = { ...existingUser, custodial_wallet_address: existingUser.custodial_wallet_address }
+
+      const updates: { email: string | null; wallet_address: string | null; custodial_wallet_address?: string | null } = {
+        email,
+        wallet_address: custodialAddress,
+      }
+
+      if (!existingUser.custodial_wallet_address) {
+        updates.custodial_wallet_address = custodialAddress
+        userRecord.custodial_wallet_address = custodialAddress
+        console.log('[auth/sync] setting custodial wallet for', did, ':', custodialAddress)
+      } else if (existingUser.custodial_wallet_address === custodialAddress) {
+        console.log('[auth/sync] custodial wallet unchanged for', did)
+      } else {
+        console.warn(
+          '[auth/sync] ignoring changed custodial wallet for',
+          did,
+          '. existing:',
+          existingUser.custodial_wallet_address,
+          'new:',
+          custodialAddress
+        )
+      }
+
+      const { error: updateError } = await supabaseAdmin.from('users').update(updates).eq('id', existingUser.id)
+
+      if (updateError) {
+        console.error('[auth/sync] user update failed:', updateError)
+        throw updateError
+      }
+    } else {
+      const { data: inserted, error: insertError } = await supabaseAdmin
+        .from('users')
+        .insert({
           privy_id: did,
           email,
-          wallet_address: walletAddress,
+          wallet_address: custodialAddress,
+          custodial_wallet_address: custodialAddress,
           auth_method: 'privy',
-        },
-        { onConflict: 'privy_id' }
-      )
-      .select()
-      .single()
+        })
+        .select('id, custodial_wallet_address')
+        .single()
 
-    if (upsertError) {
-      console.error('[auth/sync] user upsert failed:', upsertError)
-      throw upsertError
+      if (insertError) {
+        console.error('[auth/sync] user insert failed:', insertError)
+        throw insertError
+      }
+
+      userRecord = inserted!
     }
 
     console.log('[auth/sync] upserted user, id:', userRecord.id)
@@ -148,9 +198,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       id: userRecord.id,
-      privy_id: userRecord.privy_id,
-      email: userRecord.email,
-      wallet_address: userRecord.wallet_address,
+      privy_id: did,
+      email,
+      wallet_address: custodialAddress,
       custodial_wallet_address: userRecord.custodial_wallet_address ?? null,
       available_usdc: balance?.available_usdc ?? 0,
     })
