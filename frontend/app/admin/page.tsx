@@ -119,6 +119,13 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null)
   const [showDeleted, setShowDeleted] = useState(true)
 
+  const [sweepUserId, setSweepUserId] = useState('')
+  const [sweepAmount, setSweepAmount] = useState('')
+  const [sweepDestination, setSweepDestination] = useState('')
+  const [sweepArmed, setSweepArmed] = useState(false)
+  const [sweepLoading, setSweepLoading] = useState(false)
+  const [sweepRaw, setSweepRaw] = useState<string | null>(null)
+
   const [modal, setModal] = useState<{
     type: 'edit' | 'delete' | 'restore' | 'force-phase2'
     startup: Startup
@@ -336,6 +343,54 @@ export default function AdminPage() {
       setError('Failed to load audit log')
     } finally {
       setLoadingActions(false)
+    }
+  }
+
+  const runSweep = async () => {
+    const token = await getToken()
+    if (!token) {
+      setSweepRaw(JSON.stringify({ error: 'Not authenticated' }, null, 2))
+      return
+    }
+
+    const userId = sweepUserId.trim()
+    if (!userId) {
+      setSweepRaw(JSON.stringify({ error: 'User ID is required' }, null, 2))
+      return
+    }
+
+    setSweepLoading(true)
+    setSweepRaw(null)
+
+    try {
+      const body: any = { user_id: userId }
+      const amount = sweepAmount.trim()
+      if (amount) {
+        const parsed = Number(amount)
+        if (!Number.isNaN(parsed) && parsed > 0) {
+          body.amount_usdc = parsed
+        }
+      }
+      const dest = sweepDestination.trim()
+      if (dest) {
+        body.destination_address = dest
+      }
+
+      const res = await fetch('/api/admin/embedded-sweep', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      })
+      const text = await res.text()
+      setSweepRaw(text)
+    } catch (e: any) {
+      setSweepRaw(JSON.stringify({ error: e?.message || 'Request failed' }, null, 2))
+    } finally {
+      setSweepLoading(false)
+      setSweepArmed(false)
     }
   }
 
@@ -1055,6 +1110,75 @@ export default function AdminPage() {
               ))}
             </div>
           )}
+        </section>
+
+        <section className="mb-8 rounded-xl border border-[#EF4444]/50 bg-[#FEF2F2] p-5 shadow-sm">
+          <div className="mb-4 rounded-lg border border-[#EF4444]/30 bg-[#FEF2F2] p-3 text-sm text-[#7F1D1D]">
+            <strong>Diagnostic — moves real funds.</strong> This control signs a Solana transaction that transfers actual USDC out of a user&apos;s Privy embedded wallet. It is the only write action on this page and does not credit any balance or create a deposit row.
+          </div>
+          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Embedded wallet sweep diagnostic</h2>
+          <p className="mb-4 text-sm text-[#6B7280]">
+            Test delegated signing and the transfer-destination policy manually. Leave the destination empty to sweep to the treasury.
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label className={labelClass}>User ID</label>
+              <input
+                className={inputClass}
+                value={sweepUserId}
+                onChange={(e) => setSweepUserId(e.target.value)}
+                placeholder="Paste the user's UUID"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Amount USDC (optional)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className={inputClass}
+                  value={sweepAmount}
+                  onChange={(e) => setSweepAmount(e.target.value)}
+                  placeholder="Omit to sweep the full balance"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Destination Solana address (optional)</label>
+                <input
+                  className={inputClass}
+                  value={sweepDestination}
+                  onChange={(e) => setSweepDestination(e.target.value)}
+                  placeholder="Empty means the treasury"
+                />
+              </div>
+            </div>
+            <label className="flex items-start gap-2 text-sm text-[#374151]">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-[#E5E7EB] text-[#EF4444] focus:ring-[#EF4444]"
+                checked={sweepArmed}
+                onChange={(e) => setSweepArmed(e.target.checked)}
+              />
+              <span>This will move real USDC out of a user&apos;s wallet. I understand and want to proceed.</span>
+            </label>
+            <button
+              onClick={runSweep}
+              disabled={!sweepArmed || !sweepUserId.trim() || sweepLoading}
+              className={buttonDanger}
+            >
+              {sweepLoading ? 'Running...' : 'Run sweep'}
+            </button>
+
+            {sweepRaw !== null && (
+              <div className="mt-4">
+                <p className="mb-1 text-sm font-semibold text-[#111827]">Raw response</p>
+                <pre className="max-h-96 overflow-auto rounded-lg border border-[#E5E7EB] bg-white p-3 text-xs text-[#111827]">
+                  {sweepRaw}
+                </pre>
+              </div>
+            )}
+          </div>
         </section>
       </div>
 
