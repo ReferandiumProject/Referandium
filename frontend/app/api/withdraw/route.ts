@@ -12,6 +12,38 @@ import { supabaseAdmin } from '@/lib/supabaseServer'
 
 const USDC_DECIMALS = 6
 
+async function validateWithdrawalAddress(
+  connection: Connection,
+  address: PublicKey
+): Promise<string | null> {
+  let account
+  try {
+    account = await connection.getAccountInfo(address)
+  } catch (err: any) {
+    console.error('[api/withdraw] getAccountInfo error:', err)
+    throw new Error('Could not verify wallet address on-chain')
+  }
+
+  if (!account) {
+    // A wallet that has never received funds has no on-chain account yet.
+    return null
+  }
+
+  if (account.executable) {
+    return 'This address is a Solana program, not a wallet. Use the wallet address your app shows as your account.'
+  }
+
+  if (account.owner.equals(TOKEN_PROGRAM_ID)) {
+    return 'This looks like a USDC token account, not a wallet address. Use the wallet address your app shows as your account.'
+  }
+
+  if (!PublicKey.isOnCurve(address.toBytes())) {
+    return 'This address cannot sign transactions, so it cannot receive withdrawals. Use the wallet address your app shows as your account.'
+  }
+
+  return null
+}
+
 export async function POST(request: Request) {
   console.log('[api/withdraw] received request')
 
@@ -50,6 +82,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
     }
 
+    const connection = new Connection(rpcUrl, 'finalized')
+
+    const validationError = await validateWithdrawalAddress(connection, recipientPubkey)
+    if (validationError) {
+      console.log('[api/withdraw] address validation failed:', validationError)
+      return NextResponse.json({ error: validationError }, { status: 400 })
+    }
+
     // Reserve the off-chain balance first, before any on-chain movement.
     const { data: reserved, error: reserveError } = await supabaseAdmin.rpc('reserve_withdrawal', {
       p_user_id: user.id,
@@ -67,7 +107,6 @@ export async function POST(request: Request) {
     const platformPubkey = platformKeypair.publicKey
     const usdcMintPubkey = new PublicKey(usdcMint)
 
-    const connection = new Connection(rpcUrl, 'finalized')
     const platformAta = await getAssociatedTokenAddress(usdcMintPubkey, platformPubkey)
     const recipientAta = await getAssociatedTokenAddress(usdcMintPubkey, recipientPubkey)
     const amountRaw = BigInt(Math.floor(amount_usdc * 10 ** USDC_DECIMALS))

@@ -3,7 +3,8 @@ import { POST } from '@/app/api/withdraw/route'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { createFixtureUser } from '../startup-votes/fixtures'
-import { Connection, Keypair } from '@solana/web3.js'
+import { Connection, Keypair, PublicKey } from '@solana/web3.js'
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import bs58 from 'bs58'
 
 vi.mock('@/lib/auth-helpers', () => ({
@@ -80,6 +81,124 @@ describe('POST /api/withdraw', () => {
         .single()
 
       expect(Number(balance?.available_usdc)).toBe(100)
+    } finally {
+      vi.restoreAllMocks()
+      await cleanupWithdrawalTest(user.id)
+    }
+  })
+
+  it('rejects a token account address before reserving', async () => {
+    const user = await createFixtureUser()
+    try {
+      await supabaseAdmin.from('balances').insert({
+        user_id: user.id,
+        available_usdc: '100',
+        locked_usdc: '0',
+      })
+
+      vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+      vi.spyOn(Connection.prototype, 'getAccountInfo').mockResolvedValue({
+        executable: false,
+        owner: TOKEN_PROGRAM_ID,
+        lamports: 100_000,
+        data: Buffer.alloc(0),
+        rentEpoch: 0,
+      } as any)
+
+      const res = await POST(makeRequest(user.id, 1, MOCK_WALLET))
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body.error).toMatch(/token account/i)
+    } finally {
+      vi.restoreAllMocks()
+      await cleanupWithdrawalTest(user.id)
+    }
+  })
+
+  it('rejects an off-curve address before reserving', async () => {
+    const [offCurve] = PublicKey.findProgramAddressSync(
+      [Buffer.from('off-curve')],
+      new PublicKey('11111111111111111111111111111111')
+    )
+
+    const user = await createFixtureUser()
+    try {
+      await supabaseAdmin.from('balances').insert({
+        user_id: user.id,
+        available_usdc: '100',
+        locked_usdc: '0',
+      })
+
+      vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+      vi.spyOn(Connection.prototype, 'getAccountInfo').mockResolvedValue({
+        executable: false,
+        owner: new PublicKey('11111111111111111111111111111111'),
+        lamports: 100_000,
+        data: Buffer.alloc(0),
+        rentEpoch: 0,
+      } as any)
+
+      const res = await POST(makeRequest(user.id, 1, offCurve.toBase58()))
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body.error).toMatch(/cannot sign/i)
+    } finally {
+      vi.restoreAllMocks()
+      await cleanupWithdrawalTest(user.id)
+    }
+  })
+
+  it('rejects an executable program address before reserving', async () => {
+    const user = await createFixtureUser()
+    try {
+      await supabaseAdmin.from('balances').insert({
+        user_id: user.id,
+        available_usdc: '100',
+        locked_usdc: '0',
+      })
+
+      vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+      vi.spyOn(Connection.prototype, 'getAccountInfo').mockResolvedValue({
+        executable: true,
+        owner: new PublicKey('11111111111111111111111111111111'),
+        lamports: 100_000,
+        data: Buffer.alloc(0),
+        rentEpoch: 0,
+      } as any)
+
+      const res = await POST(makeRequest(user.id, 1, MOCK_WALLET))
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body.error).toMatch(/program/i)
+    } finally {
+      vi.restoreAllMocks()
+      await cleanupWithdrawalTest(user.id)
+    }
+  })
+
+  it('accepts a non-existent address and completes the withdrawal', async () => {
+    const user = await createFixtureUser()
+    try {
+      await supabaseAdmin.from('balances').insert({
+        user_id: user.id,
+        available_usdc: '100',
+        locked_usdc: '0',
+      })
+
+      vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+      vi.spyOn(Connection.prototype, 'getAccountInfo').mockResolvedValue(null as any)
+      vi.spyOn(Connection.prototype, 'sendTransaction').mockResolvedValue('mock-signature-accepted' as any)
+      vi.spyOn(Connection.prototype, 'confirmTransaction').mockResolvedValue({} as any)
+
+      const res = await POST(makeRequest(user.id, 1, Keypair.generate().publicKey.toBase58()))
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.signature).toBe('mock-signature-accepted')
+      expect(Number(body.new_balance)).toBe(99)
     } finally {
       vi.restoreAllMocks()
       await cleanupWithdrawalTest(user.id)
