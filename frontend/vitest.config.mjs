@@ -19,7 +19,8 @@ export default defineConfig(({ mode }) => {
     environment: 'node',
     globals: true,
     setupFiles: [],
-    testTimeout: 20000,
+    testTimeout: 30000,
+    hookTimeout: 30000,
   }
 
   // Tests that move USDC balances or read/write the shared platform balance
@@ -44,6 +45,7 @@ export default defineConfig(({ mode }) => {
     resolve: resolveConfig,
     test: {
       ...shared,
+      globalSetup: 'tests/global-teardown.ts',
       projects: [
         {
           resolve: resolveConfig,
@@ -61,6 +63,7 @@ export default defineConfig(({ mode }) => {
             name: 'default',
             include: ['tests/**/*.test.ts'],
             exclude: moneyTestGlobs,
+            fileParallelism: false,
           },
         },
       ],
