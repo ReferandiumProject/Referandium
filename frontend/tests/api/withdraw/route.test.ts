@@ -15,7 +15,8 @@ process.env.PLATFORM_WALLET_PRIVATE_KEY = bs58.encode(Keypair.generate().secretK
 process.env.SOLANA_RPC_URL = 'https://api.devnet.solana.com'
 process.env.USDC_MINT_ADDRESS = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'
 
-const MOCK_WALLET = '5vJggeRkrFSZBJw6rZvWNzuRbKTe4g44pQEwaBcyZVBP'
+// On-curve fixture address that cannot be confused with a real production wallet.
+const MOCK_WALLET = Keypair.generate().publicKey.toBase58()
 
 function makeRequest(userId: string, amount: number, wallet: string) {
   return new Request('http://localhost:3000/api/withdraw', {
@@ -29,6 +30,8 @@ function makeRequest(userId: string, amount: number, wallet: string) {
 }
 
 async function cleanupWithdrawalTest(userId: string) {
+  // User-id-only deletion. ledger_liability is a view and recalculates from
+  // ledger_adjustments, withdrawals and balances; we remove the source rows.
   await supabaseAdmin.from('ledger_adjustments').delete().eq('user_id', userId)
   await supabaseAdmin.from('withdrawals').delete().eq('user_id', userId)
   await supabaseAdmin.from('balances').delete().eq('user_id', userId)
@@ -42,6 +45,7 @@ describe('POST /api/withdraw', () => {
 
   it('refunds when finalize_withdrawal fails with a unique violation', async () => {
     const user = await createFixtureUser()
+    const signature = `mock-signature-${user.id}`
     await supabaseAdmin.from('balances').insert({
       user_id: user.id,
       available_usdc: '100',
@@ -52,15 +56,22 @@ describe('POST /api/withdraw', () => {
 
     try {
       vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
-      vi.spyOn(Connection.prototype, 'sendTransaction').mockResolvedValue('mock-signature' as any)
+      vi.spyOn(Connection.prototype, 'getAccountInfo').mockResolvedValue(null as any)
+      vi.spyOn(Connection.prototype, 'sendTransaction').mockResolvedValue(signature as any)
       vi.spyOn(Connection.prototype, 'confirmTransaction').mockResolvedValue({} as any)
 
       const rpcSpy = vi.spyOn(supabaseAdmin as any, 'rpc').mockImplementation(async (name: any, params?: any) => {
+        if (name === 'reserve_withdrawal') {
+          return { data: { withdrawal_id: 'mock-withdrawal-id', new_balance: 99 }, error: null }
+        }
         if (name === 'finalize_withdrawal') {
           return {
             data: null,
             error: { message: 'duplicate key value violates unique constraint "withdrawals_signature_key"', code: '23505' },
           }
+        }
+        if (name === 'refund_withdrawal') {
+          return { data: null, error: null }
         }
         return originalRpc.call(supabaseAdmin, name, params)
       })
@@ -71,7 +82,7 @@ describe('POST /api/withdraw', () => {
       expect(res.status).toBe(500)
       expect(body.error).toMatch(/refunded/i)
       expect(rpcSpy).toHaveBeenCalledWith('refund_withdrawal', {
-        p_withdrawal_id: expect.any(String),
+        p_withdrawal_id: 'mock-withdrawal-id',
       })
 
       const { data: balance } = await supabaseAdmin
@@ -181,6 +192,9 @@ describe('POST /api/withdraw', () => {
 
   it('accepts a non-existent address and completes the withdrawal', async () => {
     const user = await createFixtureUser()
+    const signature = `mock-signature-accepted-${user.id}`
+    const originalRpc = (supabaseAdmin as any).rpc
+
     try {
       await supabaseAdmin.from('balances').insert({
         user_id: user.id,
@@ -190,15 +204,29 @@ describe('POST /api/withdraw', () => {
 
       vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
       vi.spyOn(Connection.prototype, 'getAccountInfo').mockResolvedValue(null as any)
-      vi.spyOn(Connection.prototype, 'sendTransaction').mockResolvedValue('mock-signature-accepted' as any)
+      vi.spyOn(Connection.prototype, 'sendTransaction').mockResolvedValue(signature as any)
       vi.spyOn(Connection.prototype, 'confirmTransaction').mockResolvedValue({} as any)
 
-      const res = await POST(makeRequest(user.id, 1, Keypair.generate().publicKey.toBase58()))
+      const rpcSpy = vi.spyOn(supabaseAdmin as any, 'rpc').mockImplementation(async (name: any, params?: any) => {
+        if (name === 'reserve_withdrawal') {
+          return { data: { withdrawal_id: 'mock-withdrawal-id', new_balance: 99 }, error: null }
+        }
+        if (name === 'finalize_withdrawal') {
+          return { data: null, error: null }
+        }
+        return originalRpc.call(supabaseAdmin, name, params)
+      })
+
+      const res = await POST(makeRequest(user.id, 1, MOCK_WALLET))
       const body = await res.json()
 
       expect(res.status).toBe(200)
-      expect(body.signature).toBe('mock-signature-accepted')
+      expect(body.signature).toBe(signature)
       expect(Number(body.new_balance)).toBe(99)
+      expect(rpcSpy).toHaveBeenCalledWith('finalize_withdrawal', {
+        p_withdrawal_id: 'mock-withdrawal-id',
+        p_signature: signature,
+      })
     } finally {
       vi.restoreAllMocks()
       await cleanupWithdrawalTest(user.id)
