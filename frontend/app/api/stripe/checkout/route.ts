@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { PURCHASE_PACKAGES, findPurchasePackage, PurchasePackage } from '@/lib/purchase-packages'
 import { Money } from '@/lib/money'
 import Stripe from 'stripe'
@@ -43,6 +44,14 @@ function getCheckoutBaseUrl(request: Request): string {
 export async function POST(request: Request) {
   try {
     const user = await getAuthenticatedUser(request)
+
+    const rate = await checkRateLimit(user.id, 'checkout')
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: `Rate limit exceeded. Try again in ${rate.retryAfter} seconds.` },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfter) } }
+      )
+    }
 
     const rawBody = await request.text()
     let body: any

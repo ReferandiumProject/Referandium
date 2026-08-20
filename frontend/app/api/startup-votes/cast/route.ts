@@ -1,12 +1,21 @@
 import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function POST(request: Request) {
   try {
     const user = await getAuthenticatedUser(request)
+
+    const rate = await checkRateLimit(user.id, 'vote')
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: `Rate limit exceeded. Try again in ${rate.retryAfter} seconds.` },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfter) } }
+      )
+    }
 
     let body: any
     try {

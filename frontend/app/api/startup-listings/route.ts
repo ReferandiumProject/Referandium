@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
   try {
     const user = await getAuthenticatedUser(request)
+
+    const rate = await checkRateLimit(user.id, 'listing')
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: `Rate limit exceeded. Try again in ${rate.retryAfter} seconds.` },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfter) } }
+      )
+    }
 
     let body: any
     try {

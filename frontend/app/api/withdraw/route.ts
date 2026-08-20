@@ -9,6 +9,7 @@ import {
 import bs58 from 'bs58'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 const USDC_DECIMALS = 6
 
@@ -55,6 +56,14 @@ export async function POST(request: Request) {
     } catch {
       console.log('[api/withdraw] unauthorized')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const rate = await checkRateLimit(user.id, 'withdraw')
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: `Rate limit exceeded. Try again in ${rate.retryAfter} seconds.` },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfter) } }
+      )
     }
 
     const { amount_usdc, wallet_address } = await request.json()
