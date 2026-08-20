@@ -391,6 +391,8 @@ export default function ProfilePage() {
   const [depositSig, setDepositSig] = useState('')
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [withdrawWallet, setWithdrawWallet] = useState('')
+  const [withdrawLoading, setWithdrawLoading] = useState(false)
+  const [withdrawMessage, setWithdrawMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
   const [cardAmount, setCardAmount] = useState('')
   const [copied, setCopied] = useState(false)
   const [delegating, setDelegating] = useState(false)
@@ -675,46 +677,67 @@ export default function ProfilePage() {
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault()
+    setWithdrawLoading(true)
+    setWithdrawMessage(null)
     setMessage(null)
 
-    const token = await getAccessToken()
-    if (!token) {
-      setError('Not authenticated')
-      return
-    }
+    try {
+      const token = await getAccessToken()
+      if (!token) {
+        setWithdrawMessage({ type: 'error', text: 'Not authenticated' })
+        setWithdrawLoading(false)
+        return
+      }
 
-    const amount = parseFloat(withdrawAmount)
-    if (!amount || amount <= 0) {
-      setMessage('Amount must be greater than 0')
-      return
-    }
-    if (!withdrawWallet.trim()) {
-      setMessage('Wallet address is required')
-      return
-    }
+      const amount = parseFloat(withdrawAmount)
+      if (!amount || amount <= 0) {
+        setWithdrawMessage({ type: 'error', text: 'Amount must be greater than 0' })
+        setWithdrawLoading(false)
+        return
+      }
+      if (!withdrawWallet.trim()) {
+        setWithdrawMessage({ type: 'error', text: 'Wallet address is required' })
+        setWithdrawLoading(false)
+        return
+      }
 
-    const res = await fetch('/api/withdraw', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        amount_usdc: amount,
-        wallet_address: withdrawWallet.trim(),
-      }),
-    })
+      const res = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          amount_usdc: amount,
+          wallet_address: withdrawWallet.trim(),
+        }),
+      })
 
-    const json = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setMessage(json.error || 'Withdraw failed')
-      return
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setWithdrawMessage({
+          type: 'error',
+          text: json.error || 'Withdraw failed',
+        })
+        setWithdrawLoading(false)
+        return
+      }
+
+      setWithdrawMessage({
+        type: 'success',
+        text: `Withdrawn. New balance: ${json.new_balance}`,
+      })
+      setWithdrawAmount('')
+      setWithdrawWallet('')
+      await fetchProfile()
+    } catch (err: any) {
+      setWithdrawMessage({
+        type: 'error',
+        text: err?.message || 'Withdraw failed. Please try again.',
+      })
+    } finally {
+      setWithdrawLoading(false)
     }
-
-    setMessage(`Withdrawn. New balance: ${json.new_balance}`)
-    setWithdrawAmount('')
-    setWithdrawWallet('')
-    fetchProfile()
   }
 
   const depositLabels: Record<'devnet' | 'wallet' | 'card', string> = {
@@ -1485,6 +1508,17 @@ export default function ProfilePage() {
 
         <section id="withdraw" className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'account' ? '' : 'hidden'}`}>
           <h2 className="mb-4 text-lg font-semibold text-[#111827]">Withdraw</h2>
+          {withdrawMessage && (
+            <div
+              className={`mb-4 rounded-lg border p-3 text-sm ${
+                withdrawMessage.type === 'error'
+                  ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
+                  : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
+              }`}
+            >
+              {withdrawMessage.text}
+            </div>
+          )}
           <form onSubmit={handleWithdraw} className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               type="number"
@@ -1492,20 +1526,23 @@ export default function ProfilePage() {
               value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
               placeholder="Amount USDC"
-              className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48"
+              disabled={withdrawLoading}
+              className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
             />
             <input
               type="text"
               value={withdrawWallet}
               onChange={(e) => setWithdrawWallet(e.target.value)}
               placeholder="Destination wallet address"
-              className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:flex-1"
+              disabled={withdrawLoading}
+              className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:flex-1 disabled:cursor-not-allowed disabled:opacity-50"
             />
             <button
               type="submit"
-              className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
+              disabled={withdrawLoading}
+              className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Withdraw
+              {withdrawLoading ? 'Withdrawing...' : 'Withdraw'}
             </button>
           </form>
         </section>
