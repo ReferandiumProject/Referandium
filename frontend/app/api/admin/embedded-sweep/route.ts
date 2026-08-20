@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { user_id, amount_usdc } = body ?? {}
+  const { user_id, amount_usdc, destination_address } = body ?? {}
 
   if (!user_id || typeof user_id !== 'string') {
     return NextResponse.json({ error: 'user_id is required' }, { status: 400 })
@@ -97,8 +97,13 @@ export async function POST(request: Request) {
     const usdcMintPubkey = new PublicKey(usdcMint)
     const custodialPubkey = new PublicKey(userData.custodial_wallet_address)
 
+    const destinationPubkey =
+      typeof destination_address === 'string' && destination_address.trim().length > 0
+        ? new PublicKey(destination_address.trim())
+        : new PublicKey(platformAddress)
+
     const sourceAta = await getAssociatedTokenAddress(usdcMintPubkey, custodialPubkey)
-    const treasuryAta = await getAssociatedTokenAddress(usdcMintPubkey, new PublicKey(platformAddress))
+    const treasuryAta = await getAssociatedTokenAddress(usdcMintPubkey, destinationPubkey)
 
     console.log('[api/admin/embedded-sweep] source ATA:', sourceAta.toBase58())
     console.log('[api/admin/embedded-sweep] treasury ATA:', treasuryAta.toBase58())
