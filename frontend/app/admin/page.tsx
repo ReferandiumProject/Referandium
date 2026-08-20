@@ -54,6 +54,21 @@ type Treasury = {
   low: boolean
 }
 
+type IntegrityCheck = {
+  check_name: string
+  status: 'ok' | 'warn' | 'fail'
+  value: number
+  detail: string
+}
+
+type IntegrityRun = {
+  ran_at: string | null
+  stale: boolean
+  stale_for: string | null
+  overall: 'ok' | 'warn' | 'fail'
+  checks: IntegrityCheck[]
+}
+
 type AuditAction = {
   id: number
   action: string
@@ -99,6 +114,8 @@ export default function AdminPage() {
   const [loadingStuckWithdrawals, setLoadingStuckWithdrawals] = useState(false)
   const [treasury, setTreasury] = useState<Treasury | null>(null)
   const [loadingTreasury, setLoadingTreasury] = useState(false)
+  const [integrity, setIntegrity] = useState<IntegrityRun | null>(null)
+  const [loadingIntegrity, setLoadingIntegrity] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleted, setShowDeleted] = useState(true)
 
@@ -163,6 +180,7 @@ export default function AdminPage() {
           fetchStuckPacks(token),
           fetchStuckWithdrawals(token),
           fetchTreasury(token),
+          fetchIntegrityChecks(token),
         ])
       } else {
         setStatus('not-authorized')
@@ -271,6 +289,31 @@ export default function AdminPage() {
     }
   }
 
+  const fetchIntegrityChecks = async (tokenOverride?: string) => {
+    const token = tokenOverride || (await getToken())
+    if (!token) return
+    setLoadingIntegrity(true)
+    try {
+      const res = await fetch('/api/admin/integrity-checks', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        console.error(`[admin page] fetchIntegrityChecks HTTP ${res.status}:`, json)
+        setError(json.error || 'Failed to load integrity checks')
+        return
+      }
+      const json = await res.json()
+      setIntegrity(json)
+    } catch (e) {
+      console.error('[admin page] fetchIntegrityChecks failed:', e)
+      setError('Failed to load integrity checks')
+    } finally {
+      setLoadingIntegrity(false)
+    }
+  }
+
   const fetchActions = async (tokenOverride?: string) => {
     const token = tokenOverride || (await getToken())
     if (!token) return
@@ -305,6 +348,7 @@ export default function AdminPage() {
       fetchStuckPacks(token),
       fetchStuckWithdrawals(token),
       fetchTreasury(token),
+      fetchIntegrityChecks(token),
     ])
   }
 
@@ -892,6 +936,94 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+          )}
+        </section>
+
+        <section
+          className={`mb-8 rounded-xl border p-5 shadow-sm ${
+            integrity?.overall === 'fail'
+              ? 'border-[#EF4444]/50 bg-[#FEF2F2]'
+              : integrity?.overall === 'warn'
+              ? 'border-[#F59E0B]/30 bg-[#FEF3C7]'
+              : 'border-[#E5E7EB] bg-white'
+          }`}
+        >
+          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Integrity checks</h2>
+          <p className="mb-4 text-sm text-[#6B7280]">
+            Hourly invariant checks. A stale run is itself a problem — old green results are not passing results.
+          </p>
+
+          {loadingIntegrity ? (
+            <p className="text-sm text-[#6B7280]">Loading integrity checks...</p>
+          ) : !integrity ? (
+            <p className="text-sm text-[#6B7280]">Integrity state not available.</p>
+          ) : (
+            <>
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-3xl font-bold text-[#111827]">
+                    {integrity.checks.filter((c) => c.status === 'fail').length}
+                    <span className="ml-2 text-sm font-normal text-[#6B7280]">failing</span>
+                  </p>
+                  <p className="text-3xl font-bold text-[#111827]">
+                    {integrity.checks.filter((c) => c.status === 'warn').length}
+                    <span className="ml-2 text-sm font-normal text-[#6B7280]">warnings</span>
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Last checked</p>
+                  <p className="text-lg font-semibold text-[#111827]">
+                    {integrity.ran_at ? formatDate(integrity.ran_at) : 'Never'}
+                  </p>
+                  {integrity.stale ? (
+                    <p className="text-sm font-semibold text-[#B45309]">
+                      Stale — last checked {integrity.stale_for} ago
+                    </p>
+                  ) : (
+                    <p className="text-sm text-[#6B7280]">up to date</p>
+                  )}
+                </div>
+              </div>
+
+              {integrity.checks.length === 0 ? (
+                <p className="text-sm text-[#6B7280]">No checks recorded yet.</p>
+              ) : (
+                <div className="-mx-5 overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="bg-[#F9FAFB] text-[#6B7280]">
+                      <tr>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Check</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Status</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Value</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Detail</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E5E7EB]">
+                      {integrity.checks.map((c) => (
+                        <tr key={c.check_name} className="hover:bg-[#F9FAFB]">
+                          <td className="px-4 py-3 font-medium text-[#111827]">{c.check_name}</td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${
+                                c.status === 'fail'
+                                  ? 'bg-[#EF4444]/10 text-[#EF4444]'
+                                  : c.status === 'warn'
+                                  ? 'bg-[#F59E0B]/10 text-[#B45309]'
+                                  : 'bg-[#E5E7EB] text-[#374151]'
+                              }`}
+                            >
+                              {c.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-[#111827]">{c.value}</td>
+                          <td className="px-4 py-3 text-[#6B7280]">{c.detail}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </section>
 

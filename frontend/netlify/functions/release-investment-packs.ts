@@ -45,9 +45,20 @@ export default async (): Promise<Response> => {
 
   const closed = await closeStalePendingPayments()
 
-  console.log(`[netlify/scheduled] released ${count} packs, ${usdc} USDC, closed ${closed} stale pending payments`)
+  let integrityText = 'integrity unavailable'
+  try {
+    const { data: checks, error: checksError } = await supabaseAdmin.rpc('run_integrity_checks')
+    if (checksError) throw checksError
+    const summary = (checks ?? []).map((c: any) => `${c.r_check}=${c.r_status}`).join(', ')
+    integrityText = `integrity: ${summary}`
+  } catch (err: any) {
+    console.error('[netlify/scheduled] run_integrity_checks failed:', err)
+    integrityText = `integrity failed: ${err?.message ?? err}`
+  }
+
+  console.log(`[netlify/scheduled] released ${count} packs, ${usdc} USDC, closed ${closed} stale pending payments; ${integrityText}`)
   return new Response(
-    `Released ${count} packs, ${usdc} USDC, closed ${closed} stale pending payments`,
+    `Released ${count} packs, ${usdc} USDC, closed ${closed} stale pending payments; ${integrityText}`,
     { status: 200 }
   )
 }
