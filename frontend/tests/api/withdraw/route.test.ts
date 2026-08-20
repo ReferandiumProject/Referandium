@@ -1,0 +1,88 @@
+import { describe, it, expect, vi, afterAll } from 'vitest'
+import { POST } from '@/app/api/withdraw/route'
+import { getAuthenticatedUser } from '@/lib/auth-helpers'
+import { supabaseAdmin } from '@/lib/supabaseServer'
+import { createFixtureUser } from '../startup-votes/fixtures'
+import { Connection, Keypair } from '@solana/web3.js'
+import bs58 from 'bs58'
+
+vi.mock('@/lib/auth-helpers', () => ({
+  getAuthenticatedUser: vi.fn(),
+}))
+
+process.env.PLATFORM_WALLET_PRIVATE_KEY = bs58.encode(Keypair.generate().secretKey)
+process.env.SOLANA_RPC_URL = 'https://api.devnet.solana.com'
+process.env.USDC_MINT_ADDRESS = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'
+
+const MOCK_WALLET = '5vJggeRkrFSZBJw6rZvWNzuRbKTe4g44pQEwaBcyZVBP'
+
+function makeRequest(userId: string, amount: number, wallet: string) {
+  return new Request('http://localhost:3000/api/withdraw', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer mock-token',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ amount_usdc: amount, wallet_address: wallet }),
+  })
+}
+
+async function cleanupWithdrawalTest(userId: string) {
+  await supabaseAdmin.from('ledger_adjustments').delete().eq('user_id', userId)
+  await supabaseAdmin.from('withdrawals').delete().eq('user_id', userId)
+  await supabaseAdmin.from('balances').delete().eq('user_id', userId)
+  await supabaseAdmin.from('users').delete().eq('id', userId)
+}
+
+describe('POST /api/withdraw', () => {
+  afterAll(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('refunds when finalize_withdrawal fails with a unique violation', async () => {
+    const user = await createFixtureUser()
+    await supabaseAdmin.from('balances').insert({
+      user_id: user.id,
+      available_usdc: '100',
+      locked_usdc: '0',
+    })
+
+    const originalRpc = (supabaseAdmin as any).rpc
+
+    try {
+      vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+      vi.spyOn(Connection.prototype, 'sendTransaction').mockResolvedValue('mock-signature' as any)
+      vi.spyOn(Connection.prototype, 'confirmTransaction').mockResolvedValue({} as any)
+
+      const rpcSpy = vi.spyOn(supabaseAdmin as any, 'rpc').mockImplementation(async (name: any, params?: any) => {
+        if (name === 'finalize_withdrawal') {
+          return {
+            data: null,
+            error: { message: 'duplicate key value violates unique constraint "withdrawals_signature_key"', code: '23505' },
+          }
+        }
+        return originalRpc.call(supabaseAdmin, name, params)
+      })
+
+      const res = await POST(makeRequest(user.id, 1, MOCK_WALLET))
+      const body = await res.json()
+
+      expect(res.status).toBe(500)
+      expect(body.error).toMatch(/refunded/i)
+      expect(rpcSpy).toHaveBeenCalledWith('refund_withdrawal', {
+        p_withdrawal_id: expect.any(String),
+      })
+
+      const { data: balance } = await supabaseAdmin
+        .from('balances')
+        .select('available_usdc')
+        .eq('user_id', user.id)
+        .single()
+
+      expect(Number(balance?.available_usdc)).toBe(100)
+    } finally {
+      vi.restoreAllMocks()
+      await cleanupWithdrawalTest(user.id)
+    }
+  })
+})

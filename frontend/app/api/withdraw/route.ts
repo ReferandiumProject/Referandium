@@ -95,23 +95,38 @@ export async function POST(request: Request) {
       signature = await connection.sendTransaction(transaction, [platformKeypair])
       await connection.confirmTransaction(signature, 'finalized')
       console.log('[api/withdraw] transaction confirmed:', signature)
-    } catch (onChainError: any) {
-      console.error('[api/withdraw] on-chain transfer failed:', onChainError)
-      await supabaseAdmin.rpc('refund_withdrawal', { p_withdrawal_id: reserved.withdrawal_id })
+
+      const { error: finalizeError } = await supabaseAdmin.rpc('finalize_withdrawal', {
+        p_withdrawal_id: reserved.withdrawal_id,
+        p_signature: signature,
+      })
+
+      if (finalizeError) {
+        throw finalizeError
+      }
+    } catch (err: any) {
+      console.error('[api/withdraw] on-chain send/finalize failed:', err)
+
+      const { error: refundError } = await supabaseAdmin.rpc('refund_withdrawal', {
+        p_withdrawal_id: reserved.withdrawal_id,
+      })
+
+      if (refundError) {
+        console.error('[api/withdraw] refund_withdrawal also failed:', refundError)
+        return NextResponse.json(
+          {
+            error: `Withdrawal failed and could not be refunded: ${
+              err?.message || 'unknown'
+            }. Refund error: ${refundError.message}`,
+          },
+          { status: 500 }
+        )
+      }
+
       return NextResponse.json(
-        { error: 'Withdrawal failed on-chain and has been refunded' },
+        { error: 'Withdrawal failed and has been refunded' },
         { status: 500 }
       )
-    }
-
-    const { error: finalizeError } = await supabaseAdmin.rpc('finalize_withdrawal', {
-      p_withdrawal_id: reserved.withdrawal_id,
-      p_signature: signature,
-    })
-
-    if (finalizeError) {
-      console.error('[api/withdraw] finalize_withdrawal failed:', finalizeError)
-      return NextResponse.json({ error: finalizeError.message }, { status: 500 })
     }
 
     console.log('[api/withdraw] complete, new balance:', reserved.new_balance)
