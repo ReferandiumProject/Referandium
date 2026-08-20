@@ -45,6 +45,15 @@ type StuckWithdrawal = {
   pending_for: string
 }
 
+type Treasury = {
+  sol: number
+  usdc: number
+  backed_liability: number
+  cheap_transfers: number
+  expensive_transfers: number
+  low: boolean
+}
+
 type AuditAction = {
   id: number
   action: string
@@ -88,6 +97,8 @@ export default function AdminPage() {
   const [stuckWithdrawals, setStuckWithdrawals] = useState<StuckWithdrawal[] | null>(null)
   const [loadingStuck, setLoadingStuck] = useState(false)
   const [loadingStuckWithdrawals, setLoadingStuckWithdrawals] = useState(false)
+  const [treasury, setTreasury] = useState<Treasury | null>(null)
+  const [loadingTreasury, setLoadingTreasury] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleted, setShowDeleted] = useState(true)
 
@@ -151,6 +162,7 @@ export default function AdminPage() {
           fetchActions(token),
           fetchStuckPacks(token),
           fetchStuckWithdrawals(token),
+          fetchTreasury(token),
         ])
       } else {
         setStatus('not-authorized')
@@ -234,6 +246,31 @@ export default function AdminPage() {
     }
   }
 
+  const fetchTreasury = async (tokenOverride?: string) => {
+    const token = tokenOverride || (await getToken())
+    if (!token) return
+    setLoadingTreasury(true)
+    try {
+      const res = await fetch('/api/admin/treasury', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        console.error(`[admin page] fetchTreasury HTTP ${res.status}:`, json)
+        setError(json.error || 'Failed to load treasury state')
+        return
+      }
+      const json = await res.json()
+      setTreasury(json)
+    } catch (e) {
+      console.error('[admin page] fetchTreasury failed:', e)
+      setError('Failed to load treasury state')
+    } finally {
+      setLoadingTreasury(false)
+    }
+  }
+
   const fetchActions = async (tokenOverride?: string) => {
     const token = tokenOverride || (await getToken())
     if (!token) return
@@ -267,6 +304,7 @@ export default function AdminPage() {
       fetchActions(token),
       fetchStuckPacks(token),
       fetchStuckWithdrawals(token),
+      fetchTreasury(token),
     ])
   }
 
@@ -804,6 +842,56 @@ export default function AdminPage() {
                 </div>
               )}
             </>
+          )}
+        </section>
+
+        <section className="mb-8 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Treasury</h2>
+          <p className="mb-4 text-sm text-[#6B7280]">
+            On-chain state of the platform wallet. SOL is a live operational signal; USDC is
+            informational only.
+          </p>
+
+          {loadingTreasury ? (
+            <p className="text-sm text-[#6B7280]">Loading treasury...</p>
+          ) : !treasury ? (
+            <p className="text-sm text-[#6B7280]">Treasury state not available.</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">SOL</p>
+                  <p className="text-xl font-semibold text-[#111827]">{treasury.sol.toFixed(4)} SOL</p>
+                  <p className="text-sm text-[#6B7280]">
+                    About {treasury.cheap_transfers.toLocaleString()} simple transfers
+                  </p>
+                  <p className="text-sm text-[#6B7280]">
+                    About {treasury.expensive_transfers.toLocaleString()} first-time withdrawals
+                  </p>
+                  {treasury.low && (
+                    <p className="mt-2 text-sm font-semibold text-[#EF4444]">
+                      Low: fewer than 50 first-time withdrawals remaining
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+                    USDC (informational)
+                  </p>
+                  <p className="text-xl font-semibold text-[#111827]">
+                    {formatUsd(treasury.usdc)} in treasury
+                  </p>
+                  <p className="text-sm text-[#6B7280]">
+                    Backed liability: {formatUsd(treasury.backed_liability)}
+                  </p>
+                  <p className="text-xs text-[#6B7280]">
+                    backed_liability can be negative on devnet; this is expected while phantom
+                    balances have been paid out. It is not a solvency alarm here.
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
         </section>
 
