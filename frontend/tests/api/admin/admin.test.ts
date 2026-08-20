@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
 import { GET as listStartups } from '@/app/api/admin/startups/route'
 import { GET as listStuck } from '@/app/api/admin/stuck-investment-packs/route'
+import { GET as listStuckWithdrawals } from '@/app/api/admin/stuck-withdrawals/route'
 import { PATCH as patchStartup } from '@/app/api/admin/startups/[id]/route'
 import { POST as deleteStartup } from '@/app/api/admin/startups/[id]/delete/route'
 import { POST as restoreStartup } from '@/app/api/admin/startups/[id]/restore/route'
@@ -83,6 +84,7 @@ describe('admin routes', () => {
       const endpoints: { method: (req: Request, ctx?: any) => Promise<Response>; path: string; body?: any; ctx?: any }[] = [
         { method: listStartups, path: '/api/admin/startups' },
         { method: listStuck, path: '/api/admin/stuck-investment-packs' },
+        { method: listStuckWithdrawals, path: '/api/admin/stuck-withdrawals' },
         { method: listActions, path: '/api/admin/actions' },
         { method: patchStartup, path: `/api/admin/startups/${phase1Startup.id}`, body: { name: 'X' }, ctx: { params: { id: phase1Startup.id } } },
         { method: deleteStartup, path: `/api/admin/startups/${phase1Startup.id}/delete`, ctx: { params: { id: phase1Startup.id } } },
@@ -102,6 +104,7 @@ describe('admin routes', () => {
       const endpoints = [
         { method: listStartups, path: '/api/admin/startups' },
         { method: listStuck, path: '/api/admin/stuck-investment-packs' },
+        { method: listStuckWithdrawals, path: '/api/admin/stuck-withdrawals' },
         { method: listActions, path: '/api/admin/actions' },
         { method: patchStartup, path: `/api/admin/startups/${phase1Startup.id}`, body: { name: 'X' } },
         { method: deleteStartup, path: `/api/admin/startups/${phase1Startup.id}/delete` },

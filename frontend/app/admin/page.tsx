@@ -36,6 +36,15 @@ type StuckPack = {
   stuck_for: string
 }
 
+type StuckWithdrawal = {
+  id: string
+  email: string
+  amount_usdc: number
+  wallet_address: string
+  created_at: string
+  pending_for: string
+}
+
 type AuditAction = {
   id: number
   action: string
@@ -76,7 +85,9 @@ export default function AdminPage() {
   const [loadingStartups, setLoadingStartups] = useState(false)
   const [loadingActions, setLoadingActions] = useState(false)
   const [stuckPacks, setStuckPacks] = useState<StuckPack[] | null>(null)
+  const [stuckWithdrawals, setStuckWithdrawals] = useState<StuckWithdrawal[] | null>(null)
   const [loadingStuck, setLoadingStuck] = useState(false)
+  const [loadingStuckWithdrawals, setLoadingStuckWithdrawals] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleted, setShowDeleted] = useState(true)
 
@@ -135,7 +146,12 @@ export default function AdminPage() {
       const json = await res.json().catch(() => ({}))
       if (json.isAdmin) {
         setStatus('admin')
-        await Promise.all([fetchStartups(token), fetchActions(token), fetchStuckPacks(token)])
+        await Promise.all([
+          fetchStartups(token),
+          fetchActions(token),
+          fetchStuckPacks(token),
+          fetchStuckWithdrawals(token),
+        ])
       } else {
         setStatus('not-authorized')
       }
@@ -193,6 +209,31 @@ export default function AdminPage() {
     }
   }
 
+  const fetchStuckWithdrawals = async (tokenOverride?: string) => {
+    const token = tokenOverride || (await getToken())
+    if (!token) return
+    setLoadingStuckWithdrawals(true)
+    try {
+      const res = await fetch('/api/admin/stuck-withdrawals', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        console.error(`[admin page] fetchStuckWithdrawals HTTP ${res.status}:`, json)
+        setError(json.error || 'Failed to load stuck withdrawals')
+        return
+      }
+      const json = await res.json()
+      setStuckWithdrawals(json || [])
+    } catch (e) {
+      console.error('[admin page] fetchStuckWithdrawals failed:', e)
+      setError('Failed to load stuck withdrawals')
+    } finally {
+      setLoadingStuckWithdrawals(false)
+    }
+  }
+
   const fetchActions = async (tokenOverride?: string) => {
     const token = tokenOverride || (await getToken())
     if (!token) return
@@ -221,7 +262,12 @@ export default function AdminPage() {
   const refresh = async () => {
     const token = await getToken()
     if (!token) return
-    await Promise.all([fetchStartups(token), fetchActions(token), fetchStuckPacks(token)])
+    await Promise.all([
+      fetchStartups(token),
+      fetchActions(token),
+      fetchStuckPacks(token),
+      fetchStuckWithdrawals(token),
+    ])
   }
 
   const openEdit = (s: Startup) => {
@@ -694,6 +740,63 @@ export default function AdminPage() {
                           <td className="px-4 py-3 text-right text-[#111827]">{formatUsd(p.amount_charged)}</td>
                           <td className="px-4 py-3 text-[#6B7280]">{formatDate(p.created_at)}</td>
                           <td className="px-4 py-3 text-[#B45309] font-medium">{p.stuck_for}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        <section
+          className={`mb-8 rounded-xl border p-5 shadow-sm ${
+            (stuckWithdrawals || []).length > 0
+              ? 'border-[#EF4444]/50 bg-[#FEF2F2]'
+              : 'border-[#E5E7EB] bg-white'
+          }`}
+        >
+          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Stuck withdrawals</h2>
+          <p className="mb-4 text-sm text-[#6B7280]">
+            Pending withdrawals older than 15 minutes. This should always be zero.
+          </p>
+
+          {loadingStuckWithdrawals ? (
+            <p className="text-sm text-[#6B7280]">Loading stuck withdrawals...</p>
+          ) : (
+            <>
+              <div className="mb-4">
+                <span className="text-3xl font-bold text-[#111827]">
+                  {(stuckWithdrawals || []).length}
+                </span>
+                <span className="ml-2 text-sm text-[#6B7280]">stuck</span>
+              </div>
+
+              {(stuckWithdrawals || []).length === 0 ? (
+                <p className="text-sm text-[#6B7280]">No stuck withdrawals. The view ran successfully.</p>
+              ) : (
+                <div className="-mx-5 overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="bg-[#F9FAFB] text-[#6B7280]">
+                      <tr>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Email</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Amount</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Wallet</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Created</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Pending for</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E5E7EB]">
+                      {(stuckWithdrawals || []).map((w) => (
+                        <tr key={w.id} className="hover:bg-[#F9FAFB]">
+                          <td className="px-4 py-3 text-[#111827]">{w.email}</td>
+                          <td className="px-4 py-3 text-right text-[#111827]">{w.amount_usdc}</td>
+                          <td className="max-w-[200px] truncate px-4 py-3 text-[#6B7280]" title={w.wallet_address}>
+                            {w.wallet_address}
+                          </td>
+                          <td className="px-4 py-3 text-[#6B7280]">{formatDate(w.created_at)}</td>
+                          <td className="px-4 py-3 text-[#B45309] font-medium">{w.pending_for}</td>
                         </tr>
                       ))}
                     </tbody>
