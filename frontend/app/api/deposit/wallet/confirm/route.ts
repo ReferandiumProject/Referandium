@@ -58,9 +58,17 @@ export async function POST(request: Request) {
     // connected_wallet_address was intentionally excluded because it has no
     // verified population path today; including it would let a client-written
     // value silently authorize deposit theft the moment wallet linking is added.
+    // linked_wallets entries are added because they require an ed25519-signed
+    // challenge and are therefore proof-of-ownership verified.
+    const { data: linkedWallets } = await supabaseAdmin
+      .from('linked_wallets')
+      .select('address')
+      .eq('user_id', user.id)
+
     const userAddresses = [
       userData.wallet_address,
       userData.custodial_wallet_address,
+      ...((linkedWallets as { address: string }[] | null) ?? []).map((w) => w.address),
     ].filter((addr): addr is string => typeof addr === 'string' && addr.length > 0)
 
     const userOwnerSet = new Set<string>(userAddresses)
@@ -172,7 +180,11 @@ export async function POST(request: Request) {
     if (!userOwnerSet.has(matchedSourceOwner)) {
       console.log('[api/deposit] source owner not in user whitelist')
       return NextResponse.json(
-        { error: 'This USDC transfer was not sent from a wallet linked to your account. Please deposit from a wallet you control.' },
+        {
+          error: `This USDC transfer was not sent from a wallet linked to your account. It came from ${matchedSourceOwner}. Please link this wallet on the Account page and try again.`,
+          source: matchedSourceOwner,
+          usdc_balance_changes: usdcChanges,
+        },
         { status: 400 }
       )
     }
