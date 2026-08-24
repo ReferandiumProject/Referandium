@@ -397,6 +397,15 @@ export default function ProfilePage() {
   const [copied, setCopied] = useState(false)
   const [delegating, setDelegating] = useState(false)
   const [delegationError, setDelegationError] = useState<string | null>(null)
+  const DELEGATION_TIMEOUT_MS = 30000
+  const formatPrivyError = (err: any): string => {
+    if (err instanceof Error) return err.message
+    if (typeof err === 'string') return err
+    if (err?.message) return String(err.message)
+    if (err?.error) return typeof err.error === 'string' ? err.error : JSON.stringify(err.error)
+    if (err?.reason) return String(err.reason)
+    return JSON.stringify(err)
+  }
   const [enabled, setEnabled] = useState(false)
 
   const [activeTab, setActiveTab] = useState<'account' | 'activity' | 'startups'>('account')
@@ -1397,11 +1406,21 @@ export default function ProfilePage() {
                         if (!depositAddress) return
                         setDelegating(true)
                         setDelegationError(null)
+                        let timer: ReturnType<typeof setTimeout> | undefined
                         try {
-                          await delegateWallet({ address: depositAddress, chainType: 'solana' })
+                          await Promise.race([
+                            delegateWallet({ address: depositAddress, chainType: 'solana' }).finally(() => {
+                              if (timer) clearTimeout(timer)
+                            }),
+                            new Promise<never>((_, reject) => {
+                              timer = setTimeout(() => {
+                                reject(new Error(`Privy delegation request timed out after ${DELEGATION_TIMEOUT_MS / 1000} seconds`))
+                              }, DELEGATION_TIMEOUT_MS)
+                            }),
+                          ])
                           setEnabled(true)
                         } catch (err: any) {
-                          setDelegationError(err.message || 'Failed to enable automatic deposits')
+                          setDelegationError(formatPrivyError(err))
                         } finally {
                           setDelegating(false)
                         }
@@ -1419,7 +1438,7 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   {delegationError && (
-                    <p className="mt-2 text-xs text-[#EF4444]">{delegationError}</p>
+                    <p className="mt-2 whitespace-pre-wrap break-words text-xs text-[#EF4444]">{delegationError}</p>
                   )}
                 </>
               ) : (
