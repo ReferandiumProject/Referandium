@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePrivy, useFundWallet, useHeadlessDelegatedActions } from '@privy-io/react-auth'
 import { useUser } from '../context/UserContext'
+import WalletLinkingSection from '@/app/components/WalletLinkingSection'
 import { Decimal } from '@/lib/decimal'
 import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
 
@@ -953,6 +954,10 @@ export default function ProfilePage() {
             </div>
           </div>
         </section>
+
+        <div className={activeTab === 'account' ? '' : 'hidden'}>
+          <WalletLinkingSection />
+        </div>
 
         <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'account' ? '' : 'hidden'}`}>
           <div className="mb-4 flex flex-col gap-1">

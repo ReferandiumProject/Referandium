@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
+    "@noble/ed25519": "^3.1.0",
     "@privy-io/react-auth": "^3.33.1",
     "@privy-io/server-auth": "^1.32.5",
     "@solana/spl-token": "^0.4.14",
