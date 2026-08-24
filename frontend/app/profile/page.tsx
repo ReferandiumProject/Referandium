@@ -376,7 +376,16 @@ export default function ProfilePage() {
   const [pendingPacks, setPendingPacks] = useState<PendingPack[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+
+  const [devnetLoading, setDevnetLoading] = useState(false)
+  const [devnetMessage, setDevnetMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
+  const [depositInfoLoading, setDepositInfoLoading] = useState(false)
+  const [depositInfoMessage, setDepositInfoMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
+  const [walletConfirmLoading, setWalletConfirmLoading] = useState(false)
+  const [walletConfirmMessage, setWalletConfirmMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
+  const [cardLoading, setCardLoading] = useState(false)
+  const [cardMessage, setCardMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
+  const [copyError, setCopyError] = useState<string | null>(null)
 
   const [myStartups, setMyStartups] = useState<MyStartup[] | null>(null)
   const [myStartupsError, setMyStartupsError] = useState<string | null>(null)
@@ -605,90 +614,113 @@ export default function ProfilePage() {
 
   const handleDevnetDeposit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setMessage(null)
+    setDevnetLoading(true)
+    setDevnetMessage(null)
 
-    const token = await getAccessToken()
-    if (!token) {
-      setError('Not authenticated')
-      return
+    try {
+      const token = await getAccessToken()
+      if (!token) {
+        setDevnetMessage({ type: 'error', text: 'Not authenticated' })
+        return
+      }
+
+      const amount = parseFloat(depositAmount)
+      if (!amount || amount <= 0) {
+        setDevnetMessage({ type: 'error', text: 'Amount must be greater than 0' })
+        return
+      }
+
+      const res = await fetch('/api/deposit/devnet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ amount_usdc: amount }),
+      })
+
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setDevnetMessage({ type: 'error', text: json.error || 'Deposit failed' })
+        return
+      }
+
+      setDevnetMessage({ type: 'success', text: `Deposited. New balance: ${json.new_balance}` })
+      setDepositAmount('')
+      fetchProfile()
+    } catch (err: any) {
+      setDevnetMessage({ type: 'error', text: err?.message || 'Deposit failed' })
+    } finally {
+      setDevnetLoading(false)
     }
-
-    const amount = parseFloat(depositAmount)
-    if (!amount || amount <= 0) {
-      setMessage('Amount must be greater than 0')
-      return
-    }
-
-    const res = await fetch('/api/deposit/devnet', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ amount_usdc: amount }),
-    })
-
-    const json = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setMessage(json.error || 'Deposit failed')
-      return
-    }
-
-    setMessage(`Deposited. New balance: ${json.new_balance}`)
-    setDepositAmount('')
-    fetchProfile()
   }
 
   const loadDepositInfo = async () => {
-    const res = await fetch('/api/deposit/wallet', { method: 'POST' })
-    const json = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setMessage(json.error || 'Failed to load deposit info')
-      return
+    setDepositInfoLoading(true)
+    setDepositInfoMessage(null)
+
+    try {
+      const res = await fetch('/api/deposit/wallet', { method: 'POST' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setDepositInfoMessage({ type: 'error', text: json.error || 'Failed to load deposit info' })
+        return
+      }
+      setDepositInfo(json)
+      setDepositInfoMessage({ type: 'success', text: 'Deposit address loaded' })
+    } catch (err: any) {
+      setDepositInfoMessage({ type: 'error', text: err?.message || 'Failed to load deposit info' })
+    } finally {
+      setDepositInfoLoading(false)
     }
-    setDepositInfo(json)
   }
 
   const handleWalletDepositConfirm = async (e: React.FormEvent) => {
     e.preventDefault()
-    setMessage(null)
+    setWalletConfirmLoading(true)
+    setWalletConfirmMessage(null)
 
-    const token = await getAccessToken()
-    if (!token) {
-      setError('Not authenticated')
-      return
+    try {
+      const token = await getAccessToken()
+      if (!token) {
+        setWalletConfirmMessage({ type: 'error', text: 'Not authenticated' })
+        return
+      }
+
+      if (!depositSig.trim()) {
+        setWalletConfirmMessage({ type: 'error', text: 'Transaction signature is required' })
+        return
+      }
+
+      const res = await fetch('/api/deposit/wallet/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ signature: depositSig.trim() }),
+      })
+
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setWalletConfirmMessage({ type: 'error', text: json.error || 'Confirm failed' })
+        return
+      }
+
+      setWalletConfirmMessage({ type: 'success', text: `Credited ${json.credited_amount}. New balance: ${json.new_balance}` })
+      setDepositSig('')
+      fetchProfile()
+    } catch (err: any) {
+      setWalletConfirmMessage({ type: 'error', text: err?.message || 'Confirm failed' })
+    } finally {
+      setWalletConfirmLoading(false)
     }
-
-    if (!depositSig.trim()) {
-      setMessage('Transaction signature is required')
-      return
-    }
-
-    const res = await fetch('/api/deposit/wallet/confirm', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ signature: depositSig.trim() }),
-    })
-
-    const json = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setMessage(json.error || 'Confirm failed')
-      return
-    }
-
-    setMessage(`Credited ${json.credited_amount}. New balance: ${json.new_balance}`)
-    setDepositSig('')
-    fetchProfile()
   }
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault()
     setWithdrawLoading(true)
     setWithdrawMessage(null)
-    setMessage(null)
 
     try {
       const token = await getAccessToken()
@@ -807,12 +839,6 @@ export default function ProfilePage() {
             {error}
           </div>
         )}
-        {message && (
-          <div className="mb-4 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-3 text-sm text-[#10B981]">
-            {message}
-          </div>
-        )}
-
         <div className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-3 shadow-sm" role="tablist" aria-label="Profile tabs">
           <div className="flex flex-wrap gap-2">
             <button
@@ -1356,22 +1382,37 @@ export default function ProfilePage() {
           </div>
 
           {depositMode === 'devnet' ? (
-            <form onSubmit={handleDevnetDeposit} className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <input
-                type="number"
-                step="0.01"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
-                placeholder="Amount USDC"
-                className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48"
-              />
-              <button
-                type="submit"
-                className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
-              >
-                Deposit Devnet
-              </button>
-            </form>
+            <>
+              {devnetMessage && (
+                <div
+                  className={`mb-4 rounded-lg border p-3 text-sm ${
+                    devnetMessage.type === 'error'
+                      ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
+                      : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
+                  }`}
+                >
+                  {devnetMessage.text}
+                </div>
+              )}
+              <form onSubmit={handleDevnetDeposit} className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <input
+                  type="number"
+                  step="0.01"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                  placeholder="Amount USDC"
+                  disabled={devnetLoading}
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <button
+                  type="submit"
+                  disabled={devnetLoading}
+                  className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {devnetLoading ? 'Depositing...' : 'Deposit Devnet'}
+                </button>
+              </form>
+            </>
           ) : depositMode === 'wallet' ? (
             <div className="flex flex-col gap-4">
               {depositAddress ? (
@@ -1385,9 +1426,10 @@ export default function ProfilePage() {
                         try {
                           await navigator.clipboard.writeText(depositAddress)
                           setCopied(true)
+                          setCopyError(null)
                           setTimeout(() => setCopied(false), 2000)
-                        } catch {
-                          setMessage('Failed to copy address')
+                        } catch (err: any) {
+                          setCopyError(err?.message || 'Failed to copy address')
                         }
                       }}
                       className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
@@ -1395,6 +1437,9 @@ export default function ProfilePage() {
                       {copied ? 'Copied!' : 'Copy'}
                     </button>
                   </div>
+                  {copyError && (
+                    <p className="mt-2 whitespace-pre-wrap break-words text-xs text-[#EF4444]">{copyError}</p>
+                  )}
                   <p className="text-xs text-[#6B7280]">
                     This is your personal Solana deposit address. Send USDC (Solana) here and funds will be detected and swept into your platform balance automatically.
                   </p>
@@ -1447,10 +1492,22 @@ export default function ProfilePage() {
 
               <button
                 onClick={loadDepositInfo}
-                className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
+                disabled={depositInfoLoading}
+                className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Load Deposit Address
+                {depositInfoLoading ? 'Loading...' : 'Load Deposit Address'}
               </button>
+              {depositInfoMessage && (
+                <div
+                  className={`mb-4 rounded-lg border p-3 text-sm ${
+                    depositInfoMessage.type === 'error'
+                      ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
+                      : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
+                  }`}
+                >
+                  {depositInfoMessage.text}
+                </div>
+              )}
               {depositInfo && (
                 <div className="mt-4 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
                   <p className="mb-2 text-xs text-[#6B7280] break-all">
@@ -1461,6 +1518,17 @@ export default function ProfilePage() {
                     <span className="font-medium text-[#111827]">USDC Mint:</span>{' '}
                     {depositInfo.usdc_mint}
                   </p>
+                  {walletConfirmMessage && (
+                    <div
+                      className={`mb-4 rounded-lg border p-3 text-sm ${
+                        walletConfirmMessage.type === 'error'
+                          ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
+                          : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
+                      }`}
+                    >
+                      {walletConfirmMessage.text}
+                    </div>
+                  )}
                   <form
                     onSubmit={handleWalletDepositConfirm}
                     className="flex flex-col gap-3 sm:flex-row sm:items-center"
@@ -1470,13 +1538,15 @@ export default function ProfilePage() {
                       value={depositSig}
                       onChange={(e) => setDepositSig(e.target.value)}
                       placeholder="Deposit transaction signature"
-                      className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:flex-1"
+                      disabled={walletConfirmLoading}
+                      className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:flex-1 disabled:cursor-not-allowed disabled:opacity-50"
                     />
                     <button
                       type="submit"
-                      className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
+                      disabled={walletConfirmLoading}
+                      className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Confirm Wallet Deposit
+                      {walletConfirmLoading ? 'Confirming...' : 'Confirm Wallet Deposit'}
                     </button>
                   </form>
                 </div>
@@ -1484,6 +1554,17 @@ export default function ProfilePage() {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
+              {cardMessage && (
+                <div
+                  className={`mb-4 rounded-lg border p-3 text-sm ${
+                    cardMessage.type === 'error'
+                      ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
+                      : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
+                  }`}
+                >
+                  {cardMessage.text}
+                </div>
+              )}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <input
                   type="number"
@@ -1491,14 +1572,17 @@ export default function ProfilePage() {
                   value={cardAmount}
                   onChange={(e) => setCardAmount(e.target.value)}
                   placeholder="Amount USDC (optional)"
-                  className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48"
+                  disabled={cardLoading}
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
                 />
                 <button
                   onClick={async () => {
                     if (!dbUser?.wallet_address) {
-                      setMessage('No wallet address available')
+                      setCardMessage({ type: 'error', text: 'No wallet address available' })
                       return
                     }
+                    setCardLoading(true)
+                    setCardMessage(null)
                     try {
                       await fundWallet({
                         address: dbUser.wallet_address,
@@ -1507,15 +1591,18 @@ export default function ProfilePage() {
                           amount: cardAmount || undefined,
                         } as any,
                       })
+                      setCardMessage({ type: 'success', text: 'Card funding widget opened. Complete the Privy flow to receive USDC in your wallet.' })
                     } catch (err: any) {
                       console.error('[Privy] fundWallet error:', err)
-                      setMessage(err?.message || 'Card funding failed to open')
+                      setCardMessage({ type: 'error', text: err?.message || 'Card funding failed to open' })
+                    } finally {
+                      setCardLoading(false)
                     }
                   }}
-                  disabled={!dbUser?.wallet_address}
+                  disabled={!dbUser?.wallet_address || cardLoading}
                   className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Buy USDC with Card
+                  {cardLoading ? 'Opening...' : 'Buy USDC with Card'}
                 </button>
               </div>
               <p className="text-xs text-[#6B7280]">
