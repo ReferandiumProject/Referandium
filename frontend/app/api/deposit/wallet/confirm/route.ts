@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
-import { Connection, PublicKey } from '@solana/web3.js'
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token'
+import { Connection } from '@solana/web3.js'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 
 const USDC_DECIMALS = 6
+const CONFIRMATION_TIMEOUT_MS = 30_000
+const CONFIRMATION_POLL_INTERVAL_MS = 1_000
 
 export async function POST(request: Request) {
   console.log('[api/deposit] confirm request received')
@@ -41,15 +42,10 @@ export async function POST(request: Request) {
     }
 
     const connection = new Connection(rpcUrl, 'finalized')
-    const platformPubkey = new PublicKey(platformAddress)
-    const usdcMintPubkey = new PublicKey(usdcMint)
-    const platformAta = await getAssociatedTokenAddress(usdcMintPubkey, platformPubkey)
-    console.log('[api/deposit] platform ATA:', platformAta.toBase58())
 
-    // Look up the user's wallet addresses and compute their possible USDC ATAs.
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
-      .select('wallet_address, custodial_wallet_address, connected_wallet_address')
+      .select('wallet_address, custodial_wallet_address')
       .eq('id', user.id)
       .single()
 
@@ -58,90 +54,136 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unable to fetch user' }, { status: 500 })
     }
 
+    // Only use addresses with server-verified provenance for deposit attribution.
+    // connected_wallet_address was intentionally excluded because it has no
+    // verified population path today; including it would let a client-written
+    // value silently authorize deposit theft the moment wallet linking is added.
     const userAddresses = [
       userData.wallet_address,
       userData.custodial_wallet_address,
-      userData.connected_wallet_address,
     ].filter((addr): addr is string => typeof addr === 'string' && addr.length > 0)
 
-    const userAtaSet = new Set<string>()
-    await Promise.all(
-      userAddresses.map(async (addr) => {
-        try {
-          const pubkey = new PublicKey(addr)
-          const ata = await getAssociatedTokenAddress(usdcMintPubkey, pubkey)
-          userAtaSet.add(ata.toBase58())
-        } catch {
-          // Skip invalid addresses
-        }
-      })
-    )
+    const userOwnerSet = new Set<string>(userAddresses)
+    console.log('[api/deposit] user owners:', Array.from(userOwnerSet))
 
-    console.log('[api/deposit] user ATAs:', Array.from(userAtaSet))
+    const waitForFinalizedTx = async () => {
+      const start = Date.now()
+      while (Date.now() - start < CONFIRMATION_TIMEOUT_MS) {
+        const parsedTx = await connection.getParsedTransaction(signature, {
+          commitment: 'finalized',
+          maxSupportedTransactionVersion: 0,
+        })
+        if (parsedTx) return parsedTx
+        await new Promise((resolve) => setTimeout(resolve, CONFIRMATION_POLL_INTERVAL_MS))
+      }
+      return null
+    }
 
-    const parsedTx = await connection.getParsedTransaction(signature, {
-      commitment: 'finalized',
-      maxSupportedTransactionVersion: 0,
-    })
+    const parsedTx = await waitForFinalizedTx()
 
     if (!parsedTx) {
-      console.log('[api/deposit] transaction not found')
-      return NextResponse.json({ error: 'Transaction not found' }, { status: 400 })
+      console.log('[api/deposit] transaction not found or not finalized')
+      return NextResponse.json({ error: 'Transaction not found or not yet finalized' }, { status: 400 })
     }
 
-    console.log('[api/deposit] scanning transaction instructions')
-    let creditedAmount = 0
-    let matchedSourceAta: string | null = null
+    if (parsedTx.meta?.err) {
+      console.log('[api/deposit] transaction failed on-chain')
+      return NextResponse.json({ error: 'Transaction failed on-chain' }, { status: 400 })
+    }
 
-    for (const ix of parsedTx.transaction.message.instructions) {
-      const parsed = (ix as any).parsed
-      if (!parsed) continue
-      if (!ix.programId.equals(TOKEN_PROGRAM_ID)) continue
-      if (parsed.type !== 'transfer' && parsed.type !== 'transferChecked') continue
+    if (!parsedTx.meta) {
+      console.log('[api/deposit] transaction metadata not available')
+      return NextResponse.json({ error: 'Transaction metadata not available' }, { status: 400 })
+    }
 
-      const info = parsed.info
-      if (!info) continue
+    console.log('[api/deposit] verifying USDC balance deltas by owner')
+    const preMap = new Map<number, { owner: string; mint: string; amount: string }>()
+    for (const bal of parsedTx.meta.preTokenBalances ?? []) {
+      if (!bal.owner || !bal.mint) continue
+      preMap.set(bal.accountIndex, { owner: bal.owner, mint: bal.mint, amount: bal.uiTokenAmount.amount })
+    }
 
-      const destination = info.destination
-      if (destination !== platformAta.toBase58()) continue
+    const postMap = new Map<number, { owner: string; mint: string; amount: string }>()
+    for (const bal of parsedTx.meta.postTokenBalances ?? []) {
+      if (!bal.owner || !bal.mint) continue
+      postMap.set(bal.accountIndex, { owner: bal.owner, mint: bal.mint, amount: bal.uiTokenAmount.amount })
+    }
 
-      const source = info.source
-      if (typeof source !== 'string' || !userAtaSet.has(source)) continue
-      if (matchedSourceAta === null) {
-        matchedSourceAta = source
+    const allAccountIndices = new Set<number>()
+    for (const idx of preMap.keys()) allAccountIndices.add(idx)
+    for (const idx of postMap.keys()) allAccountIndices.add(idx)
+
+    const usdcChanges: { accountIndex: number; owner: string; pre: string; post: string; delta: string }[] = []
+    let platformDelta = BigInt(0)
+    let matchedSourceOwner: string | null = null
+    let largestNegativeDelta = BigInt(0)
+
+    for (const idx of allAccountIndices) {
+      const pre = preMap.get(idx)
+      const post = postMap.get(idx)
+      const mint = post?.mint ?? pre?.mint
+      const owner = post?.owner ?? pre?.owner
+      if (!mint || !owner || mint !== usdcMint) continue
+
+      const preAmount = pre?.amount ?? '0'
+      const postAmount = post?.amount ?? '0'
+      const delta = BigInt(postAmount) - BigInt(preAmount)
+
+      usdcChanges.push({ accountIndex: idx, owner, pre: preAmount, post: postAmount, delta: delta.toString() })
+
+      if (owner === platformAddress) {
+        platformDelta += delta
       }
 
-      if (parsed.type === 'transferChecked') {
-        if (info.mint !== usdcMint) continue
-        const amount = info.tokenAmount?.amount
-        if (amount) {
-          creditedAmount += Number(amount) / 10 ** USDC_DECIMALS
-        }
-      } else {
-        const amount = info.amount
-        if (amount) {
-          creditedAmount += Number(amount) / 10 ** USDC_DECIMALS
-        }
+      if (owner !== platformAddress && delta < BigInt(0) && -delta > largestNegativeDelta) {
+        largestNegativeDelta = -delta
+        matchedSourceOwner = owner
       }
     }
 
-    if (creditedAmount <= 0) {
+    if (platformDelta <= BigInt(0)) {
       console.log('[api/deposit] no USDC transfer to platform found')
-      return NextResponse.json({ error: 'No USDC transfer to platform found in transaction' }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'No USDC transfer to platform found in transaction',
+          mint: usdcMint,
+          platform_owner: platformAddress,
+          usdc_balance_changes: usdcChanges,
+        },
+        { status: 400 }
+      )
     }
 
-    console.log('[api/deposit] credited amount:', creditedAmount)
-
-    if (!matchedSourceAta) {
-      console.log('[api/deposit] no matching user source ATA found')
-      return NextResponse.json({ error: 'No USDC transfer from your wallet found in transaction' }, { status: 400 })
+    if (!matchedSourceOwner) {
+      console.log('[api/deposit] no source USDC account found')
+      return NextResponse.json(
+        {
+          error: 'Could not identify the source USDC account for the deposit',
+          mint: usdcMint,
+          platform_owner: platformAddress,
+          usdc_balance_changes: usdcChanges,
+        },
+        { status: 400 }
+      )
     }
+
+    // Any address used for deposit attribution must have server-verified provenance.
+    // Do not add connected_wallet_address here without an equally trusted population path.
+    if (!userOwnerSet.has(matchedSourceOwner)) {
+      console.log('[api/deposit] source owner not in user whitelist')
+      return NextResponse.json(
+        { error: 'This USDC transfer was not sent from a wallet linked to your account. Please deposit from a wallet you control.' },
+        { status: 400 }
+      )
+    }
+
+    const creditedAmount = Number(platformDelta) / 10 ** USDC_DECIMALS
 
     const { data, error } = await supabaseAdmin.rpc('confirm_deposit', {
       p_user_id: user.id,
       p_signature: signature,
       p_amount_usdc: creditedAmount,
-      p_source_ata: matchedSourceAta,
+      p_source_ata: matchedSourceOwner,
     })
 
     if (error) {
