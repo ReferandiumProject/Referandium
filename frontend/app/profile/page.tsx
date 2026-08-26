@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePrivy, useFundWallet, useHeadlessDelegatedActions } from '@privy-io/react-auth'
 import { useUser } from '../context/UserContext'
 import WalletLinkingSection from '@/app/components/WalletLinkingSection'
+import EmbeddedDeposit from '@/app/components/EmbeddedDeposit'
 import { Decimal } from '@/lib/decimal'
 import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
 
@@ -395,7 +396,7 @@ export default function ProfilePage() {
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
-  const [depositMode, setDepositMode] = useState<'devnet' | 'wallet' | 'card'>('devnet')
+  const [depositMode, setDepositMode] = useState<'devnet' | 'embedded' | 'card'>('devnet')
   const [depositAmount, setDepositAmount] = useState('')
   const [depositInfo, setDepositInfo] = useState<DepositInfo | null>(null)
   const [depositSig, setDepositSig] = useState('')
@@ -782,9 +783,9 @@ export default function ProfilePage() {
     }
   }
 
-  const depositLabels: Record<'devnet' | 'wallet' | 'card', string> = {
+  const depositLabels: Record<'devnet' | 'embedded' | 'card', string> = {
     devnet: 'Devnet Faucet',
-    wallet: 'Wallet Deposit',
+    embedded: 'Wallet',
     card: 'Card',
   }
 
@@ -1371,7 +1372,7 @@ export default function ProfilePage() {
         <section id="deposit" className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'account' ? '' : 'hidden'}`}>
           <h2 className="mb-4 text-lg font-semibold text-[#111827]">Deposit</h2>
           <div className="mb-4 inline-flex rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-1">
-            {(['devnet', 'wallet', 'card'] as const).map((m) => (
+            {(['devnet', 'embedded', 'card'] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setDepositMode(m)}
@@ -1418,145 +1419,8 @@ export default function ProfilePage() {
                 </button>
               </form>
             </>
-          ) : depositMode === 'wallet' ? (
-            <div className="flex flex-col gap-4">
-              {depositAddress ? (
-                <>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <div className="flex-1 overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-2">
-                      <p className="font-mono text-sm text-[#111827] break-all">{depositAddress}</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(depositAddress)
-                          setCopied(true)
-                          setCopyError(null)
-                          setTimeout(() => setCopied(false), 2000)
-                        } catch (err: any) {
-                          setCopyError(err?.message || 'Failed to copy address')
-                        }
-                      }}
-                      className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
-                    >
-                      {copied ? 'Copied!' : 'Copy'}
-                    </button>
-                  </div>
-                  {copyError && (
-                    <p className="mt-2 whitespace-pre-wrap break-words text-xs text-[#EF4444]">{copyError}</p>
-                  )}
-                  <p className="text-xs text-[#6B7280]">
-                    This is your personal Solana deposit address. Send USDC (Solana) here and funds will be detected and swept into your platform balance automatically.
-                  </p>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <button
-                      disabled={!depositAddress || delegating || enabled}
-                      onClick={async () => {
-                        if (!depositAddress) return
-                        setDelegating(true)
-                        setDelegationError(null)
-                        let timer: ReturnType<typeof setTimeout> | undefined
-                        try {
-                          await Promise.race([
-                            delegateWallet({ address: depositAddress, chainType: 'solana' }).finally(() => {
-                              if (timer) clearTimeout(timer)
-                            }),
-                            new Promise<never>((_, reject) => {
-                              timer = setTimeout(() => {
-                                reject(new Error(`Privy delegation request timed out after ${DELEGATION_TIMEOUT_MS / 1000} seconds`))
-                              }, DELEGATION_TIMEOUT_MS)
-                            }),
-                          ])
-                          setEnabled(true)
-                        } catch (err: any) {
-                          setDelegationError(formatPrivyError(err))
-                        } finally {
-                          setDelegating(false)
-                        }
-                      }}
-                      className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors ${
-                        enabled
-                          ? 'bg-[#10B981] hover:bg-green-600'
-                          : 'bg-[#3B82F6] hover:bg-blue-600'
-                      } ${(!depositAddress || delegating || enabled) ? 'cursor-not-allowed opacity-60' : ''}`}
-                    >
-                      {enabled ? 'Enabled ✓' : delegating ? 'Enabling...' : 'Enable automatic deposits'}
-                    </button>
-                    <p className="text-xs text-[#6B7280]">
-                      Allow the app to automatically move USDC from your deposit address into the platform, so you don&apos;t have to submit anything manually.
-                    </p>
-                  </div>
-                  {delegationError && (
-                    <p className="mt-2 whitespace-pre-wrap break-words text-xs text-[#EF4444]">{delegationError}</p>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-[#6B7280]">Your deposit address is being set up, refresh shortly.</p>
-              )}
-
-              <button
-                onClick={loadDepositInfo}
-                disabled={depositInfoLoading}
-                className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {depositInfoLoading ? 'Loading...' : 'Load Deposit Address'}
-              </button>
-              {depositInfoMessage && (
-                <div
-                  className={`mb-4 rounded-lg border p-3 text-sm ${
-                    depositInfoMessage.type === 'error'
-                      ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
-                      : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
-                  }`}
-                >
-                  {depositInfoMessage.text}
-                </div>
-              )}
-              {depositInfo && (
-                <div className="mt-4 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-                  <p className="mb-2 text-xs text-[#6B7280] break-all">
-                    <span className="font-medium text-[#111827]">Address:</span>{' '}
-                    {depositInfo.platform_address}
-                  </p>
-                  <p className="mb-4 text-xs text-[#6B7280] break-all">
-                    <span className="font-medium text-[#111827]">USDC Mint:</span>{' '}
-                    {depositInfo.usdc_mint}
-                  </p>
-                  {walletConfirmMessage && (
-                    <div
-                      className={`mb-4 rounded-lg border p-3 text-sm ${
-                        walletConfirmMessage.type === 'error'
-                          ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
-                          : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
-                      }`}
-                    >
-                      {walletConfirmMessage.text}
-                    </div>
-                  )}
-                  <form
-                    onSubmit={handleWalletDepositConfirm}
-                    className="flex flex-col gap-3 sm:flex-row sm:items-center"
-                  >
-                    <input
-                      type="text"
-                      value={depositSig}
-                      onChange={(e) => setDepositSig(e.target.value)}
-                      placeholder="Deposit transaction signature"
-                      disabled={walletConfirmLoading}
-                      className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:flex-1 disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                    <button
-                      type="submit"
-                      disabled={walletConfirmLoading}
-                      className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {walletConfirmLoading ? 'Confirming...' : 'Confirm Wallet Deposit'}
-                    </button>
-                  </form>
-                </div>
-              )}
-            </div>
+          ) : depositMode === 'embedded' ? (
+            <EmbeddedDeposit onSuccess={fetchProfile} />
           ) : (
             <div className="flex flex-col gap-3">
               {cardMessage && (

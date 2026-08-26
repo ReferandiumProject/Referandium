@@ -6,6 +6,7 @@ export interface AuthenticatedUser {
   privy_id: string
   email: string | null
   wallet_address: string | null
+  custodial_wallet_address: string | null
 }
 
 export async function getAuthenticatedUser(request: Request): Promise<AuthenticatedUser> {
@@ -27,7 +28,7 @@ export async function getAuthenticatedUser(request: Request): Promise<Authentica
 
   const { data: user, error } = await supabaseAdmin
     .from('users')
-    .select('id, privy_id, email, wallet_address')
+    .select('id, privy_id, email, wallet_address, custodial_wallet_address')
     .eq('privy_id', did)
     .single()
 
