@@ -12,6 +12,15 @@ import { useUser } from '../context/UserContext'
 const NETWORK_FEE_USDC = 0.02
 const MINIMUM_DEPOSIT_USDC = 1.0
 const USDC_DECIMALS = 6
+const SIGNING_TIMEOUT_MS = 20000
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+}
 
 function base64ToUint8Array(base64: string) {
   const binary = atob(base64)
@@ -148,10 +157,14 @@ export default function EmbeddedDeposit({ onSuccess }: { onSuccess?: () => void 
 
       const txBytes = base64ToUint8Array(build.serialized)
 
-      const result = await signAndSendTransaction({
-        transaction: txBytes,
-        wallet,
-      })
+      const result = await withTimeout(
+        signAndSendTransaction({
+          transaction: txBytes,
+          wallet,
+        }),
+        SIGNING_TIMEOUT_MS,
+        'Signing the deposit transaction timed out after 20 seconds. Try again or refresh the page.'
+      )
 
       const signatureBase58 = bs58.encode(result.signature)
 
