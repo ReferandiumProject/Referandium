@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { usePrivy, useFundWallet, useHeadlessDelegatedActions } from '@privy-io/react-auth'
+import { usePrivy, useFundWallet, useHeadlessDelegatedActions, useWallets } from '@privy-io/react-auth'
+import { useWallets as useSolanaWallets } from '@privy-io/react-auth/solana'
 import { useUser } from '../context/UserContext'
 import WalletLinkingSection from '@/app/components/WalletLinkingSection'
 import EmbeddedDeposit from '@/app/components/EmbeddedDeposit'
@@ -364,12 +365,14 @@ function MyStartupEditForm({
 }
 
 export default function ProfilePage() {
-  const { authenticated, getAccessToken, login, user } = usePrivy()
+  const { ready, authenticated, getAccessToken, login, user } = usePrivy()
   const { dbUser } = useUser()
   const { fundWallet } = useFundWallet({
     onUserExited: () => console.log('[Privy] card funding flow exited'),
   })
   const { delegateWallet } = useHeadlessDelegatedActions()
+  const mainWallets = useWallets()
+  const solanaWallets = useSolanaWallets()
 
   const [balance, setBalance] = useState<Balance | null>(null)
   const [voteState, setVoteState] = useState<VoteState | null>(null)
@@ -789,6 +792,28 @@ export default function ProfilePage() {
     card: 'Card',
   }
 
+  const diagnosticJson = useMemo(() => {
+    const seen = new WeakSet()
+    const replacer = (_key: string, value: any) => {
+      if (typeof value === 'bigint') return value.toString()
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) return '[Circular]'
+        seen.add(value)
+      }
+      return value
+    }
+    return JSON.stringify(
+      {
+        fromSolanaWalletsHook: solanaWallets,
+        fromMainWalletsHook: mainWallets,
+        privy: { ready, authenticated },
+        pageEmbeddedWalletAddress: dbUser?.custodial_wallet_address ?? null,
+        expectedPrivyServerAddress: 'F5GswqMmr2VWEjeor7JF8hQ9TTNTZRryNhR5dp9gNY94',
+      },
+      replacer
+    )
+  }, [solanaWallets, mainWallets, ready, authenticated, dbUser])
+
   const depositAddress = useMemo(() => {
     const account = user?.linkedAccounts?.find(
       (a: any) =>
@@ -841,6 +866,13 @@ export default function ProfilePage() {
             {error}
           </div>
         )}
+        <div className="mb-6 rounded-xl border border-[#F59E0B] bg-[#FFFBEB] p-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#92400E]">Privy Solana diagnostics (temporary)</p>
+          <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-all text-[10px] leading-tight text-[#78350F]">
+            {diagnosticJson}
+          </pre>
+        </div>
+
         <div className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-3 shadow-sm" role="tablist" aria-label="Profile tabs">
           <div className="flex flex-wrap gap-2">
             <button
