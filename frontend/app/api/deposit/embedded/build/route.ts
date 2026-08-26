@@ -39,12 +39,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'amount_usdc must be a positive number' }, { status: 400 })
   }
 
-  if (amount_usdc < MINIMUM_DEPOSIT_USDC + NETWORK_FEE_USDC) {
+  if (amount_usdc < MINIMUM_DEPOSIT_USDC) {
     return NextResponse.json(
       {
-        error: `Minimum deposit is ${MINIMUM_DEPOSIT_USDC} USDC. Enter at least ${(
-          MINIMUM_DEPOSIT_USDC + NETWORK_FEE_USDC
-        ).toFixed(2)} USDC to cover the ${NETWORK_FEE_USDC} USDC network fee.`,
+        error: `Minimum deposit is ${MINIMUM_DEPOSIT_USDC.toFixed(2)} USDC. The ${NETWORK_FEE_USDC} USDC network fee is withheld from that.`,
       },
       { status: 400 }
     )

@@ -47,7 +47,7 @@ export default function EmbeddedDeposit({ onSuccess }: { onSuccess?: () => void 
     () =>
       !loading &&
       Number.isFinite(amountNumber) &&
-      amountNumber >= MINIMUM_DEPOSIT_USDC + NETWORK_FEE_USDC &&
+      amountNumber >= MINIMUM_DEPOSIT_USDC &&
       balance !== null &&
       amountNumber <= balance,
     [loading, amountNumber, balance]
@@ -113,12 +113,10 @@ export default function EmbeddedDeposit({ onSuccess }: { onSuccess?: () => void 
         return
       }
 
-      if (amountNumber < MINIMUM_DEPOSIT_USDC + NETWORK_FEE_USDC) {
+      if (amountNumber < MINIMUM_DEPOSIT_USDC) {
         setMessage({
           type: 'error',
-          text: `Minimum deposit is ${MINIMUM_DEPOSIT_USDC} USDC. Enter at least ${(
-            MINIMUM_DEPOSIT_USDC + NETWORK_FEE_USDC
-          ).toFixed(2)} USDC to cover the ${NETWORK_FEE_USDC} USDC network fee.`,
+          text: `Minimum deposit is ${MINIMUM_DEPOSIT_USDC.toFixed(2)} USDC. The ${NETWORK_FEE_USDC} USDC network fee is withheld from that.`,
         })
         return
       }
@@ -213,9 +211,8 @@ export default function EmbeddedDeposit({ onSuccess }: { onSuccess?: () => void 
 
       <p className="text-xs text-[#6B7280]">
         Send USDC (Solana) to the address above. Then enter the amount to deposit here. A flat{' '}
-        {NETWORK_FEE_USDC} USDC network fee is withheld, and the minimum deposit is{' '}
-        {MINIMUM_DEPOSIT_USDC} USDC (so enter at least{' '}
-        {(MINIMUM_DEPOSIT_USDC + NETWORK_FEE_USDC).toFixed(2)} USDC).
+        {NETWORK_FEE_USDC} USDC network fee is withheld. The minimum deposit is{' '}
+        {MINIMUM_DEPOSIT_USDC.toFixed(2)} USDC.
       </p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -251,8 +248,8 @@ export default function EmbeddedDeposit({ onSuccess }: { onSuccess?: () => void 
 
       {Number.isFinite(amountNumber) && amountNumber >= 0 && (
         <p className="text-xs text-[#6B7280]">
-          {netUsdc >= 0
-            ? `${amountNumber.toFixed(2)} USDC entered. ${netUsdc.toFixed(2)} USDC will be credited to your platform balance.`
+          {amountNumber >= NETWORK_FEE_USDC
+            ? `${amountNumber.toFixed(2)} USDC will be sent. ${netUsdc.toFixed(2)} USDC will be credited to your platform balance.`
             : 'Amount too small to cover the network fee.'}
         </p>
       )}
