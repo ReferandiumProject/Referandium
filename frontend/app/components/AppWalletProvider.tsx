@@ -5,10 +5,20 @@ import { PrivyProvider } from '@privy-io/react-auth'
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react'
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets'
-import { clusterApiUrl } from '@solana/web3.js'
+import { createSolanaRpc } from '@solana/rpc'
+import { createSolanaRpcSubscriptions } from '@solana/rpc-subscriptions'
+
+const solanaRpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL
+if (!solanaRpcUrl) {
+  throw new Error('NEXT_PUBLIC_SOLANA_RPC_URL is not set in the environment')
+}
+
+const wsUrl = solanaRpcUrl.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:')
+const solanaRpc = createSolanaRpc(solanaRpcUrl) as any
+const solanaRpcSubscriptions = createSolanaRpcSubscriptions(wsUrl) as any
 
 export default function AppWalletProvider({ children }: { children: React.ReactNode }) {
-  const endpoint = useMemo(() => clusterApiUrl('devnet'), [])
+  const endpoint = solanaRpcUrl!
 
   // Suppress MetaMask/Ethereum errors globally (browser extension auto-detection)
   useEffect(() => {
@@ -54,6 +64,14 @@ export default function AppWalletProvider({ children }: { children: React.ReactN
           },
         },
         loginMethods: ['google', 'wallet'],
+        solana: {
+          rpcs: {
+            'solana:devnet': {
+              rpc: solanaRpc,
+              rpcSubscriptions: solanaRpcSubscriptions,
+            },
+          },
+        },
       }}
     >
       <ConnectionProvider endpoint={endpoint}>
