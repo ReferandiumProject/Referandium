@@ -1,6 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { closeStalePendingPayments } from '../../netlify/functions/release-investment-packs'
+
+vi.mock('@/lib/scan-user-deposits', () => ({
+  scanAndSweepUserDeposits: vi.fn(),
+}))
 import { createFixtureUser, cleanupFixtures } from '../api/startup-votes/fixtures'
 
 const HOURS = 60 * 60 * 1000

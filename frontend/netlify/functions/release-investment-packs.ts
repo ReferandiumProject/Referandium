@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../lib/supabaseServer'
 import { backfillInvestmentPacks } from '../../lib/backfill-investment-packs'
+import { scanAndSweepUserDeposits } from '../../lib/scan-user-deposits'
 
 const STALE_PENDING_HOURS = 48
 
@@ -29,6 +30,12 @@ export async function closeStalePendingPayments(userId?: string | null): Promise
 
 export default async (): Promise<Response> => {
   await backfillInvestmentPacks(null)
+
+  try {
+    await scanAndSweepUserDeposits(null)
+  } catch (err: any) {
+    console.error('[netlify/scheduled] scanAndSweepUserDeposits failed:', err)
+  }
 
   const { data, error } = await supabaseAdmin.rpc('release_due_investment_packs', {
     p_user_id: null,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { backfillInvestmentPacks } from "@/lib/backfill-investment-packs";
+import { scanAndSweepUserDeposits } from "@/lib/scan-user-deposits";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,6 +12,12 @@ export async function GET(request: NextRequest) {
       await backfillInvestmentPacks(user.id)
     } catch (err: any) {
       console.error('[api/balance] backfillInvestmentPacks error:', err?.message ?? err)
+    }
+
+    try {
+      await scanAndSweepUserDeposits(user.id)
+    } catch (err: any) {
+      console.error('[api/balance] scanAndSweepUserDeposits error:', err?.message ?? err)
     }
 
     const { data: releaseData, error: releaseError } = await supabaseAdmin.rpc(
