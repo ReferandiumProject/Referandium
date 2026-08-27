@@ -126,6 +126,10 @@ export default function AdminPage() {
   const [sweepLoading, setSweepLoading] = useState(false)
   const [sweepRaw, setSweepRaw] = useState<string | null>(null)
 
+  const [scanUserId, setScanUserId] = useState('')
+  const [scanLoading, setScanLoading] = useState(false)
+  const [scanRaw, setScanRaw] = useState<string | null>(null)
+
   const [modal, setModal] = useState<{
     type: 'edit' | 'delete' | 'restore' | 'force-phase2'
     startup: Startup
@@ -391,6 +395,40 @@ export default function AdminPage() {
     } finally {
       setSweepLoading(false)
       setSweepArmed(false)
+    }
+  }
+
+  const runScan = async () => {
+    const token = await getToken()
+    if (!token) {
+      setScanRaw(JSON.stringify({ error: 'Not authenticated' }, null, 2))
+      return
+    }
+
+    const userId = scanUserId.trim()
+    if (!userId) {
+      setScanRaw(JSON.stringify({ error: 'User ID is required' }, null, 2))
+      return
+    }
+
+    setScanLoading(true)
+    setScanRaw(null)
+
+    try {
+      const res = await fetch('/api/admin/deposit-scan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ user_id: userId }),
+      })
+      const text = await res.text()
+      setScanRaw(text)
+    } catch (e: any) {
+      setScanRaw(JSON.stringify({ error: e?.message || 'Request failed' }, null, 2))
+    } finally {
+      setScanLoading(false)
     }
   }
 
@@ -1175,6 +1213,48 @@ export default function AdminPage() {
                 <p className="mb-1 text-sm font-semibold text-[#111827]">Raw response</p>
                 <pre className="max-h-96 overflow-auto rounded-lg border border-[#E5E7EB] bg-white p-3 text-xs text-[#111827]">
                   {sweepRaw}
+                </pre>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="mb-8 rounded-xl border border-[#F59E0B]/50 bg-[#FEF3C7] p-5 shadow-sm">
+          <div className="mb-4 rounded-lg border border-[#F59E0B]/30 bg-[#FEF3C7] p-3 text-sm text-[#78350F]">
+            <strong>Diagnostic — runs the real deposit scanner.</strong> This calls the production scan
+            for one user: it records deposits, sweeps USDC to the treasury, and credits balances. Use
+            this only when you need to see which rule each transfer hit.
+          </div>
+          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Deposit scan diagnostic</h2>
+          <p className="mb-4 text-sm text-[#6B7280]">
+            Returns the scan result counts plus a per-candidate breakdown: source, destination, amount,
+            block time, and the exact rejection reason (already recorded, before cutoff, treasury source,
+            below minimum, or accepted).
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label className={labelClass}>User ID</label>
+              <input
+                className={inputClass}
+                value={scanUserId}
+                onChange={(e) => setScanUserId(e.target.value)}
+                placeholder="Paste the user's UUID"
+              />
+            </div>
+            <button
+              onClick={runScan}
+              disabled={!scanUserId.trim() || scanLoading}
+              className={buttonWarning}
+            >
+              {scanLoading ? 'Running...' : 'Run deposit scan'}
+            </button>
+
+            {scanRaw !== null && (
+              <div className="mt-4">
+                <p className="mb-1 text-sm font-semibold text-[#111827]">Raw response</p>
+                <pre className="max-h-96 overflow-auto rounded-lg border border-[#E5E7EB] bg-white p-3 text-xs text-[#111827]">
+                  {scanRaw}
                 </pre>
               </div>
             )}
