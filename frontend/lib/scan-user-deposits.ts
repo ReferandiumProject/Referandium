@@ -45,14 +45,24 @@ async function sweepDeposit(
   usdcMintPubkey: PublicKey,
   platformPubkey: PublicKey,
   platformKeypair: Keypair,
-  connection: Connection
+  connection: Connection,
+  userAtaBalanceUsdc: number
 ): Promise<string> {
   const custodialPubkey = new PublicKey(user.custodial_wallet_address)
   const sourceAta = await getAssociatedTokenAddress(usdcMintPubkey, custodialPubkey)
   const treasuryAta = await getAssociatedTokenAddress(usdcMintPubkey, platformPubkey)
 
-  const amountUsdc = Number(deposit.amount_usdc)
-  const amountRaw = BigInt(Math.floor(amountUsdc * 10 ** USDC_DECIMALS))
+  const depositAmountUsdc = Number(deposit.amount_usdc)
+  const sweepAmountUsdc = Math.min(depositAmountUsdc, Math.max(0, userAtaBalanceUsdc))
+
+  if (sweepAmountUsdc <= 0) {
+    throw new Error(`Insufficient token balance for deposit ${deposit.id}: ${userAtaBalanceUsdc} USDC available`)
+  }
+
+  const amountRaw = BigInt(Math.floor(sweepAmountUsdc * 10 ** USDC_DECIMALS))
+  if (amountRaw === BigInt(0)) {
+    throw new Error(`Sweep amount rounded to zero for deposit ${deposit.id}`)
+  }
 
   const transaction = new Transaction()
   transaction.add(createTransferInstruction(sourceAta, treasuryAta, custodialPubkey, amountRaw))
@@ -69,13 +79,33 @@ async function sweepDeposit(
 
   const serialized = signResult.signedTransaction.serialize()
   const sweepSignature = await connection.sendRawTransaction(serialized)
+
+  // Persist the actual amount and signature before we wait for confirmation.
+  // If confirmation fails, the row is still retryable with a known signature.
+  const { error: updateError } = await supabaseAdmin
+    .from('deposits')
+    .update({
+      amount_usdc: sweepAmountUsdc,
+      sweep_signature: sweepSignature,
+    })
+    .eq('id', deposit.id)
+
+  if (updateError) {
+    throw new Error(`Failed to update deposit before confirmation: ${updateError.message}`)
+  }
+
   await connection.confirmTransaction(sweepSignature, 'finalized')
 
   return sweepSignature
 }
 
 async function scanOneUser(
-  user: { id: string; privy_id: string; custodial_wallet_address: string },
+  user: {
+    id: string
+    privy_id: string
+    custodial_wallet_address: string
+    deposits_scanned_from: string | null
+  },
   connection: Connection,
   usdcMintPubkey: PublicKey,
   platformPubkey: PublicKey,
@@ -85,11 +115,16 @@ async function scanOneUser(
 
   const custodialPubkey = new PublicKey(user.custodial_wallet_address)
   const userAta = await getAssociatedTokenAddress(usdcMintPubkey, custodialPubkey)
+  const treasuryAta = await getAssociatedTokenAddress(usdcMintPubkey, platformPubkey)
 
   const signatures = await connection.getSignaturesForAddress(userAta, {
     limit: SIGNATURE_LIMIT,
   })
   const sigStrings = signatures.filter((s) => !s.err).map((s) => s.signature)
+
+  const scannedFromTimestamp = user.deposits_scanned_from
+    ? Math.floor(new Date(user.deposits_scanned_from).getTime() / 1000)
+    : 0
 
   if (sigStrings.length > 0) {
     const { data: existingRows } = await supabaseAdmin
@@ -99,10 +134,15 @@ async function scanOneUser(
 
     const existing = new Set((existingRows || []).map((r: any) => r.signature))
 
-    for (const signature of sigStrings) {
-      if (existing.has(signature)) continue
+    for (const sig of signatures) {
+      if (sig.err || existing.has(sig.signature)) continue
 
-      const parsedTx = await connection.getParsedTransaction(signature, {
+      if (sig.blockTime == null) {
+        console.warn('[scan-user-deposits] skipping signature without blockTime:', sig.signature)
+        continue
+      }
+
+      const parsedTx = await connection.getParsedTransaction(sig.signature, {
         commitment: 'finalized',
         maxSupportedTransactionVersion: 0,
       })
@@ -141,9 +181,16 @@ async function scanOneUser(
 
       if (amount <= 0 || !sourceAta) continue
 
-      const { error: recordError } = await supabaseAdmin.rpc('record_deposit_detected', {
+      if (sourceAta === treasuryAta.toBase58()) {
+        console.log('[scan-user-deposits] skipping platform treasury source:', sig.signature)
+        continue
+      }
+
+      const isPreCutoff = sig.blockTime < scannedFromTimestamp
+
+      const { data: recordData, error: recordError } = await supabaseAdmin.rpc('record_deposit_detected', {
         p_user_id: user.id,
-        p_signature: signature,
+        p_signature: sig.signature,
         p_amount_usdc: amount,
         p_source_ata: sourceAta,
       })
@@ -154,9 +201,18 @@ async function scanOneUser(
           (typeof recordError.message === 'string' && recordError.message.includes('deposits_signature_key'))
 
         if (isUniqueViolation) {
-          console.log('[scan-user-deposits] already recorded by another process:', signature)
+          console.log('[scan-user-deposits] already recorded by another process:', sig.signature)
         } else {
           console.error('[scan-user-deposits] record_deposit_detected failed:', recordError)
+          result.errors++
+        }
+      } else if (isPreCutoff) {
+        const { error: preCutoffError } = await supabaseAdmin.rpc('mark_deposit_pre_cutoff', {
+          p_deposit_id: recordData.id,
+        })
+
+        if (preCutoffError) {
+          console.error('[scan-user-deposits] mark_deposit_pre_cutoff failed:', preCutoffError)
           result.errors++
         }
       } else {
@@ -165,17 +221,17 @@ async function scanOneUser(
     }
   }
 
-  const { data: detectedDeposits, error: detectedError } = await supabaseAdmin
+  const { data: depositsToSweep, error: depositsError } = await supabaseAdmin
     .from('deposits')
     .select('*')
     .eq('user_id', user.id)
-    .eq('status', 'detected')
+    .in('status', ['detected', 'sweeping'])
 
-  if (detectedError) {
-    throw new Error(`Failed to fetch detected deposits: ${detectedError.message}`)
+  if (depositsError) {
+    throw new Error(`Failed to fetch deposits to sweep: ${depositsError.message}`)
   }
 
-  if (!detectedDeposits || detectedDeposits.length === 0) {
+  if (!depositsToSweep || depositsToSweep.length === 0) {
     return result
   }
 
@@ -193,60 +249,148 @@ async function scanOneUser(
     console.error('[scan-user-deposits] getUserById failed:', err)
   }
 
-  for (const deposit of detectedDeposits) {
-    if (Number(deposit.amount_usdc) < MIN_SWEEP_USDC) {
-      console.log(`[scan-user-deposits] deposit ${deposit.id} below ${MIN_SWEEP_USDC} USDC, leaving detected`)
-      result.skipped++
-      continue
-    }
+  let userAtaBalanceUsdc = 0
+  try {
+    const { value } = await connection.getTokenAccountBalance(userAta)
+    userAtaBalanceUsdc = Number(value.amount) / 10 ** (value.decimals ?? USDC_DECIMALS)
+  } catch (err) {
+    console.error('[scan-user-deposits] getTokenAccountBalance failed:', err)
+  }
 
-    if (!walletId) {
+  for (const deposit of depositsToSweep) {
+    if (deposit.status === 'detected') {
+      if (Number(deposit.amount_usdc) < MIN_SWEEP_USDC) {
+        console.log(`[scan-user-deposits] deposit ${deposit.id} below ${MIN_SWEEP_USDC} USDC, leaving detected`)
+        result.skipped++
+        continue
+      }
+
+      if (!walletId) {
+        try {
+          const { error } = await supabaseAdmin.rpc('mark_deposit_awaiting_consent', { p_deposit_id: deposit.id })
+          if (error) throw error
+          result.awaiting++
+        } catch (err) {
+          console.error(`[scan-user-deposits] mark_deposit_awaiting_consent failed for ${deposit.id}:`, err)
+          result.errors++
+        }
+        continue
+      }
+
       try {
-        const { error } = await supabaseAdmin.rpc('mark_deposit_awaiting_consent', { p_deposit_id: deposit.id })
-        if (error) throw error
-        result.awaiting++
+        const { error: markSweepingError } = await supabaseAdmin.rpc('mark_deposit_sweeping', {
+          p_deposit_id: deposit.id,
+        })
+        if (markSweepingError) throw markSweepingError
+
+        const sweepSignature = await sweepDeposit(
+          deposit,
+          user,
+          walletId,
+          usdcMintPubkey,
+          platformPubkey,
+          platformKeypair,
+          connection,
+          userAtaBalanceUsdc
+        )
+
+        const { error: markSweptError } = await supabaseAdmin.rpc('mark_deposit_swept', {
+          p_deposit_id: deposit.id,
+          p_sweep_signature: sweepSignature,
+        })
+        if (markSweptError) throw markSweptError
+
+        const { error: creditError } = await supabaseAdmin.rpc('credit_swept_deposit', { p_deposit_id: deposit.id })
+        if (creditError) throw creditError
+
+        result.swept++
       } catch (err) {
-        console.error(`[scan-user-deposits] mark_deposit_awaiting_consent failed for ${deposit.id}:`, err)
+        console.error(`[scan-user-deposits] sweep failed for ${deposit.id}:`, err)
         result.errors++
       }
-      continue
-    }
+    } else if (deposit.status === 'sweeping') {
+      const depositAmountUsdc = Number(deposit.amount_usdc)
 
-    try {
-      const { error: markSweepingError } = await supabaseAdmin.rpc('mark_deposit_sweeping', {
-        p_deposit_id: deposit.id,
-      })
-      if (markSweepingError) throw markSweepingError
-    } catch (err) {
-      console.error(`[scan-user-deposits] mark_deposit_sweeping failed for ${deposit.id}:`, err)
-      result.errors++
-      continue
-    }
+      if (deposit.sweep_signature) {
+        // If the funds are no longer in the wallet, the sweep already landed.
+        if (userAtaBalanceUsdc < depositAmountUsdc) {
+          try {
+            const { error: markSweptError } = await supabaseAdmin.rpc('mark_deposit_swept', {
+              p_deposit_id: deposit.id,
+              p_sweep_signature: deposit.sweep_signature,
+            })
+            if (markSweptError) throw markSweptError
 
-    try {
-      const sweepSignature = await sweepDeposit(
-        deposit,
-        user,
-        walletId,
-        usdcMintPubkey,
-        platformPubkey,
-        platformKeypair,
-        connection
-      )
+            const { error: creditError } = await supabaseAdmin.rpc('credit_swept_deposit', { p_deposit_id: deposit.id })
+            if (creditError) throw creditError
 
-      const { error: markSweptError } = await supabaseAdmin.rpc('mark_deposit_swept', {
-        p_deposit_id: deposit.id,
-        p_sweep_signature: sweepSignature,
-      })
-      if (markSweptError) throw markSweptError
+            result.swept++
+          } catch (err) {
+            console.error(`[scan-user-deposits] finalizing stuck sweep for ${deposit.id}:`, err)
+            result.errors++
+          }
+          continue
+        }
 
-      const { error: creditError } = await supabaseAdmin.rpc('credit_swept_deposit', { p_deposit_id: deposit.id })
-      if (creditError) throw creditError
+        // Funds are still present; confirm the old signature did not land before retrying.
+        try {
+          const sigStatus = await connection.getSignatureStatus(deposit.sweep_signature)
+          if (sigStatus?.value?.confirmationStatus === 'finalized') {
+            const { error: markSweptError } = await supabaseAdmin.rpc('mark_deposit_swept', {
+              p_deposit_id: deposit.id,
+              p_sweep_signature: deposit.sweep_signature,
+            })
+            if (markSweptError) throw markSweptError
 
-      result.swept++
-    } catch (err) {
-      console.error(`[scan-user-deposits] sweep failed for ${deposit.id}:`, err)
-      result.errors++
+            const { error: creditError } = await supabaseAdmin.rpc('credit_swept_deposit', { p_deposit_id: deposit.id })
+            if (creditError) throw creditError
+
+            result.swept++
+            continue
+          }
+        } catch (err) {
+          console.log(`[scan-user-deposits] could not verify signature status for ${deposit.id}:`, err)
+        }
+      }
+
+      const sweepAmountUsdc = Math.min(depositAmountUsdc, userAtaBalanceUsdc)
+      if (sweepAmountUsdc <= 0) {
+        console.log(`[scan-user-deposits] no funds to retry sweep for ${deposit.id}`)
+        continue
+      }
+
+      if (!walletId) {
+        console.error(`[scan-user-deposits] no wallet for retry of ${deposit.id}`)
+        result.errors++
+        continue
+      }
+
+      try {
+        const sweepSignature = await sweepDeposit(
+          deposit,
+          user,
+          walletId,
+          usdcMintPubkey,
+          platformPubkey,
+          platformKeypair,
+          connection,
+          userAtaBalanceUsdc
+        )
+
+        const { error: markSweptError } = await supabaseAdmin.rpc('mark_deposit_swept', {
+          p_deposit_id: deposit.id,
+          p_sweep_signature: sweepSignature,
+        })
+        if (markSweptError) throw markSweptError
+
+        const { error: creditError } = await supabaseAdmin.rpc('credit_swept_deposit', { p_deposit_id: deposit.id })
+        if (creditError) throw creditError
+
+        result.swept++
+      } catch (err) {
+        console.error(`[scan-user-deposits] retry sweep failed for ${deposit.id}:`, err)
+        result.errors++
+      }
     }
   }
 
@@ -266,7 +410,7 @@ export async function scanAndSweepUserDeposits(
 
   let query = supabaseAdmin
     .from('users')
-    .select('id, privy_id, custodial_wallet_address')
+    .select('id, privy_id, custodial_wallet_address, deposits_scanned_from')
     .not('custodial_wallet_address', 'is', null)
 
   if (userId) {
@@ -301,8 +445,6 @@ export async function scanAndSweepUserDeposits(
     await new Promise((resolve) => setTimeout(resolve, USER_SCAN_DELAY_MS))
   }
 
-  console.log(
-    `[scan-user-deposits] complete: ${JSON.stringify(totals)}`
-  )
+  console.log(`[scan-user-deposits] complete: ${JSON.stringify(totals)}`)
   return totals
 }

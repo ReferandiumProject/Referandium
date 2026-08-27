@@ -96,13 +96,19 @@ export async function POST(req: NextRequest) {
     if (existingUser) {
       userRecord = { ...existingUser, custodial_wallet_address: existingUser.custodial_wallet_address }
 
-      const updates: { email: string | null; wallet_address: string | null; custodial_wallet_address?: string | null } = {
+      const updates: {
+        email: string | null
+        wallet_address: string | null
+        custodial_wallet_address?: string | null
+        deposits_scanned_from?: string
+      } = {
         email,
         wallet_address: custodialAddress,
       }
 
       if (!existingUser.custodial_wallet_address) {
         updates.custodial_wallet_address = custodialAddress
+        updates.deposits_scanned_from = new Date().toISOString()
         userRecord.custodial_wallet_address = custodialAddress
         console.log('[auth/sync] setting custodial wallet for', did, ':', custodialAddress)
       } else if (existingUser.custodial_wallet_address === custodialAddress) {
@@ -132,6 +138,7 @@ export async function POST(req: NextRequest) {
           email,
           wallet_address: custodialAddress,
           custodial_wallet_address: custodialAddress,
+          deposits_scanned_from: new Date().toISOString(),
           auth_method: 'privy',
         })
         .select('id, custodial_wallet_address')
