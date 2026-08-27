@@ -2,13 +2,28 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { usePrivy, useFundWallet, useHeadlessDelegatedActions, useWallets } from '@privy-io/react-auth'
+import { usePrivy, useFundWallet, useSigners, useWallets } from '@privy-io/react-auth'
 import { useWallets as useSolanaWallets } from '@privy-io/react-auth/solana'
 import { useUser } from '../context/UserContext'
 import WalletLinkingSection from '@/app/components/WalletLinkingSection'
 import EmbeddedDeposit from '@/app/components/EmbeddedDeposit'
 import { Decimal } from '@/lib/decimal'
 import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
+
+const PRIVY_SIGNER_ID = process.env.NEXT_PUBLIC_PRIVY_SIGNER_ID!
+if (!PRIVY_SIGNER_ID) {
+  throw new Error('NEXT_PUBLIC_PRIVY_SIGNER_ID is not set in the environment')
+}
+
+const DELEGATION_TIMEOUT_MS = 30000
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+}
 
 type Balance = {
   available_usdc: number
@@ -370,7 +385,7 @@ export default function ProfilePage() {
   const { fundWallet } = useFundWallet({
     onUserExited: () => console.log('[Privy] card funding flow exited'),
   })
-  const { delegateWallet } = useHeadlessDelegatedActions()
+  const { addSigners } = useSigners()
   const mainWallets = useWallets()
   const solanaWallets = useSolanaWallets()
 
@@ -410,8 +425,7 @@ export default function ProfilePage() {
   const [cardAmount, setCardAmount] = useState('')
   const [copied, setCopied] = useState(false)
   const [delegating, setDelegating] = useState(false)
-  const [delegationError, setDelegationError] = useState<string | null>(null)
-  const DELEGATION_TIMEOUT_MS = 30000
+  const [delegationMessage, setDelegationMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
   const formatPrivyError = (err: any): string => {
     if (err instanceof Error) return err.message
     if (typeof err === 'string') return err
@@ -824,6 +838,28 @@ export default function ProfilePage() {
     return (account as any)?.address as string | undefined
   }, [user])
 
+  const handleEnableServerSigning = async () => {
+    if (!depositAddress) return
+    setDelegating(true)
+    setDelegationMessage(null)
+    try {
+      await withTimeout(
+        addSigners({
+          address: depositAddress,
+          signers: [{ signerId: PRIVY_SIGNER_ID }],
+        }),
+        DELEGATION_TIMEOUT_MS,
+        'Enabling server signing timed out after 30 seconds. Try again or refresh the page.'
+      )
+      setDelegationMessage({ type: 'success', text: 'Server signing enabled for this wallet.' })
+    } catch (err: any) {
+      console.error('[Privy] addSigners error:', err)
+      setDelegationMessage({ type: 'error', text: formatPrivyError(err) })
+    } finally {
+      setDelegating(false)
+    }
+  }
+
   const isEnabled = useMemo(() => {
     if (!user?.linkedAccounts || !depositAddress) return false
     const account = user.linkedAccounts.find(
@@ -989,6 +1025,31 @@ export default function ProfilePage() {
         </section>
 
         <div className={activeTab === 'account' ? '' : 'hidden'}>
+          <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+            <h2 className="mb-1 text-lg font-semibold text-[#111827]">Server signing</h2>
+            <p className="mb-4 text-sm text-[#6B7280]">
+              Grant the backend a session signer so it can complete transactions from this embedded wallet.
+            </p>
+            {delegationMessage && (
+              <div
+                className={`mb-4 rounded-lg border p-3 text-sm ${
+                  delegationMessage.type === 'error'
+                    ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
+                    : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
+                }`}
+              >
+                {delegationMessage.text}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleEnableServerSigning}
+              disabled={delegating || !depositAddress}
+              className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {delegating ? 'Enabling...' : 'Enable server signing'}
+            </button>
+          </section>
           <WalletLinkingSection />
         </div>
 
