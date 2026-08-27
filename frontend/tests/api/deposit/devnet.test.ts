@@ -89,6 +89,37 @@ describe('POST /api/deposit/devnet', () => {
     }
   })
 
+  it('does not change backed_liability after a faucet credit', async () => {
+    const user = await createFixtureUser()
+    await supabaseAdmin.from('balances').insert({
+      user_id: user.id,
+      available_usdc: '0',
+      locked_usdc: '0',
+    })
+
+    const { data: before } = await supabaseAdmin
+      .from('ledger_liability')
+      .select('backed_liability')
+      .single()
+
+    process.env.DEVNET_FAUCET_ENABLED = 'true'
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+
+    try {
+      const res = await faucet(makeRequest('100'))
+      expect(res.status).toBe(200)
+
+      const { data: after } = await supabaseAdmin
+        .from('ledger_liability')
+        .select('backed_liability')
+        .single()
+
+      expect(Number(after?.backed_liability)).toBe(Number(before?.backed_liability))
+    } finally {
+      await cleanupFaucet(user.id)
+    }
+  })
+
   it('rejects a request above the per-request cap with no balance or ledger change', async () => {
     const user = await createFixtureUser()
     await supabaseAdmin.from('balances').insert({

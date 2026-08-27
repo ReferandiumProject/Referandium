@@ -154,39 +154,43 @@ export async function POST(req: NextRequest) {
 
     console.log('[auth/sync] upserted user, id:', userRecord.id)
 
-    // Attempt to create the user's balance row exactly once. The bonus amount
-    // is included in this single insert, so a returning user cannot receive it
-    // again: the balances table's unique constraint on user_id guarantees the
-    // insert succeeds at most once.
-    const bonusUsdc = getSignupBonusUsdc()
-    const { error: balanceInsertError } = await supabaseAdmin
-      .from('balances')
-      .insert({
+    const isNewUser = !existingUser
+
+    // Create the user's balance row exactly once. If a signup bonus is
+    // configured, use the atomic grant_unbacked_credit RPC; otherwise create
+    // a zero balance row. Returning users already have a row, so neither
+    // path runs for them.
+    if (isNewUser) {
+      const { error: balanceInsertError } = await supabaseAdmin.from('balances').insert({
         user_id: userRecord.id,
-        available_usdc: bonusUsdc ?? '0',
+        available_usdc: '0',
         locked_usdc: 0,
       })
 
-    if (balanceInsertError) {
-      const isUniqueViolation = balanceInsertError.code === '23505'
-      if (!isUniqueViolation) {
-        console.error('[auth/sync] balance insert failed:', balanceInsertError)
-        throw balanceInsertError
+      if (balanceInsertError) {
+        const isUniqueViolation = balanceInsertError.code === '23505'
+        if (!isUniqueViolation) {
+          console.error('[auth/sync] balance insert failed:', balanceInsertError)
+          throw balanceInsertError
+        }
+        console.log('[auth/sync] balance row already exists for user:', userRecord.id)
       }
-      console.log('[auth/sync] balance row already exists for user:', userRecord.id)
-    } else if (bonusUsdc) {
-      console.log(`[auth/sync] signup bonus granted: user=${userRecord.id}, amount=${bonusUsdc} USDC`)
 
-      const { error: ledgerError } = await supabaseAdmin.from('ledger_adjustments').insert({
-        user_id: userRecord.id,
-        amount: bonusUsdc,
-        reason: 'signup_bonus',
-        note: 'Initial signup bonus credit',
-      })
+      const bonusUsdc = getSignupBonusUsdc()
+      if (bonusUsdc) {
+        const { error: grantError } = await supabaseAdmin.rpc('grant_unbacked_credit', {
+          p_user_id: userRecord.id,
+          p_amount: bonusUsdc,
+          p_reason: 'signup_bonus',
+          p_note: 'Initial signup bonus credit',
+        })
 
-      if (ledgerError) {
-        console.error('[auth/sync] ledger adjustment insert failed:', ledgerError)
-        throw ledgerError
+        if (grantError) {
+          console.error('[auth/sync] grant_unbacked_credit failed:', grantError)
+          throw grantError
+        }
+
+        console.log(`[auth/sync] signup bonus granted: user=${userRecord.id}, amount=${bonusUsdc} USDC`)
       }
     }
 

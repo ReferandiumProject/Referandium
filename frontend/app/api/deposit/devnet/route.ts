@@ -102,41 +102,30 @@ export async function POST(request: Request) {
 
   console.log(`[api/deposit/devnet] crediting ${amount.toString()} USDC to user:`, user.id)
 
-  const { data: currentBalance, error: fetchError } = await supabaseAdmin
+  const { error: grantError } = await supabaseAdmin.rpc('grant_unbacked_credit', {
+    p_user_id: user.id,
+    p_amount: amount.toString(),
+    p_reason: 'faucet',
+    p_note: 'Devnet faucet credit',
+  })
+
+  if (grantError) {
+    console.error('[api/deposit/devnet] grant_unbacked_credit failed:', grantError)
+    return NextResponse.json({ error: 'Failed to credit balance' }, { status: 500 })
+  }
+
+  const { data: newBalanceRow, error: fetchError } = await supabaseAdmin
     .from('balances')
     .select('available_usdc')
     .eq('user_id', user.id)
     .single()
 
   if (fetchError) {
-    console.error('[api/deposit/devnet] failed to fetch balance:', fetchError)
-    return NextResponse.json({ error: 'Failed to fetch balance' }, { status: 500 })
+    console.error('[api/deposit/devnet] failed to fetch new balance:', fetchError)
+    return NextResponse.json({ error: 'Failed to fetch new balance' }, { status: 500 })
   }
 
-  const current = Decimal.parse(String(currentBalance?.available_usdc ?? '0'))
-  const newBalance = current.add(amount)
-
-  const { error: updateError } = await supabaseAdmin
-    .from('balances')
-    .update({ available_usdc: newBalance.toString() })
-    .eq('user_id', user.id)
-
-  if (updateError) {
-    console.error('[api/deposit/devnet] failed to update balance:', updateError)
-    return NextResponse.json({ error: 'Failed to update balance' }, { status: 500 })
-  }
-
-  const { error: ledgerError } = await supabaseAdmin.from('ledger_adjustments').insert({
-    user_id: user.id,
-    amount: amount.toString(),
-    reason: 'faucet',
-    note: `Devnet faucet credit`,
-  })
-
-  if (ledgerError) {
-    console.error('[api/deposit/devnet] failed to record ledger adjustment:', ledgerError)
-    return NextResponse.json({ error: 'Failed to record ledger adjustment' }, { status: 500 })
-  }
+  const newBalance = Decimal.parse(String(newBalanceRow?.available_usdc ?? '0'))
 
   console.log('[api/deposit/devnet] new balance:', newBalance.toString())
   return NextResponse.json({ new_balance: Number(newBalance.toString()) }, { status: 200 })
