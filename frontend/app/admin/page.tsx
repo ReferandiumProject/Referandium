@@ -45,6 +45,19 @@ type StuckWithdrawal = {
   pending_for: string
 }
 
+type DepositNeedingAttention = {
+  id: string
+  email: string
+  user_id: string
+  amount_usdc: number
+  status: string
+  why: string
+  signature: string
+  waiting_for: string
+  created_at: string
+  updated_at: string
+}
+
 type Treasury = {
   sol: number
   usdc: number
@@ -110,8 +123,10 @@ export default function AdminPage() {
   const [loadingActions, setLoadingActions] = useState(false)
   const [stuckPacks, setStuckPacks] = useState<StuckPack[] | null>(null)
   const [stuckWithdrawals, setStuckWithdrawals] = useState<StuckWithdrawal[] | null>(null)
+  const [depositsNeedingAttention, setDepositsNeedingAttention] = useState<DepositNeedingAttention[] | null>(null)
   const [loadingStuck, setLoadingStuck] = useState(false)
   const [loadingStuckWithdrawals, setLoadingStuckWithdrawals] = useState(false)
+  const [loadingDepositsNeedingAttention, setLoadingDepositsNeedingAttention] = useState(false)
   const [treasury, setTreasury] = useState<Treasury | null>(null)
   const [loadingTreasury, setLoadingTreasury] = useState(false)
   const [integrity, setIntegrity] = useState<IntegrityRun | null>(null)
@@ -190,6 +205,7 @@ export default function AdminPage() {
           fetchActions(token),
           fetchStuckPacks(token),
           fetchStuckWithdrawals(token),
+          fetchDepositsNeedingAttention(token),
           fetchTreasury(token),
           fetchIntegrityChecks(token),
         ])
@@ -272,6 +288,31 @@ export default function AdminPage() {
       setError('Failed to load stuck withdrawals')
     } finally {
       setLoadingStuckWithdrawals(false)
+    }
+  }
+
+  const fetchDepositsNeedingAttention = async (tokenOverride?: string) => {
+    const token = tokenOverride || (await getToken())
+    if (!token) return
+    setLoadingDepositsNeedingAttention(true)
+    try {
+      const res = await fetch('/api/admin/deposits-needing-attention', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        console.error(`[admin page] fetchDepositsNeedingAttention HTTP ${res.status}:`, json)
+        setError(json.error || 'Failed to load deposits needing attention')
+        return
+      }
+      const json = await res.json()
+      setDepositsNeedingAttention(json || [])
+    } catch (e) {
+      console.error('[admin page] fetchDepositsNeedingAttention failed:', e)
+      setError('Failed to load deposits needing attention')
+    } finally {
+      setLoadingDepositsNeedingAttention(false)
     }
   }
 
@@ -440,6 +481,7 @@ export default function AdminPage() {
       fetchActions(token),
       fetchStuckPacks(token),
       fetchStuckWithdrawals(token),
+      fetchDepositsNeedingAttention(token),
       fetchTreasury(token),
       fetchIntegrityChecks(token),
     ])
@@ -972,6 +1014,67 @@ export default function AdminPage() {
                           </td>
                           <td className="px-4 py-3 text-[#6B7280]">{formatDate(w.created_at)}</td>
                           <td className="px-4 py-3 text-[#B45309] font-medium">{w.pending_for}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        <section
+          className={`mb-8 rounded-xl border p-5 shadow-sm ${
+            (depositsNeedingAttention || []).length > 0
+              ? 'border-[#EF4444]/50 bg-[#FEF2F2]'
+              : 'border-[#E5E7EB] bg-white'
+          }`}
+        >
+          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Deposits needing attention</h2>
+          <p className="mb-4 text-sm text-[#6B7280]">
+            Deposits that arrived in a user's wallet but have not become balance. This should always be zero.
+          </p>
+
+          {loadingDepositsNeedingAttention ? (
+            <p className="text-sm text-[#6B7280]">Loading deposits needing attention...</p>
+          ) : (
+            <>
+              <div className="mb-4">
+                <span className="text-3xl font-bold text-[#111827]">
+                  {(depositsNeedingAttention || []).length}
+                </span>
+                <span className="ml-2 text-sm text-[#6B7280]">needing attention</span>
+              </div>
+
+              {(depositsNeedingAttention || []).length === 0 ? (
+                <p className="text-sm text-[#6B7280]">No deposits needing attention. The view ran successfully.</p>
+              ) : (
+                <div className="-mx-5 overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="bg-[#F9FAFB] text-[#6B7280]">
+                      <tr>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Email</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Amount</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Status</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Waiting for</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Why</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Signature</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Created</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E5E7EB]">
+                      {(depositsNeedingAttention || []).map((d) => (
+                        <tr key={d.id} className="hover:bg-[#F9FAFB]">
+                          <td className="px-4 py-3 text-[#111827]">{d.email}</td>
+                          <td className="px-4 py-3 text-right text-[#111827]">{formatUsd(d.amount_usdc)}</td>
+                          <td className="px-4 py-3 text-[#6B7280]">{d.status}</td>
+                          <td className="px-4 py-3 text-[#B45309] font-medium">{d.waiting_for}</td>
+                          <td className="max-w-[300px] whitespace-normal px-4 py-3 text-[#6B7280]">{d.why}</td>
+                          <td className="max-w-[200px] truncate px-4 py-3 text-[#6B7280]" title={d.signature}>
+                            {d.signature}
+                          </td>
+                          <td className="px-4 py-3 text-[#6B7280]">{formatDate(d.created_at)}</td>
                         </tr>
                       ))}
                     </tbody>
