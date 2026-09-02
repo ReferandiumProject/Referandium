@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin'
 import { mintGraduationToken } from '@/lib/graduation/mint'
+import { errorResponse } from '@/lib/errorResponse'
 
 export async function POST(
   request: Request,
@@ -26,17 +27,21 @@ export async function POST(
   try {
     const result = await mintGraduationToken(id)
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.reason, halted: true },
-        { status: 500 }
-      )
+      return errorResponse({
+        status: 500,
+        message: result.reason,
+        error: result,
+        request,
+        data: { halted: true },
+      })
     }
     return NextResponse.json(result)
   } catch (err: any) {
-    console.error('[api/admin/graduations/mint] unexpected error:', err)
-    return NextResponse.json(
-      { error: err.message || 'Internal server error' },
-      { status: 500 }
-    )
+    return errorResponse({
+      status: 500,
+      message: err.message || 'Internal server error',
+      error: err,
+      request,
+    })
   }
 }

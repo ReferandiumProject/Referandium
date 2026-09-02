@@ -3,6 +3,7 @@ import { TOKEN_PROGRAM_ID, createTransferInstruction, getAssociatedTokenAddress 
 import bs58 from 'bs58'
 import { supabaseAdmin } from './supabaseServer'
 import { privyClient } from './privy-server'
+import { recordSystemError } from './system-errors'
 
 const USDC_DECIMALS = 6
 const MIN_SWEEP_USDC = 1
@@ -204,6 +205,14 @@ async function scanOneUser(
           console.log('[scan-user-deposits] already recorded by another process:', sig.signature)
         } else {
           console.error('[scan-user-deposits] record_deposit_detected failed:', recordError)
+          void recordSystemError({
+            source: 'swallowed',
+            name: 'ScanRecordDepositDetectedFailed',
+            message: recordError.message,
+            path: 'lib/scan-user-deposits.ts/scanOneUser',
+            userId: user.id,
+            context: { signature: sig.signature, recordError: { message: recordError.message, code: recordError.code } },
+          })
           result.errors++
         }
       } else if (isPreCutoff) {
@@ -213,6 +222,14 @@ async function scanOneUser(
 
         if (preCutoffError) {
           console.error('[scan-user-deposits] mark_deposit_pre_cutoff failed:', preCutoffError)
+          void recordSystemError({
+            source: 'swallowed',
+            name: 'ScanMarkDepositPreCutoffFailed',
+            message: preCutoffError.message,
+            path: 'lib/scan-user-deposits.ts/scanOneUser',
+            userId: user.id,
+            context: { depositId: recordData.id, preCutoffError: { message: preCutoffError.message, code: preCutoffError.code } },
+          })
           result.errors++
         }
       } else {
@@ -245,16 +262,32 @@ async function scanOneUser(
     if (walletAccount && walletAccount.delegated === true && typeof walletAccount.id === 'string') {
       walletId = walletAccount.id
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error('[scan-user-deposits] getUserById failed:', err)
+    void recordSystemError({
+      source: 'swallowed',
+      name: 'ScanGetUserByIdFailed',
+      message: err?.message ?? 'getUserById failed',
+      path: 'lib/scan-user-deposits.ts/scanOneUser',
+      userId: user.id,
+      context: { custodialWallet: user.custodial_wallet_address, stack: err?.stack },
+    })
   }
 
   let userAtaBalanceUsdc = 0
   try {
     const { value } = await connection.getTokenAccountBalance(userAta)
     userAtaBalanceUsdc = Number(value.amount) / 10 ** (value.decimals ?? USDC_DECIMALS)
-  } catch (err) {
+  } catch (err: any) {
     console.error('[scan-user-deposits] getTokenAccountBalance failed:', err)
+    void recordSystemError({
+      source: 'swallowed',
+      name: 'ScanGetTokenAccountBalanceFailed',
+      message: err?.message ?? 'getTokenAccountBalance failed',
+      path: 'lib/scan-user-deposits.ts/scanOneUser',
+      userId: user.id,
+      context: { userAta: userAta.toBase58(), stack: err?.stack },
+    })
   }
 
   for (const deposit of depositsToSweep) {
@@ -270,8 +303,16 @@ async function scanOneUser(
           const { error } = await supabaseAdmin.rpc('mark_deposit_awaiting_consent', { p_deposit_id: deposit.id })
           if (error) throw error
           result.awaiting++
-        } catch (err) {
+        } catch (err: any) {
           console.error(`[scan-user-deposits] mark_deposit_awaiting_consent failed for ${deposit.id}:`, err)
+          void recordSystemError({
+            source: 'swallowed',
+            name: 'ScanMarkDepositAwaitingConsentFailed',
+            message: err?.message ?? 'mark_deposit_awaiting_consent failed',
+            path: 'lib/scan-user-deposits.ts/scanOneUser',
+            userId: user.id,
+            context: { depositId: deposit.id, stack: err?.stack },
+          })
           result.errors++
         }
         continue
@@ -304,8 +345,16 @@ async function scanOneUser(
         if (creditError) throw creditError
 
         result.swept++
-      } catch (err) {
+      } catch (err: any) {
         console.error(`[scan-user-deposits] sweep failed for ${deposit.id}:`, err)
+        void recordSystemError({
+          source: 'swallowed',
+          name: 'ScanSweepFailed',
+          message: err?.message ?? 'sweep failed',
+          path: 'lib/scan-user-deposits.ts/scanOneUser',
+          userId: user.id,
+          context: { depositId: deposit.id, stack: err?.stack },
+        })
         result.errors++
       }
     } else if (deposit.status === 'sweeping') {
@@ -325,8 +374,16 @@ async function scanOneUser(
             if (creditError) throw creditError
 
             result.swept++
-          } catch (err) {
+          } catch (err: any) {
             console.error(`[scan-user-deposits] finalizing stuck sweep for ${deposit.id}:`, err)
+            void recordSystemError({
+              source: 'swallowed',
+              name: 'ScanFinalizeStuckSweepFailed',
+              message: err?.message ?? 'finalizing stuck sweep failed',
+              path: 'lib/scan-user-deposits.ts/scanOneUser',
+              userId: user.id,
+              context: { depositId: deposit.id, stack: err?.stack },
+            })
             result.errors++
           }
           continue
@@ -348,8 +405,16 @@ async function scanOneUser(
             result.swept++
             continue
           }
-        } catch (err) {
+        } catch (err: any) {
           console.log(`[scan-user-deposits] could not verify signature status for ${deposit.id}:`, err)
+          void recordSystemError({
+            source: 'swallowed',
+            name: 'ScanSignatureStatusCheckFailed',
+            message: err?.message ?? 'could not verify signature status',
+            path: 'lib/scan-user-deposits.ts/scanOneUser',
+            userId: user.id,
+            context: { depositId: deposit.id, sweepSignature: deposit.sweep_signature, stack: err?.stack },
+          })
         }
       }
 
@@ -387,8 +452,16 @@ async function scanOneUser(
         if (creditError) throw creditError
 
         result.swept++
-      } catch (err) {
+      } catch (err: any) {
         console.error(`[scan-user-deposits] retry sweep failed for ${deposit.id}:`, err)
+        void recordSystemError({
+          source: 'swallowed',
+          name: 'ScanRetrySweepFailed',
+          message: err?.message ?? 'retry sweep failed',
+          path: 'lib/scan-user-deposits.ts/scanOneUser',
+          userId: user.id,
+          context: { depositId: deposit.id, stack: err?.stack },
+        })
         result.errors++
       }
     }
@@ -436,8 +509,16 @@ export async function scanAndSweepUserDeposits(
       totals.awaiting += result.awaiting
       totals.skipped += result.skipped
       totals.errors += result.errors
-    } catch (err) {
+    } catch (err: any) {
       console.error(`[scan-user-deposits] user ${user.id} scan failed:`, err)
+      void recordSystemError({
+        source: 'swallowed',
+        name: 'ScanUserDepositsFailed',
+        message: err?.message ?? 'user scan failed',
+        path: 'lib/scan-user-deposits.ts/scanAndSweepUserDeposits',
+        userId: user.id,
+        context: { stack: err?.stack },
+      })
       totals.users++
       totals.errors++
     }

@@ -33,6 +33,9 @@ describe('GET /api/startup-votes/list', () => {
       headers: { Authorization: 'Bearer mock-token' },
     }))
     const balance = await balanceRes.json()
+    if (balanceRes.status !== 200) {
+      throw new Error(`getBalance failed: status ${balanceRes.status}, body ${JSON.stringify(balance)}`)
+    }
     expect(balance.total_spendable).toBe(100)
 
     // close one startup by crossing its threshold
@@ -42,14 +45,23 @@ describe('GET /api/startup-votes/list', () => {
       body: JSON.stringify({ startup_id: closedStartup.id, direction: 'yes', votes: 5 }),
     })
     const castRes = await castVote(castReq)
-    expect(castRes.status).toBe(200)
     const castBody = await castRes.json()
+    if (castRes.status !== 200) {
+      throw new Error(`castVote failed: status ${castRes.status}, body ${JSON.stringify(castBody)}`)
+    }
     expect(castBody.phase_closed).toBe(true)
   })
 
   afterAll(async () => {
-    await cleanupFixtures(user.id, [activeStartup.id, closedStartup.id, negativeStartup.id])
-    await cleanupFixtures(founder.id, [])
+    const startupIds = [activeStartup?.id, closedStartup?.id, negativeStartup?.id].filter(
+      (id): id is string => !!id
+    )
+    if (user) {
+      await cleanupFixtures(user.id, startupIds)
+    }
+    if (founder) {
+      await cleanupFixtures(founder.id, [])
+    }
   })
 
   it('returns startups across all phases, with phase and curve data for the one that closed into phase 2', async () => {

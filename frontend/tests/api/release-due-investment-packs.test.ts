@@ -1,25 +1,32 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { Decimal } from '@/lib/decimal'
 import { createFixtureUser, cleanupFixtures } from './startup-votes/fixtures'
 
-let backedLiabilityBefore: number
+const USDC_DECIMALS = 6
+
+let backedLiabilityBefore: string
+
+function exactToFixed(value: string, decimals: number): string {
+  return Decimal.parse(value).toFixed(decimals)
+}
 
 async function recordLedger() {
   const { data, error } = await supabaseAdmin
     .from('ledger_liability')
-    .select('backed_liability')
+    .select('backed_liability_exact')
     .single()
   if (error) throw new Error(`recordLedger failed: ${error.message}`)
-  backedLiabilityBefore = Number(data.backed_liability)
+  backedLiabilityBefore = data.backed_liability_exact
 }
 
 async function currentBackedLiability() {
   const { data, error } = await supabaseAdmin
     .from('ledger_liability')
-    .select('backed_liability')
+    .select('backed_liability_exact')
     .single()
   if (error) throw new Error(`currentBackedLiability failed: ${error.message}`)
-  return Number(data.backed_liability)
+  return data.backed_liability_exact as string
 }
 
 async function currentBalance(userId: string) {
@@ -125,7 +132,9 @@ describe('release_due_investment_packs', () => {
       expect(result.usdc).toBe(25)
       expect(await currentBalance(user.id)).toBe(25)
       expect(await currentPaymentStatus(paymentId)).toBe('granted')
-      expect(await currentBackedLiability()).toBe(backedLiabilityBefore + 25)
+      const expected = Decimal.parse(backedLiabilityBefore).add(Decimal.parse('25')).toFixed(USDC_DECIMALS)
+      const after = exactToFixed(await currentBackedLiability(), USDC_DECIMALS)
+      expect(after).toBe(expected)
     } finally {
       await cleanupFixtures(user.id, [])
     }
@@ -166,7 +175,9 @@ describe('release_due_investment_packs', () => {
 
       expect(await currentBalance(user2.id)).toBe(0)
       expect(await currentPaymentStatus(payment2)).toBe('paid')
-      expect(await currentBackedLiability()).toBe(backedLiabilityBefore + 25)
+      const expected = Decimal.parse(backedLiabilityBefore).add(Decimal.parse('25')).toFixed(USDC_DECIMALS)
+      const after = exactToFixed(await currentBackedLiability(), USDC_DECIMALS)
+      expect(after).toBe(expected)
     } finally {
       await cleanupFixtures(user1.id, [])
       await cleanupFixtures(user2.id, [])

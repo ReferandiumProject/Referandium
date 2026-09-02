@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { Connection, Keypair, PublicKey } from '@solana/web3.js'
+import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js'
+import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 
 import { claimGraduationHolding } from '@/lib/graduation/claim'
 
@@ -7,8 +8,9 @@ const platformKeypair = Keypair.generate()
 const mintKeypair = Keypair.generate()
 const escrowKeypair = Keypair.generate()
 const holderKeypair = Keypair.generate()
+const otherKeypair = Keypair.generate()
 
-function makeMockSupabase(opts: { holding: any; graduation: any }) {
+function makeMockSupabase(opts: { holding: any; graduation: any; user?: any }) {
   const updates: any[] = []
   const supabase = {
     from: (table: string) => ({
@@ -20,6 +22,9 @@ function makeMockSupabase(opts: { holding: any; graduation: any }) {
             }
             if (table === 'graduations') {
               return { data: opts.graduation, error: null }
+            }
+            if (table === 'users') {
+              return { data: opts.user ?? { custodial_wallet_address: null }, error: null }
             }
             return { data: null, error: null }
           },
@@ -123,6 +128,41 @@ describe('claimGraduationHolding', () => {
 
     expect(result.success).toBe(true)
     expect(result.signature).toBe('existing-sig')
+    expect(result.already_claimed).toBe(true)
+  })
+
+  it('returns already_claimed false on first claim and true on the immediate second', async () => {
+    const opts = { holding: makeHolding(), graduation: makeGraduation() }
+    const { supabase, updates } = makeMockSupabase(opts as any)
+    const connection = makeMockConnection()
+
+    const first = await claimGraduationHolding('holding-1', 'user-1', {
+      supabase: supabase as any,
+      connection,
+      platformKeypair,
+    })
+
+    expect(first.success).toBe(true)
+    expect(first.already_claimed).toBe(false)
+    expect(connection.sendRawTransaction).toHaveBeenCalledTimes(1)
+    expect(updates[updates.length - 1]).toMatchObject({
+      status: 'claimed',
+      signature: first.signature,
+      claimed_at: expect.any(String),
+    })
+
+    opts.holding = { ...opts.holding, status: 'claimed', signature: first.signature }
+
+    const second = await claimGraduationHolding('holding-1', 'user-1', {
+      supabase: supabase as any,
+      connection,
+      platformKeypair,
+    })
+
+    expect(second.success).toBe(true)
+    expect(second.already_claimed).toBe(true)
+    expect(second.signature).toBe(first.signature)
+    expect(connection.sendRawTransaction).toHaveBeenCalledTimes(1)
   })
 
   it('refuses dust_zero and does not send', async () => {
@@ -162,6 +202,85 @@ describe('claimGraduationHolding', () => {
     expect(connection.sendRawTransaction).not.toHaveBeenCalled()
   })
 
+  it('fills a null snapshot wallet from users, persists it, and claims to it', async () => {
+    const { supabase, updates } = makeMockSupabase({
+      holding: makeHolding({ wallet_address: null }),
+      graduation: makeGraduation(),
+      user: { custodial_wallet_address: holderKeypair.publicKey.toBase58() },
+    })
+    const connection = makeMockConnection()
+
+    let sentTx: Transaction | null = null
+    connection.sendRawTransaction = vi.fn((rawTx: Buffer) => {
+      sentTx = Transaction.from(rawTx)
+      return Promise.resolve('mock-send-signature')
+    })
+
+    const result = await claimGraduationHolding('holding-1', 'user-1', {
+      supabase: supabase as any,
+      connection,
+      platformKeypair,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.already_claimed).toBe(false)
+    expect(updates[0]).toMatchObject({
+      wallet_address: holderKeypair.publicKey.toBase58(),
+    })
+    expect(sentTx).not.toBeNull()
+    const transferDest = sentTx!.instructions[1].keys[1].pubkey
+    const expectedAta = getAssociatedTokenAddressSync(
+      new PublicKey(mintKeypair.publicKey.toBase58()),
+      new PublicKey(holderKeypair.publicKey.toBase58())
+    )
+    expect(transferDest.toBase58()).toBe(expectedAta.toBase58())
+  })
+
+  it('sends to the snapshot address even when users.custodial_wallet_address is different', async () => {
+    const { supabase, updates } = makeMockSupabase({
+      holding: makeHolding({
+        wallet_address: holderKeypair.publicKey.toBase58(),
+      }),
+      graduation: makeGraduation(),
+      user: {
+        custodial_wallet_address: otherKeypair.publicKey.toBase58(),
+      },
+    })
+    const connection = makeMockConnection()
+
+    let sentTx: Transaction | null = null
+    connection.sendRawTransaction = vi.fn((rawTx: Buffer) => {
+      sentTx = Transaction.from(rawTx)
+      return Promise.resolve('mock-send-signature')
+    })
+
+    const result = await claimGraduationHolding('holding-1', 'user-1', {
+      supabase: supabase as any,
+      connection,
+      platformKeypair,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.already_claimed).toBe(false)
+    expect(sentTx).not.toBeNull()
+    const transferDest = sentTx!.instructions[1].keys[1].pubkey
+    const expectedSnapshotAta = getAssociatedTokenAddressSync(
+      new PublicKey(mintKeypair.publicKey.toBase58()),
+      new PublicKey(holderKeypair.publicKey.toBase58())
+    )
+    expect(transferDest.toBase58()).toBe(expectedSnapshotAta.toBase58())
+
+    const wrongUserAta = getAssociatedTokenAddressSync(
+      new PublicKey(mintKeypair.publicKey.toBase58()),
+      new PublicKey(otherKeypair.publicKey.toBase58())
+    )
+    expect(transferDest.toBase58()).not.toBe(wrongUserAta.toBase58())
+
+    // No users lookup means no wallet_address update. The only updates are
+    // the claim lifecycle: claiming, claiming with signature, then claimed.
+    expect(updates.some((u) => 'wallet_address' in u)).toBe(false)
+  })
+
   it('records claimed after a successful send and confirm', async () => {
     const { supabase, updates } = makeMockSupabase({
       holding: makeHolding(),
@@ -177,6 +296,7 @@ describe('claimGraduationHolding', () => {
 
     expect(result.success).toBe(true)
     expect(result.signature).toBeDefined()
+    expect(result.already_claimed).toBe(false)
     expect(connection.sendRawTransaction).toHaveBeenCalledTimes(1)
     expect(connection.confirmTransaction).toHaveBeenCalledTimes(1)
     expect(updates[updates.length - 1]).toMatchObject({
@@ -230,10 +350,41 @@ describe('claimGraduationHolding', () => {
 
     expect(result.success).toBe(true)
     expect(result.signature).toBe('landed-sig')
+    expect(result.already_claimed).toBe(true)
     expect(connection.sendRawTransaction).not.toHaveBeenCalled()
     expect(updates[updates.length - 1]).toMatchObject({
       status: 'claimed',
       signature: 'landed-sig',
+    })
+  })
+
+  it('reports already claimed when the chain already shows the expected balance for a claimable holding', async () => {
+    const { supabase, updates } = makeMockSupabase({
+      holding: makeHolding({
+        status: 'claimable',
+        signature: 'racing-sig',
+      }),
+      graduation: makeGraduation(),
+    })
+    const connection = makeMockConnection()
+    connection.getTokenAccountBalance = vi.fn().mockResolvedValue({
+      value: { amount: '1000000000' },
+    })
+
+    const result = await claimGraduationHolding('holding-1', 'user-1', {
+      supabase: supabase as any,
+      connection,
+      platformKeypair,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.signature).toBe('racing-sig')
+    expect(result.already_claimed).toBe(true)
+    expect(connection.sendRawTransaction).not.toHaveBeenCalled()
+    expect(updates[updates.length - 1]).toMatchObject({
+      status: 'claimed',
+      signature: 'racing-sig',
+      claimed_at: expect.any(String),
     })
   })
 

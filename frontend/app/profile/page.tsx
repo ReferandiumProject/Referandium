@@ -6,6 +6,7 @@ import { usePrivy, useFundWallet, useSigners } from '@privy-io/react-auth'
 import { useUser } from '../context/UserContext'
 import WalletLinkingSection from '@/app/components/WalletLinkingSection'
 import EmbeddedDeposit from '@/app/components/EmbeddedDeposit'
+import { ProfileGraduationClaims } from '@/app/components/ProfileGraduationClaims'
 import { Decimal } from '@/lib/decimal'
 import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
 
@@ -267,6 +268,8 @@ function MyStartupEditForm({
   onChange,
   onSave,
   onCancel,
+  selectedLogoFile,
+  onLogoFileSelect,
 }: {
   form: EditableStartupFields
   saving: boolean
@@ -274,6 +277,8 @@ function MyStartupEditForm({
   onChange: (fields: Partial<EditableStartupFields>) => void
   onSave: () => void
   onCancel: () => void
+  selectedLogoFile: File | null
+  onLogoFileSelect: (file: File | null) => void
 }) {
   return (
     <div className="mt-4 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
@@ -327,15 +332,48 @@ function MyStartupEditForm({
             className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
           />
         </label>
-        <label>
+        <label className="sm:col-span-2">
           <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
-            Logo URL
+            Logo
           </span>
+          {form.logo_url && !selectedLogoFile && (
+            <div className="mb-2 flex items-center gap-3">
+              <img
+                src={form.logo_url}
+                alt="Current logo"
+                className="h-12 w-12 rounded-lg object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  onChange({ logo_url: '' })
+                  onLogoFileSelect(null)
+                }}
+                className="text-xs font-semibold text-[#EF4444] hover:text-red-700"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+          {selectedLogoFile && (
+            <div className="mb-2 flex items-center gap-2 text-xs text-[#6B7280]">
+              <span className="rounded bg-[#DBEAFE] px-2 py-1 text-[#1E40AF]">
+                {selectedLogoFile.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => onLogoFileSelect(null)}
+                className="text-[#EF4444] hover:text-red-700"
+              >
+                Remove
+              </button>
+            </div>
+          )}
           <input
-            type="text"
-            value={form.logo_url}
-            onChange={(e) => onChange({ logo_url: e.target.value })}
-            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={(e) => onLogoFileSelect(e.target.files?.[0] ?? null)}
+            className="block w-full text-sm text-[#111827] file:mr-3 file:rounded-lg file:border-0 file:bg-[#3B82F6] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-blue-600"
           />
         </label>
         <label>
@@ -408,6 +446,7 @@ export default function ProfilePage() {
   const [myStartupsError, setMyStartupsError] = useState<string | null>(null)
   const [editingStartupId, setEditingStartupId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<EditableStartupFields | null>(null)
+  const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null)
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
@@ -433,7 +472,7 @@ export default function ProfilePage() {
   }
   const [enabled, setEnabled] = useState(false)
 
-  const [activeTab, setActiveTab] = useState<'account' | 'activity' | 'startups'>('account')
+  const [activeTab, setActiveTab] = useState<'account' | 'activity' | 'startups' | 'claims'>('account')
   const [listingCredits, setListingCredits] = useState<number | null>(null)
   const [listingCreditsLoading, setListingCreditsLoading] = useState(false)
 
@@ -548,6 +587,7 @@ export default function ProfilePage() {
   const startEditingStartup = (startup: MyStartup) => {
     setEditingStartupId(startup.id)
     setEditError(null)
+    setSelectedLogoFile(null)
     setEditForm({
       description: startup.description ?? '',
       pitch: startup.pitch ?? '',
@@ -561,7 +601,41 @@ export default function ProfilePage() {
   const cancelEditingStartup = () => {
     setEditingStartupId(null)
     setEditForm(null)
+    setSelectedLogoFile(null)
     setEditError(null)
+  }
+
+  const uploadLogo = async (file: File, startupId: string, token: string): Promise<string> => {
+    const allowed = ['image/png', 'image/jpeg', 'image/webp']
+    if (!allowed.includes(file.type)) {
+      throw new Error('Logo must be PNG, JPEG, or WebP')
+    }
+
+    const res = await fetch('/api/startup-logos/upload-url', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ startup_id: startupId, content_type: file.type }),
+    })
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}))
+      throw new Error(json.error || 'Could not get upload URL')
+    }
+    const { signedUrl, publicUrl } = await res.json()
+    const uploadRes = await fetch(signedUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type,
+        'x-upsert': 'false',
+      },
+      body: file,
+    })
+    if (!uploadRes.ok) {
+      throw new Error('Logo upload failed')
+    }
+    return publicUrl
   }
 
   const saveEditingStartup = async (startupId: string) => {
@@ -577,13 +651,19 @@ export default function ProfilePage() {
     }
 
     try {
+      let logoUrl = editForm.logo_url
+      if (selectedLogoFile) {
+        logoUrl = await uploadLogo(selectedLogoFile, startupId, token)
+      }
+      const body: any = { ...editForm, logo_url: logoUrl || null }
+
       const res = await fetch(`/api/my-startups/${startupId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify(body),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -592,6 +672,7 @@ export default function ProfilePage() {
       }
       setEditingStartupId(null)
       setEditForm(null)
+      setSelectedLogoFile(null)
       await fetchMyStartups()
     } catch (err: any) {
       setEditError(err.message || 'Failed to save changes')
@@ -921,6 +1002,17 @@ export default function ProfilePage() {
                   {(myStartups ?? []).length}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => setActiveTab('claims')}
+              aria-selected={activeTab === 'claims'}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                activeTab === 'claims'
+                  ? 'bg-[#3B82F6] text-white'
+                  : 'text-[#6B7280] hover:bg-[#F9FAFB]'
+              }`}
+            >
+              Token claims
             </button>
           </div>
         </div>
@@ -1377,6 +1469,8 @@ export default function ProfilePage() {
                       onChange={(fields) => setEditForm((prev) => (prev ? { ...prev, ...fields } : prev))}
                       onSave={() => saveEditingStartup(s.id)}
                       onCancel={cancelEditingStartup}
+                      selectedLogoFile={selectedLogoFile}
+                      onLogoFileSelect={setSelectedLogoFile}
                     />
                   )}
                 </div>
@@ -1581,6 +1675,16 @@ export default function ProfilePage() {
               {withdrawLoading ? 'Withdrawing...' : 'Withdraw'}
             </button>
           </form>
+        </section>
+
+        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'claims' ? '' : 'hidden'}`}>
+          <div className="mb-4 flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-[#111827]">Token claims</h2>
+            <p className="text-sm text-[#6B7280]">
+              Tokens you are owed from graduated startups. The platform pays the fee; you do not need gas or wallet approval.
+            </p>
+          </div>
+          <ProfileGraduationClaims />
         </section>
       </div>
     </main>

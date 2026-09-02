@@ -25,6 +25,8 @@ import bs58 from 'bs58'
 
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { TokenAmount } from '@/lib/token-amount'
+import { transition, halt as stateHalt } from './state'
+import { notifyTokensClaimable } from '@/lib/notifications'
 
 const TOKEN_DECIMALS = 6
 const METADATA_NAME_MAX = 32
@@ -63,66 +65,14 @@ export type MintResult =
     }
   | { success: false; halted: true; reason: string }
 
-async function logEvent(
-  supabase: typeof supabaseAdmin,
-  graduationId: string,
-  from: string | null,
-  to: string,
-  note?: string
-): Promise<void> {
-  const { error } = await supabase.from('graduation_events').insert({
-    graduation_id: graduationId,
-    from_status: from,
-    to_status: to,
-    note: note ?? null,
-    actor: 'platform',
-  })
-  if (error) {
-    console.error('[graduation/mint] graduation_events insert failed:', error)
-  }
-}
-
 async function halt(
   supabase: typeof supabaseAdmin,
   graduationId: string,
   from: string,
   reason: string
 ): Promise<MintResult> {
-  const { error } = await supabase
-    .from('graduations')
-    .update({
-      status: 'halted',
-      halted_reason: reason,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', graduationId)
-  if (error) {
-    console.error('[graduation/mint] halt update failed:', error)
-  }
-  await logEvent(supabase, graduationId, from, 'halted', reason)
+  await stateHalt(supabase, graduationId, from, reason)
   return { success: false, halted: true, reason }
-}
-
-async function transition(
-  supabase: typeof supabaseAdmin,
-  graduationId: string,
-  from: string,
-  to: string,
-  updates: Record<string, unknown>,
-  note?: string
-): Promise<void> {
-  const { error } = await supabase
-    .from('graduations')
-    .update({
-      ...updates,
-      status: to,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', graduationId)
-  if (error) {
-    throw new Error(`Graduation status transition failed: ${error.message}`)
-  }
-  await logEvent(supabase, graduationId, from, to, note)
 }
 
 function assertEnv(): { connection: Connection; platformKeypair: Keypair } {
@@ -420,6 +370,8 @@ export async function mintGraduationToken(
     if (!head.ok) {
       throw new Error(`HEAD ${metadataUri} returned ${head.status}`)
     }
+    // Cancel the body so the socket is released even though HEAD has none.
+    await head.body?.cancel()
   } catch (err: any) {
     return halt(
       supabase,
@@ -649,6 +601,16 @@ export async function mintGraduationToken(
     },
     `Minted. Mint ${mintPubkey.toBase58()}, escrow ${escrowPubkey.toBase58()}`
   )
+
+  const { data: mintedHolders } = await supabase
+    .from('graduation_holders')
+    .select('id')
+    .eq('graduation_id', graduationId)
+    .in('status', ['minted', 'pooling', 'pooled', 'burning', 'burned', 'paying_founder', 'founder_paid', 'revoking', 'complete'])
+
+  for (const holder of mintedHolders ?? []) {
+    void notifyTokensClaimable((holder as any).id, graduationId)
+  }
 
   return {
     success: true,

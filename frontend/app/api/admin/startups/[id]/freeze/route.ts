@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { notifyRaiseFrozen } from '@/lib/notifications'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -59,6 +60,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     if (error) {
       return handleRpcError('admin_set_curve_frozen', error)
+    }
+
+    if (frozen) {
+      void notifyRaiseFrozen(id)
     }
 
     const result = Array.isArray(data) ? data[0] : data

@@ -345,3 +345,112 @@ describe('POST /api/startup-listings', () => {
     await cleanupFixtures(grantUser.id, [])
   })
 })
+
+describe.sequential('POST /api/startup-listings idempotency', () => {
+  let fundedUser: Awaited<ReturnType<typeof createFixtureUser>>
+  const createdStartupIds: string[] = []
+
+  async function fundUser(userId: string, amount: number) {
+    const { error } = await supabaseAdmin.from('balances').insert({
+      user_id: userId,
+      available_usdc: amount,
+      locked_usdc: 0,
+    } as any)
+    if (error) throw new Error(`Failed to fund user: ${error.message}`)
+  }
+
+  async function currentBalance(userId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('balances')
+      .select('available_usdc')
+      .eq('user_id', userId)
+      .single()
+    if (error) throw new Error(`Balance query failed: ${error.message}`)
+    return Number(data!.available_usdc ?? 0)
+  }
+
+  async function postWithKey(body: Record<string, unknown>) {
+    const req = new Request('http://localhost:3000/api/startup-listings', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer mock-token', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    return createListing(req)
+  }
+
+  beforeAll(async () => {
+    fundedUser = await createFixtureUser()
+    await fundUser(fundedUser.id, 100)
+  })
+
+  beforeEach(() => {
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(fundedUser as any)
+  })
+
+  afterAll(async () => {
+    await supabaseAdmin.from('balances').delete().eq('user_id', fundedUser.id)
+    await cleanupFixtures(fundedUser.id, createdStartupIds, createdStartupIds)
+  })
+
+  it('replays a listing with the same idempotency key without a second row or double fee', async () => {
+    const key = '99999999-9999-9999-9999-999999999999'
+    const body = {
+      name: 'Idempotent Startup',
+      description: 'A test startup for idempotency',
+      vote_threshold: 5000,
+      capital_target: 25000,
+      idempotency_key: key,
+    }
+
+    const firstRes = await postWithKey(body)
+    expect(firstRes.status).toBe(200)
+    const first = await firstRes.json()
+    expect(first.already_created).toBe(false)
+    createdStartupIds.push(first.id)
+
+    const balanceBefore = await currentBalance(fundedUser.id)
+    const { count: countBefore } = await supabaseAdmin
+      .from('startup_startups')
+      .select('*', { count: 'exact', head: true })
+      .eq('owner_id', fundedUser.id)
+
+    const secondRes = await postWithKey(body)
+    expect(secondRes.status).toBe(200)
+    const second = await secondRes.json()
+    expect(second.already_created).toBe(true)
+    expect(second.id).toBe(first.id)
+    expect(second.slug).toBe(first.slug)
+
+    const balanceAfter = await currentBalance(fundedUser.id)
+    const { count: countAfter } = await supabaseAdmin
+      .from('startup_startups')
+      .select('*', { count: 'exact', head: true })
+      .eq('owner_id', fundedUser.id)
+
+    expect(balanceAfter).toBe(balanceBefore)
+    expect(countAfter).toBe(countBefore)
+  })
+
+  it('returns 409 when the same idempotency key is used with a different name', async () => {
+    const key = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    const firstRes = await postWithKey({
+      name: 'First Name',
+      description: 'A test startup',
+      vote_threshold: 5000,
+      capital_target: 25000,
+      idempotency_key: key,
+    })
+    expect(firstRes.status).toBe(200)
+    const first = await firstRes.json()
+    createdStartupIds.push(first.id)
+
+    const secondRes = await postWithKey({
+      name: 'Different Name',
+      description: 'A different test startup',
+      vote_threshold: 5000,
+      capital_target: 25000,
+      idempotency_key: key,
+    })
+    expect(secondRes.status).toBe(409)
+  })
+})

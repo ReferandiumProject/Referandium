@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { privyClient } from '@/lib/privy-server'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { Decimal } from '@/lib/decimal'
+import { errorResponse } from '@/lib/errorResponse'
 
 interface GoogleOAuthAccount {
   type: 'google_oauth'
@@ -145,6 +146,16 @@ export async function POST(req: NextRequest) {
         .single()
 
       if (insertError) {
+        // NOTE: The original 500 was not observed directly. It did not reproduce
+        // once teardown removed the stale fixture user. The only throw on the
+        // new-user path is this insert, so 23505 (wallet/email collision) is the
+        // most likely cause. Return 409 instead of propagating a 500.
+        if (insertError.code === '23505') {
+          return NextResponse.json(
+            { error: 'A user with this wallet or email already exists' },
+            { status: 409 }
+          )
+        }
         console.error('[auth/sync] user insert failed:', insertError)
         throw insertError
       }
@@ -216,7 +227,11 @@ export async function POST(req: NextRequest) {
       available_usdc: balance?.available_usdc ?? 0,
     })
   } catch (err: any) {
-    console.error('[auth/sync] unexpected error:', err)
-    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
+    return errorResponse({
+      status: 500,
+      message: err.message || 'Internal server error',
+      error: err,
+      request: req,
+    })
   }
 }

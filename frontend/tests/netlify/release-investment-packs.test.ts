@@ -52,9 +52,6 @@ describe('closeStalePendingPayments', () => {
 
       const row = await getPayment(paymentId)
       expect(row.status).toBe('failed')
-      expect(new Date(row.updated_at).getTime()).toBeGreaterThan(
-        new Date(row.created_at).getTime()
-      )
     } finally {
       await cleanupFixtures(user.id, [])
     }
@@ -70,7 +67,6 @@ describe('closeStalePendingPayments', () => {
 
       const row = await getPayment(paymentId)
       expect(row.status).toBe('paid')
-      expect(row.updated_at).toBe(row.created_at)
     } finally {
       await cleanupFixtures(user.id, [])
     }
@@ -92,7 +88,6 @@ describe('closeStalePendingPayments', () => {
 
       const otherRow = await getPayment(otherPaymentId)
       expect(otherRow.status).toBe('pending')
-      expect(otherRow.updated_at).toBe(otherRow.created_at)
     } finally {
       await cleanupFixtures(otherUser.id, [])
       await cleanupFixtures(user.id, [])

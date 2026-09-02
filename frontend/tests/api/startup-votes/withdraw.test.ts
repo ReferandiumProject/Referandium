@@ -166,3 +166,102 @@ describe('POST /api/startup-votes/withdraw', () => {
     }
   })
 })
+
+describe.sequential('POST /api/startup-votes/withdraw idempotency', () => {
+  let founder: Awaited<ReturnType<typeof createFixtureUser>>
+  let user: Awaited<ReturnType<typeof createFixtureUser>>
+  let startup: Awaited<ReturnType<typeof createFixtureStartup>>
+
+  beforeAll(async () => {
+    founder = await createFixtureUser()
+    user = await createFixtureUser()
+    startup = await createFixtureStartup(founder.id)
+
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+    const balanceRes = await getBalance(new Request('http://localhost:3000/api/startup-votes/balance', {
+      headers: { Authorization: 'Bearer mock-token' },
+    }))
+    const balance = await balanceRes.json()
+    expect(balance.total_spendable).toBe(100)
+
+    const castReq = new Request('http://localhost:3000/api/startup-votes/cast', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer mock-token', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startup_id: startup.id, direction: 'yes', votes: 30 }),
+    })
+    const castRes = await castVote(castReq)
+    expect(castRes.status).toBe(200)
+  })
+
+  beforeEach(() => {
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+  })
+
+  afterAll(async () => {
+    await cleanupFixtures(user.id, [startup.id])
+    await cleanupFixtures(founder.id, [])
+  })
+
+  async function withdrawWithKey(votes: number, key: string) {
+    const req = new Request('http://localhost:3000/api/startup-votes/withdraw', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer mock-token', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startup_id: startup.id, votes, idempotency_key: key }),
+    })
+    return withdrawVote(req)
+  }
+
+  async function currentBalance() {
+    const res = await getBalance(new Request('http://localhost:3000/api/startup-votes/balance', {
+      headers: { Authorization: 'Bearer mock-token' },
+    }))
+    return res.json()
+  }
+
+  async function currentAllocation() {
+    const { data, error } = await supabaseAdmin
+      .from('startup_vote_allocations')
+      .select('votes')
+      .eq('user_id', user.id)
+      .eq('startup_id', startup.id)
+      .is('burned_at', null)
+      .single()
+    if (error) throw new Error(error.message)
+    return data
+  }
+
+  it('replays a withdraw with the same idempotency key without double-crediting the pool', async () => {
+    const key = '77777777-7777-7777-7777-777777777777'
+    const firstRes = await withdrawWithKey(10, key)
+    expect(firstRes.status).toBe(200)
+    const first = await firstRes.json()
+    expect(first.already_withdrawn).toBe(false)
+    expect(first.withdrawn).toBe(10)
+
+    const balanceBefore = await currentBalance()
+    const allocationBefore = await currentAllocation()
+
+    const secondRes = await withdrawWithKey(10, key)
+    expect(secondRes.status).toBe(200)
+    const second = await secondRes.json()
+    expect(second.already_withdrawn).toBe(true)
+    expect(second.withdrawn).toBe(first.withdrawn)
+    expect(second.still_deployed).toBe(first.still_deployed)
+
+    const balanceAfter = await currentBalance()
+    const allocationAfter = await currentAllocation()
+
+    expect(balanceAfter.pool_balance).toBe(balanceBefore.pool_balance)
+    expect(balanceAfter.total_spendable).toBe(balanceBefore.total_spendable)
+    expect(allocationAfter.votes).toBe(allocationBefore.votes)
+  })
+
+  it('returns 409 when the same idempotency key is used for a different amount', async () => {
+    const key = '88888888-8888-8888-8888-888888888888'
+    const firstRes = await withdrawWithKey(5, key)
+    expect(firstRes.status).toBe(200)
+
+    const secondRes = await withdrawWithKey(6, key)
+    expect(secondRes.status).toBe(409)
+  })
+})

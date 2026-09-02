@@ -26,7 +26,7 @@ export async function createFixtureUser(email?: string): Promise<FixtureUser> {
   const suffix = id.slice(0, 8)
   const user: FixtureUser = {
     id,
-    privy_id: `did:privy:fixture-admin-${suffix}`,
+    privy_id: `test:fixture-admin-${suffix}`,
     email: email ?? `fixture-admin-${suffix}@example.com`,
     wallet_address: `0xFixtureAdmin${suffix}`,
   }
@@ -98,12 +98,12 @@ export async function cleanupAdminFixtures(
 ): Promise<void> {
   await retractPlatformFees(startupIds, userIds)
 
-  try {
-    if (startupIds.length > 0) {
-      await supabaseAdmin.from('startup_vote_events').delete().in('startup_id', startupIds)
-    }
-  } catch {
-    // best-effort
+  if (startupIds.length > 0) {
+    try { await supabaseAdmin.from('startup_vote_events').delete().in('startup_id', startupIds) } catch {}
+    try { await supabaseAdmin.from('startup_curve_trades').delete().in('startup_id', startupIds) } catch {}
+    try { await supabaseAdmin.from('startup_holdings').delete().in('startup_id', startupIds) } catch {}
+    try { await supabaseAdmin.from('startup_curves').delete().in('startup_id', startupIds) } catch {}
+    try { await supabaseAdmin.from('startup_markets').delete().in('startup_id', startupIds) } catch {}
   }
 
   if (userIds.length > 0) {
@@ -121,18 +121,14 @@ export async function cleanupAdminFixtures(
   if (startupIds.length > 0) {
     try {
       await supabaseAdmin.from('admin_actions').delete().in('target_id', startupIds)
-    } catch {
-      // table/column may not exist
-    }
+    } catch {}
     await supabaseAdmin.from('startup_startups').delete().in('id', startupIds)
   }
 
   if (userIds.length > 0) {
     try {
       await supabaseAdmin.from('admin_actions').delete().in('admin_user_id', userIds)
-    } catch {
-      // table/column may not exist
-    }
+    } catch {}
     await supabaseAdmin.from('users').delete().in('id', userIds)
   }
 }

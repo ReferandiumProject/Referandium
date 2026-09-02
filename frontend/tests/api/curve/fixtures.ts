@@ -25,7 +25,7 @@ export async function createCurveFixtureUser(balanceUsdc = 0): Promise<CurveFixt
   const id = crypto.randomUUID()
   const user: CurveFixtureUser = {
     id,
-    privy_id: `did:privy:curve-fixture-${suffix}`,
+    privy_id: `test:curve-fixture-${suffix}`,
     email: `curve-fixture-${suffix}@example.com`,
     wallet_address: `0xCurveFixture${suffix}`,
   }
@@ -55,7 +55,7 @@ export async function createCurveAdminUser(): Promise<CurveFixtureUser> {
   const id = crypto.randomUUID()
   const user: CurveFixtureUser = {
     id,
-    privy_id: `did:privy:curve-admin-${suffix}`,
+    privy_id: `test:curve-admin-${suffix}`,
     email: adminEmail,
     wallet_address: `0xCurveAdmin${suffix}`,
   }

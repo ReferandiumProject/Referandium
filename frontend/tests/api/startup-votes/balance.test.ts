@@ -12,7 +12,7 @@ const fixtureStartupId = crypto.randomUUID()
 
 const testUser = {
   id: fixtureUserId,
-  privy_id: `did:privy:test-automation-${fixtureUserId}`,
+  privy_id: `test:automation-${fixtureUserId}`,
   email: 'automation-test@example.com',
   wallet_address: '0xAutomationTestWallet',
 }

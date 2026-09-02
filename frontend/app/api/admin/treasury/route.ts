@@ -66,7 +66,7 @@ export async function GET(request: Request) {
 
     const { data: liability, error: liabilityError } = await supabaseAdmin
       .from('ledger_liability')
-      .select('backed_liability')
+      .select('backed_liability_exact')
       .single()
 
     if (liabilityError) {
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       sol,
       usdc,
-      backed_liability: Number(liability?.backed_liability ?? 0),
+      backed_liability: (liability?.backed_liability_exact ?? '0'),
       cheap_transfers: Math.floor(sol / SOL_TRANSFER_COST),
       expensive_transfers: expensiveTransfers,
       low: expensiveTransfers < LOW_TREASURY_THRESHOLD,

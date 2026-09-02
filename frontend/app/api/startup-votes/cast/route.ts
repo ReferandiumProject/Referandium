@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { notifyThresholdCrossed } from '@/lib/notifications'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
     const startupId = body?.startup_id
     const direction = body?.direction
     const votes = body?.votes
+    const idempotencyKey = body?.idempotency_key
 
     if (!startupId || typeof startupId !== 'string' || !UUID_REGEX.test(startupId)) {
       return NextResponse.json({ error: 'Missing or invalid startup_id (must be a UUID)' }, { status: 400 })
@@ -40,12 +42,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'votes must be a positive integer' }, { status: 400 })
     }
 
-    const { data: castData, error: castError } = await supabaseAdmin.rpc('cast_vote', {
+    if (
+      idempotencyKey !== undefined &&
+      idempotencyKey !== null &&
+      (typeof idempotencyKey !== 'string' || !UUID_REGEX.test(idempotencyKey))
+    ) {
+      return NextResponse.json({ error: 'idempotency_key must be a UUID when provided' }, { status: 400 })
+    }
+
+    const rpcParams: any = {
       p_user_id: user.id,
       p_startup_id: startupId,
       p_direction: direction,
       p_votes: votes,
-    })
+    }
+    if (idempotencyKey) {
+      rpcParams.p_idempotency_key = idempotencyKey
+    }
+
+    const { data: castData, error: castError } = await supabaseAdmin.rpc('cast_vote', rpcParams)
 
     if (castError) {
       const msg = castError.message || ''
@@ -66,6 +81,9 @@ export async function POST(request: Request) {
       if (msg.includes('cannot vote on your own startup')) {
         return NextResponse.json({ error: msg }, { status: 403 })
       }
+      if (msg.includes('idempotency key mismatch')) {
+        return NextResponse.json({ error: msg }, { status: 409 })
+      }
 
       return NextResponse.json({ error: msg || 'Failed to cast vote' }, { status: 500 })
     }
@@ -77,12 +95,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to cast vote' }, { status: 500 })
     }
 
+    if (result.phase_closed) {
+      void notifyThresholdCrossed(startupId)
+    }
+
     return NextResponse.json({
       deployed: Number(result.deployed ?? 0),
       from_grant: Number(result.from_grant ?? 0),
       from_pool: Number(result.from_pool ?? 0),
       net_votes: Number(result.net_votes ?? 0),
       phase_closed: Boolean(result.phase_closed),
+      already_cast: Boolean(result.already_cast),
     })
   } catch (err: any) {
     const message = err?.message || 'Unauthorized'

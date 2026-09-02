@@ -70,6 +70,26 @@ async function setupPhase1Startup() {
   return startup
 }
 
+async function fetchBalance(userId: string) {
+  const { data, error } = await supabaseAdmin
+    .from('balances')
+    .select('available_usdc')
+    .eq('user_id', userId)
+    .single()
+  if (error) throw new Error(`fetchBalance failed: ${error.message}`)
+  return Number(data!.available_usdc)
+}
+
+async function fetchCurve(startupId: string) {
+  const { data, error } = await supabaseAdmin
+    .from('startup_curves')
+    .select('v_t, v_s')
+    .eq('startup_id', startupId)
+    .single()
+  if (error) throw new Error(`fetchCurve failed: ${error.message}`)
+  return { v_t: Number(data!.v_t), v_s: Number(data!.v_s) }
+}
+
 describe('/api/curve routes', () => {
   it('buys and sells curve tokens through the routes', { timeout: 20000 }, async () => {
     const startup = await setupPhase2Startup(1000)
@@ -193,5 +213,104 @@ describe('/api/curve routes', () => {
     const signedInJson = await signedInRes.json()
     expect(signedInJson.user_holding).toBeDefined()
     expect(signedInJson.available_usdc).toBeDefined()
+  })
+
+  it('replays a buy with the same idempotency key and leaves balance and curve untouched', { timeout: 20000 }, async () => {
+    const startup = await setupPhase2Startup(1000)
+    const trader = await createCurveFixtureUser(1000)
+    userIds.push(trader.id)
+
+    const key = '11111111-1111-1111-1111-111111111111'
+    const first = await buyCurve(
+      makeRequest('POST', '/api/curve/buy', { startup_id: startup.id, usdc: '100', idempotency_key: key }, trader)
+    )
+    expect(first.status).toBe(200)
+    const firstJson = await first.json()
+    expect(firstJson.already_traded).toBe(false)
+
+    const balanceBefore = await fetchBalance(trader.id)
+    const curveBefore = await fetchCurve(startup.id)
+
+    const second = await buyCurve(
+      makeRequest('POST', '/api/curve/buy', { startup_id: startup.id, usdc: '100', idempotency_key: key }, trader)
+    )
+    expect(second.status).toBe(200)
+    const secondJson = await second.json()
+    expect(secondJson.already_traded).toBe(true)
+    expect(secondJson.r_tokens).toBe(firstJson.r_tokens)
+    expect(secondJson.r_usdc_spent).toBe(firstJson.r_usdc_spent)
+    expect(secondJson.r_pool_usdc).toBe(firstJson.r_pool_usdc)
+
+    const balanceAfter = await fetchBalance(trader.id)
+    const curveAfter = await fetchCurve(startup.id)
+    expect(balanceAfter).toBe(balanceBefore)
+    expect(curveAfter.v_t).toBe(curveBefore.v_t)
+    expect(curveAfter.v_s).toBe(curveBefore.v_s)
+  })
+
+  it('replays a sell with the same idempotency key and leaves balance and curve untouched', { timeout: 20000 }, async () => {
+    const startup = await setupPhase2Startup(1000)
+    const trader = await createCurveFixtureUser(1000)
+    userIds.push(trader.id)
+
+    const buyKey = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    const buyRes = await buyCurve(
+      makeRequest('POST', '/api/curve/buy', { startup_id: startup.id, usdc: '100', idempotency_key: buyKey }, trader)
+    )
+    expect(buyRes.status).toBe(200)
+
+    const curveRes = await getCurve(
+      makeRequest('GET', `/api/curve/${startup.slug}`, undefined, trader),
+      { params: { slug: startup.slug } }
+    )
+    expect(curveRes.status).toBe(200)
+    const curveJson = await curveRes.json()
+    const tokens = curveJson.user_holding.tokens
+
+    const sellKey = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    const first = await sellCurve(
+      makeRequest('POST', '/api/curve/sell', { startup_id: startup.id, tokens, idempotency_key: sellKey }, trader)
+    )
+    expect(first.status).toBe(200)
+    const firstJson = await first.json()
+    expect(firstJson.already_traded).toBe(false)
+
+    const balanceBefore = await fetchBalance(trader.id)
+    const curveBefore = await fetchCurve(startup.id)
+
+    const second = await sellCurve(
+      makeRequest('POST', '/api/curve/sell', { startup_id: startup.id, tokens, idempotency_key: sellKey }, trader)
+    )
+    expect(second.status).toBe(200)
+    const secondJson = await second.json()
+    expect(secondJson.already_traded).toBe(true)
+    expect(secondJson.r_usdc_net).toBe(firstJson.r_usdc_net)
+    expect(secondJson.r_tokens_left).toBe(firstJson.r_tokens_left)
+    expect(secondJson.r_pool_usdc).toBe(firstJson.r_pool_usdc)
+
+    const balanceAfter = await fetchBalance(trader.id)
+    const curveAfter = await fetchCurve(startup.id)
+    expect(balanceAfter).toBe(balanceBefore)
+    expect(curveAfter.v_t).toBe(curveBefore.v_t)
+    expect(curveAfter.v_s).toBe(curveBefore.v_s)
+  })
+
+  it('returns 409 when an idempotency key is reused with different parameters', { timeout: 20000 }, async () => {
+    const startup = await setupPhase2Startup(1000)
+    const trader = await createCurveFixtureUser(1000)
+    userIds.push(trader.id)
+
+    const key = '22222222-2222-2222-2222-222222222222'
+    const first = await buyCurve(
+      makeRequest('POST', '/api/curve/buy', { startup_id: startup.id, usdc: '100', idempotency_key: key }, trader)
+    )
+    expect(first.status).toBe(200)
+
+    const second = await buyCurve(
+      makeRequest('POST', '/api/curve/buy', { startup_id: startup.id, usdc: '200', idempotency_key: key }, trader)
+    )
+    expect(second.status).toBe(409)
+    const json = await second.json()
+    expect(json.error).toMatch(/idempotency key mismatch/i)
   })
 })

@@ -17,5 +17,8 @@ export async function POST(
     )
   }
 
-  return NextResponse.json({ signature: result.signature! })
+  return NextResponse.json({
+    signature: result.signature!,
+    already_claimed: result.already_claimed ?? false,
+  })
 }

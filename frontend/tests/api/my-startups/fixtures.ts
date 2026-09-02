@@ -23,7 +23,7 @@ export async function createMyStartupsFixtureUser(): Promise<MyStartupsFixtureUs
   const id = crypto.randomUUID()
   const user: MyStartupsFixtureUser = {
     id,
-    privy_id: `did:privy:my-startups-fixture-${suffix}`,
+    privy_id: `test:my-startups-fixture-${suffix}`,
     email: `my-startups-fixture-${suffix}@example.com`,
     wallet_address: `0xMyStartupsFixture${suffix}`,
   }

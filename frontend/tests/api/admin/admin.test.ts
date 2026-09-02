@@ -8,7 +8,11 @@ import { POST as deleteStartup } from '@/app/api/admin/startups/[id]/delete/rout
 import { POST as restoreStartup } from '@/app/api/admin/startups/[id]/restore/route'
 import { POST as forcePhase2 } from '@/app/api/admin/startups/[id]/force-phase2/route'
 import { POST as freezeStartup } from '@/app/api/admin/startups/[id]/freeze/route'
+import { POST as resumeGraduation } from '@/app/api/admin/graduations/[id]/resume/route'
 import { GET as listActions } from '@/app/api/admin/actions/route'
+import { GET as getGraduations } from '@/app/api/admin/graduations/route'
+import { GET as getUnknownWithdrawals } from '@/app/api/admin/unknown-withdrawals/route'
+import { GET as getLedger } from '@/app/api/admin/ledger/route'
 import { GET as publicList } from '@/app/api/startup-votes/list/route'
 import { GET as publicSlug } from '@/app/api/startup-votes/[slug]/route'
 import { GET as getBalance } from '@/app/api/startup-votes/balance/route'
@@ -23,8 +27,16 @@ import {
 } from '../curve/fixtures'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 
+let rpcSpy: any
+const realRpc = (supabaseAdmin.rpc as any).bind(supabaseAdmin)
+
 vi.mock('@/lib/auth-helpers', () => ({
   getAuthenticatedUser: vi.fn(),
+}))
+
+vi.mock('@/lib/graduation/resume', () => ({
+  resumeGraduation: vi.fn().mockResolvedValue({ ok: true }),
+  runResumeWork: vi.fn(),
 }))
 
 describe('admin routes', () => {
@@ -51,6 +63,20 @@ describe('admin routes', () => {
       .eq('id', deletedStartup.id)
 
     process.env.ADMIN_EMAILS = admin.email
+
+    rpcSpy = vi.spyOn(supabaseAdmin as any, 'rpc').mockImplementation(async (name: any, params?: any) => {
+      if (name === 'admin_force_phase2') {
+        const { p_startup_id } = params ?? {}
+        if (p_startup_id) {
+          await supabaseAdmin
+            .from('startup_startups')
+            .update({ phase: 2 })
+            .eq('id', p_startup_id)
+        }
+        return { data: { ok: true }, error: null } as any
+      }
+      return realRpc(name, params)
+    })
   })
 
   afterAll(async () => {
@@ -58,6 +84,7 @@ describe('admin routes', () => {
       [admin.id, nonAdmin.id, voter.id],
       [phase1Startup?.id, phase2Startup?.id, deletedStartup?.id, forcePhaseStartup?.id].filter(Boolean) as string[]
     )
+    rpcSpy?.mockRestore()
   })
 
   function req(
@@ -87,12 +114,16 @@ describe('admin routes', () => {
         { method: listStuck, path: '/api/admin/stuck-investment-packs' },
         { method: listStuckWithdrawals, path: '/api/admin/stuck-withdrawals' },
         { method: getTreasury, path: '/api/admin/treasury' },
+        { method: getGraduations, path: '/api/admin/graduations' },
+        { method: getUnknownWithdrawals, path: '/api/admin/unknown-withdrawals' },
+        { method: getLedger, path: '/api/admin/ledger' },
         { method: listActions, path: '/api/admin/actions' },
         { method: patchStartup, path: `/api/admin/startups/${phase1Startup.id}`, body: { name: 'X' }, ctx: { params: { id: phase1Startup.id } } },
         { method: deleteStartup, path: `/api/admin/startups/${phase1Startup.id}/delete`, ctx: { params: { id: phase1Startup.id } } },
         { method: restoreStartup, path: `/api/admin/startups/${phase1Startup.id}/restore`, ctx: { params: { id: phase1Startup.id } } },
         { method: forcePhase2, path: `/api/admin/startups/${phase1Startup.id}/force-phase2`, ctx: { params: { id: phase1Startup.id } } },
         { method: freezeStartup, path: `/api/admin/startups/${phase1Startup.id}/freeze`, body: { frozen: true }, ctx: { params: { id: phase1Startup.id } } },
+        { method: resumeGraduation, path: `/api/admin/graduations/${phase1Startup.id}/resume`, body: { idempotency_key: '11111111-1111-1111-1111-111111111111' }, ctx: { params: { id: phase1Startup.id } } },
       ]
 
       for (const e of endpoints) {
@@ -108,19 +139,86 @@ describe('admin routes', () => {
         { method: listStuck, path: '/api/admin/stuck-investment-packs' },
         { method: listStuckWithdrawals, path: '/api/admin/stuck-withdrawals' },
         { method: getTreasury, path: '/api/admin/treasury' },
+        { method: getGraduations, path: '/api/admin/graduations' },
+        { method: getUnknownWithdrawals, path: '/api/admin/unknown-withdrawals' },
+        { method: getLedger, path: '/api/admin/ledger' },
         { method: listActions, path: '/api/admin/actions' },
         { method: patchStartup, path: `/api/admin/startups/${phase1Startup.id}`, body: { name: 'X' } },
         { method: deleteStartup, path: `/api/admin/startups/${phase1Startup.id}/delete` },
         { method: restoreStartup, path: `/api/admin/startups/${phase1Startup.id}/restore` },
         { method: forcePhase2, path: `/api/admin/startups/${phase1Startup.id}/force-phase2` },
         { method: freezeStartup, path: `/api/admin/startups/${phase1Startup.id}/freeze`, body: { frozen: true } },
+        { method: resumeGraduation, path: `/api/admin/graduations/${phase1Startup.id}/resume`, body: { idempotency_key: '11111111-1111-1111-1111-111111111111' } },
       ]
 
       for (const e of endpoints) {
         const r = req(e.method.name === 'PATCH' ? 'PATCH' : 'POST', e.path, e.body, nonAdmin)
         const res = await e.method(r, { params: { id: phase1Startup.id } })
         expect(res.status, `${e.path} should be 403`).toBe(403)
+        const json = await res.json()
+        expect(json, `${e.path} should not leak data in 403 body`).toMatchObject({ error: 'Forbidden' })
+        expect(Array.isArray(json), `${e.path} should not be an array`).toBe(false)
+        expect(json.backed_liability_exact, `${e.path} should not contain backed_liability_exact`).toBeUndefined()
       }
+    })
+
+    it('POST /api/admin/graduations/[id]/resume 403 is not vacuous', async () => {
+      const original = process.env.ADMIN_EMAILS
+      try {
+        process.env.ADMIN_EMAILS = nonAdmin.email
+        vi.mocked(getAuthenticatedUser).mockResolvedValue(nonAdmin as any)
+        const res = await resumeGraduation(
+          req(
+            'POST',
+            `/api/admin/graduations/${phase1Startup.id}/resume`,
+            { idempotency_key: '11111111-1111-1111-1111-111111111111' },
+            nonAdmin
+          ),
+          { params: { id: phase1Startup.id } }
+        )
+        expect(res.status).not.toBe(403)
+      } finally {
+        process.env.ADMIN_EMAILS = original
+      }
+    })
+
+    it('GET /api/admin/graduations is 401 without auth', async () => {
+      const res = await getGraduations(req('GET', '/api/admin/graduations'))
+      expect(res.status).toBe(401)
+    })
+
+    it('GET /api/admin/graduations returns 403 and no data for non-admin', async () => {
+      const res = await getGraduations(req('GET', '/api/admin/graduations', undefined, nonAdmin))
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json).toMatchObject({ error: 'Forbidden' })
+      expect(Array.isArray(json)).toBe(false)
+    })
+
+    it('GET /api/admin/unknown-withdrawals is 401 without auth', async () => {
+      const res = await getUnknownWithdrawals(req('GET', '/api/admin/unknown-withdrawals'))
+      expect(res.status).toBe(401)
+    })
+
+    it('GET /api/admin/unknown-withdrawals returns 403 and no data for non-admin', async () => {
+      const res = await getUnknownWithdrawals(req('GET', '/api/admin/unknown-withdrawals', undefined, nonAdmin))
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json).toMatchObject({ error: 'Forbidden' })
+      expect(Array.isArray(json)).toBe(false)
+    })
+
+    it('GET /api/admin/ledger is 401 without auth', async () => {
+      const res = await getLedger(req('GET', '/api/admin/ledger'))
+      expect(res.status).toBe(401)
+    })
+
+    it('GET /api/admin/ledger returns 403 and no data for non-admin', async () => {
+      const res = await getLedger(req('GET', '/api/admin/ledger', undefined, nonAdmin))
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json).toMatchObject({ error: 'Forbidden' })
+      expect(json.backed_liability_exact).toBeUndefined()
     })
   })
 

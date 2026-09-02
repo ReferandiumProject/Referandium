@@ -52,15 +52,35 @@ function groupedDecimalOrThrow(input: string | number, maxDecimals: number): str
 }
 
 /** Formats a USDC amount as "$1,234.56". Accepts a decimal string or a JS number. */
-export function formatUsd(input: string | number | null | undefined): string {
+export function formatUsd(
+  input: string | number | null | undefined,
+  decimals = 2
+): string {
   if (input === null || input === undefined) return FORMAT_FALLBACK
   try {
     const d = parseDecimalOrThrow(input)
-    const fixed = d.toFixed(2)
+    const fixed = d.toFixed(decimals)
     const [int, frac] = fixed.split('.')
     return `$${groupIntegerDigits(int)}.${frac}`
   } catch (err) {
     console.error('[format] formatUsd: failed to parse USDC amount', { input, err })
+    return FORMAT_FALLBACK
+  }
+}
+
+/** Formats a raw USDC amount without the "$" symbol, e.g. "1,234.560000". */
+export function formatUsdc(
+  input: string | number | null | undefined,
+  decimals = 6
+): string {
+  if (input === null || input === undefined) return FORMAT_FALLBACK
+  try {
+    const d = parseDecimalOrThrow(input)
+    const fixed = d.toFixed(decimals)
+    const [int, frac] = fixed.split('.')
+    return `${groupIntegerDigits(int)}.${frac}`
+  } catch (err) {
+    console.error('[format] formatUsdc: failed to parse USDC amount', { input, err })
     return FORMAT_FALLBACK
   }
 }

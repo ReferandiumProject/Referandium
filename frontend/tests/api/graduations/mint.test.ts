@@ -2,7 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { POST } from '@/app/api/admin/graduations/[id]/mint/route'
 import { getAdminUser } from '@/lib/admin'
 import { mintGraduationToken } from '@/lib/graduation/mint'
+import { recordSystemError } from '@/lib/system-errors'
 import { TokenAmount } from '@/lib/token-amount'
+
+vi.mock('@/lib/system-errors', () => ({
+  recordSystemError: vi.fn().mockResolvedValue(1),
+}))
 
 vi.mock('@/lib/admin', () => ({
   getAdminUser: vi.fn(),
@@ -79,18 +84,28 @@ describe('POST /api/admin/graduations/[id]/mint', () => {
       email: 'admin@example.com',
     } as any)
 
-    vi.mocked(mintGraduationToken).mockResolvedValue({
+    const result = {
       success: false,
       halted: true,
       reason: 'bad status',
-    })
+    }
 
-    const res = await POST(makeRequest('grad-1'), { params: { id: 'grad-1' } })
+    vi.mocked(mintGraduationToken).mockResolvedValue(result as any)
+
+    const req = makeRequest('grad-1')
+    const res = await POST(req, { params: { id: 'grad-1' } })
     const body = await res.json()
 
     expect(res.status).toBe(500)
     expect(body.halted).toBe(true)
     expect(body.error).toBe('bad status')
+    expect(recordSystemError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'server',
+        path: req.url,
+        context: { originalError: result },
+      })
+    )
   })
 
   it('rejects unauthenticated requests before calling the mint', async () => {

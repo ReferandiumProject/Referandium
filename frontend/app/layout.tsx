@@ -6,6 +6,7 @@ import { UserProvider } from './context/UserContext'
 import Navbar from './components/Navbar'
 import TestBanner from './components/TestBanner'
 import Footer from './components/Footer'
+import ErrorBoundary from './components/ErrorBoundary'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,14 +23,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className} style={{ backgroundColor: '#FFFFFF', color: '#0F172A' }}>
-        <AppWalletProvider>
-          <UserProvider>
-            <TestBanner />
-            <Navbar />
-            <main>{children}</main>
-            <Footer />
-          </UserProvider>
-        </AppWalletProvider>
+        <ErrorBoundary>
+          <AppWalletProvider>
+            <UserProvider>
+              <TestBanner />
+              <Navbar />
+              <main>{children}</main>
+              <Footer />
+            </UserProvider>
+          </AppWalletProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )

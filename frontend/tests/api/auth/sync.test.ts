@@ -64,7 +64,7 @@ describe('/api/auth/sync signup bonus', () => {
   })
 
   it('creates a zero balance when SIGNUP_BONUS_USDC is unset', async () => {
-    const privyId = `did:privy:auth-sync-no-bonus-${crypto.randomUUID()}`
+    const privyId = `test:auth-sync-no-bonus-${crypto.randomUUID()}`
     const email = `auth-sync-no-bonus-${crypto.randomUUID()}@example.com`
     const wallet = `0xAuthSyncNoBonus${crypto.randomUUID().slice(0, 8)}`
     await cleanupByPrivyId(privyId)
@@ -94,7 +94,7 @@ describe('/api/auth/sync signup bonus', () => {
   })
 
   it('credits the configured signup bonus on first sync', async () => {
-    const privyId = `did:privy:auth-sync-with-bonus-${crypto.randomUUID()}`
+    const privyId = `test:auth-sync-with-bonus-${crypto.randomUUID()}`
     const email = `auth-sync-with-bonus-${crypto.randomUUID()}@example.com`
     const wallet = `0xAuthSyncWithBonus${crypto.randomUUID().slice(0, 8)}`
     await cleanupByPrivyId(privyId)
@@ -136,7 +136,7 @@ describe('/api/auth/sync signup bonus', () => {
   })
 
   it('does not credit the signup bonus again on a second sync', async () => {
-    const privyId = `did:privy:auth-sync-duplicate-${crypto.randomUUID()}`
+    const privyId = `test:auth-sync-duplicate-${crypto.randomUUID()}`
     const email = `auth-sync-duplicate-${crypto.randomUUID()}@example.com`
     const wallet = `0xAuthSyncDuplicate${crypto.randomUUID().slice(0, 8)}`
     await cleanupByPrivyId(privyId)
@@ -173,7 +173,7 @@ describe('/api/auth/sync signup bonus', () => {
   })
 
   it('ignores a wallet_address supplied in the request body', async () => {
-    const privyId = `did:privy:auth-sync-body-wallet-${crypto.randomUUID()}`
+    const privyId = `test:auth-sync-body-wallet-${crypto.randomUUID()}`
     const email = `auth-sync-body-wallet-${crypto.randomUUID()}@example.com`
     const privyWallet = `0xAuthSyncBodyWallet${crypto.randomUUID().slice(0, 8)}`
     const bodyWallet = '0xBodyWalletShouldBeIgnored'

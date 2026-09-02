@@ -472,7 +472,7 @@ describe('Phase 2 bonding curve', () => {
     const { data: users, error: usersError } = await supabaseAdmin
       .from('users')
       .select('id')
-      .or('privy_id.ilike.did:privy:curve-%,email.ilike.curve-fixture-%')
+      .or('privy_id.ilike.test:curve-%,email.ilike.curve-fixture-%')
     expect(usersError).toBeNull()
     expect(users).toHaveLength(0)
 
@@ -486,7 +486,7 @@ describe('Phase 2 bonding curve', () => {
     const { data: balances, error: balancesError } = await supabaseAdmin
       .from('balances')
       .select('id, users!inner(privy_id)')
-      .ilike('users.privy_id', 'did:privy:curve-%')
+      .ilike('users.privy_id', 'test:curve-%')
     expect(balancesError).toBeNull()
     expect(balances).toHaveLength(0)
 

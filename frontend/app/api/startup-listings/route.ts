@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { isLogoInBucket } from '@/lib/logo-storage'
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function POST(request: Request) {
   try {
@@ -32,6 +35,7 @@ export async function POST(request: Request) {
       twitter,
       logo_url,
       stage,
+      idempotency_key,
     } = body || {}
 
     if (!name || typeof name !== 'string' || !name.trim()) {
@@ -78,20 +82,40 @@ export async function POST(request: Request) {
       }
     }
 
+    if (typeof logoUrlParam === 'string' && logoUrlParam && isLogoInBucket(logoUrlParam)) {
+      return NextResponse.json(
+        { error: 'Logos hosted in startup-logos must be uploaded after the startup is created' },
+        { status: 400 }
+      )
+    }
+
+    if (
+      idempotency_key !== undefined &&
+      idempotency_key !== null &&
+      (typeof idempotency_key !== 'string' || !UUID_REGEX.test(idempotency_key))
+    ) {
+      return NextResponse.json({ error: 'idempotency_key must be a UUID when provided' }, { status: 400 })
+    }
+
+    const rpcParams: any = {
+      p_user_id: user.id,
+      p_name: name.trim(),
+      p_description: description.trim(),
+      p_vote_threshold: voteThresholdNum,
+      p_capital_target: capitalTargetNum,
+      p_pitch: pitchParam as string | null,
+      p_website: websiteParam as string | null,
+      p_twitter: twitterParam as string | null,
+      p_logo_url: logoUrlParam as string | null,
+      p_stage: stageParam as string | null,
+    }
+    if (idempotency_key) {
+      rpcParams.p_idempotency_key = idempotency_key
+    }
+
     const { data: listingData, error: listingError } = await supabaseAdmin.rpc(
       'create_startup_listing',
-      {
-        p_user_id: user.id,
-        p_name: name.trim(),
-        p_description: description.trim(),
-        p_vote_threshold: voteThresholdNum,
-        p_capital_target: capitalTargetNum,
-        p_pitch: pitchParam as string | null,
-        p_website: websiteParam as string | null,
-        p_twitter: twitterParam as string | null,
-        p_logo_url: logoUrlParam as string | null,
-        p_stage: stageParam as string | null,
-      }
+      rpcParams
     )
 
     if (listingError) {
@@ -103,6 +127,9 @@ export async function POST(request: Request) {
       }
       if (msg.includes('must be between') || msg.includes('is required')) {
         return NextResponse.json({ error: msg }, { status: 400 })
+      }
+      if (msg.includes('idempotency key mismatch')) {
+        return NextResponse.json({ error: msg }, { status: 409 })
       }
 
       return NextResponse.json({ error: msg || 'Failed to create listing' }, { status: 500 })
@@ -122,6 +149,7 @@ export async function POST(request: Request) {
       fee: Number(result.r_fee ?? 0),
       credits_left: Number(result.r_credits_left ?? 0),
       available_after: Number(result.r_available_after ?? 0),
+      already_created: Boolean(result.r_already_created),
     })
   } catch (err: any) {
     const message = err?.message || 'Unauthorized'

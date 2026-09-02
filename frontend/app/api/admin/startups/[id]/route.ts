@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { validateLogoUrl } from '@/lib/logo-storage'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -70,6 +71,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (key in body) {
       rpcArgs[param] = body[key] ?? null
     }
+  }
+
+  if (typeof rpcArgs.p_logo_url === 'string' && rpcArgs.p_logo_url) {
+    const { error: logoError, logoUrl: validatedLogoUrl } = await validateLogoUrl(rpcArgs.p_logo_url, id)
+    if (logoError) {
+      return NextResponse.json({ error: logoError }, { status: 400 })
+    }
+    rpcArgs.p_logo_url = validatedLogoUrl
   }
 
   try {

@@ -59,6 +59,7 @@ export type ClaimResult = {
   signature?: string
   error?: string
   status?: number
+  already_claimed?: boolean
 }
 
 function assertEnv(): { connection: Connection; platformKeypair: Keypair } {
@@ -132,15 +133,63 @@ export async function claimGraduationHolding(
         status: 500,
       }
     }
-    return { success: true, signature: holding.signature }
+    return { success: true, signature: holding.signature, already_claimed: true }
   }
 
-  if (!holding.wallet_address) {
+  let walletAddress: string | null = holding.wallet_address
+
+  if (!walletAddress) {
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('custodial_wallet_address')
+      .eq('id', holding.user_id)
+      .single()
+
+    if (userError || !user) {
+      return {
+        success: false,
+        error: userError?.message ?? 'Could not load user record',
+        status: 500,
+      }
+    }
+
+    const { custodial_wallet_address } = user as {
+      custodial_wallet_address: string | null
+    }
+
+    if (!custodial_wallet_address) {
+      return {
+        success: false,
+        error:
+          'You are still owed these tokens. Sign in with an embedded wallet to get an address for the claim.',
+        status: 400,
+      }
+    }
+
+    const { error: persistError } = await supabase
+      .from('graduation_holders')
+      .update({
+        wallet_address: custodial_wallet_address,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', holdingId)
+
+    if (persistError) {
+      return {
+        success: false,
+        error: `Could not persist wallet address: ${persistError.message}`,
+        status: 500,
+      }
+    }
+
+    walletAddress = custodial_wallet_address
+  }
+
+  if (!walletAddress) {
     return {
       success: false,
-      error:
-        'You are still owed these tokens. Sign in with an embedded wallet to get an address for the claim.',
-      status: 400,
+      error: 'No wallet address available for claim',
+      status: 500,
     }
   }
 
@@ -204,7 +253,7 @@ export async function claimGraduationHolding(
 
   const mintPubkey = new PublicKey(graduation.mint_address)
   const escrowAddress = new PublicKey(graduation.escrow_address)
-  const recipientPubkey = new PublicKey(holding.wallet_address)
+  const recipientPubkey = new PublicKey(walletAddress)
   const recipientAta = getAssociatedTokenAddressSync(mintPubkey, recipientPubkey)
 
   if (holding.status === 'claiming' || holding.status === 'failed') {
@@ -243,7 +292,7 @@ export async function claimGraduationHolding(
           updated_at: new Date().toISOString(),
         })
         .eq('id', holdingId)
-      return { success: true, signature }
+      return { success: true, signature, already_claimed: true }
     }
 
     if (holding.status === 'claiming') {
@@ -261,6 +310,54 @@ export async function claimGraduationHolding(
       success: false,
       error: `Claim did not land. Recipient token account has ${balance}, expected ${expectedAmount}. The claim is now failed and must be reviewed before retrying.`,
       status: 409,
+    }
+  }
+
+  let existingBalance: bigint
+  try {
+    const { value } = await connection.getTokenAccountBalance(
+      recipientAta,
+      'finalized'
+    )
+    existingBalance = BigInt(value.amount)
+  } catch {
+    existingBalance = BigInt(0)
+  }
+
+  if (existingBalance === expectedAmount) {
+    const { data: fresh, error: freshError } = await supabase
+      .from('graduation_holders')
+      .select('id, signature, status, claimed_at')
+      .eq('id', holdingId)
+      .single()
+
+    if (freshError) {
+      return {
+        success: false,
+        error: `Could not re-fetch holding after on-chain claim: ${freshError.message}`,
+        status: 500,
+      }
+    }
+
+    const latestHolding = (fresh as any) as ClaimHoldingRow | undefined
+    const latestSignature =
+      latestHolding?.signature ?? holding.signature ?? 'unknown'
+
+    await supabase
+      .from('graduation_holders')
+      .update({
+        status: 'claimed',
+        signature: latestSignature,
+        error: null,
+        claimed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', holdingId)
+
+    return {
+      success: true,
+      signature: latestSignature,
+      already_claimed: true,
     }
   }
 
@@ -373,5 +470,5 @@ export async function claimGraduationHolding(
     })
     .eq('id', holdingId)
 
-  return { success: true, signature }
+  return { success: true, signature, already_claimed: false }
 }

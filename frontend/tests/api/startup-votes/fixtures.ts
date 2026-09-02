@@ -26,7 +26,7 @@ export async function createFixtureUser(): Promise<FixtureUser> {
   const suffix = id.slice(0, 8)
   const user: FixtureUser = {
     id,
-    privy_id: `did:privy:fixture-${suffix}`,
+    privy_id: `test:fixture-${suffix}`,
     email: `fixture-${suffix}@example.com`,
     wallet_address: `0xFixture${suffix}`,
   }
@@ -40,7 +40,7 @@ export async function createFixtureUser(): Promise<FixtureUser> {
   } as any)
 
   if (error) {
-    throw new Error(`Failed to insert fixture user: ${error.message}`)
+    throw new Error(`createFixtureUser failed: ${JSON.stringify({ code: error.code, message: error.message, details: error.details, hint: error.hint })}`)
   }
 
   return user
@@ -86,7 +86,7 @@ export async function createFixtureStartup(
   } as any)
 
   if (error) {
-    throw new Error(`Failed to insert fixture startup: ${error.message}`)
+    throw new Error(`createFixtureStartup failed: ${JSON.stringify({ code: error.code, message: error.message, details: error.details, hint: error.hint })}`)
   }
 
   return startup
@@ -132,7 +132,6 @@ export async function cleanupFixtures(
   await supabaseAdmin.from('listing_credit_events').delete().eq('user_id', userId)
   await supabaseAdmin.from('stripe_payments').delete().eq('user_id', userId)
   await supabaseAdmin.from('ledger_adjustments').delete().eq('user_id', userId)
-  await supabaseAdmin.from('withdrawals').delete().eq('user_id', userId)
   await supabaseAdmin.from('balances').delete().eq('user_id', userId)
 
   if (startupIds.length > 0) {

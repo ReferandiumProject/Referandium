@@ -37,6 +37,7 @@ describe('POST /api/graduation-holders/[id]/claim', () => {
     vi.mocked(claimGraduationHolding).mockResolvedValue({
       success: true,
       signature: 'mock-sig',
+      already_claimed: false,
     } as any)
 
     const res = await POST(makeRequest('holding-1', { user_id: 'attacker' }), {
@@ -46,6 +47,7 @@ describe('POST /api/graduation-holders/[id]/claim', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.signature).toBe('mock-sig')
+    expect(json.already_claimed).toBe(false)
     expect(getAuthenticatedUser).toHaveBeenCalledTimes(1)
     expect(claimGraduationHolding).toHaveBeenCalledWith('holding-1', 'user-1')
     expect(claimGraduationHolding).not.toHaveBeenCalledWith('holding-1', 'attacker')

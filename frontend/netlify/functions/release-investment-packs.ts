@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../../lib/supabaseServer'
 import { backfillInvestmentPacks } from '../../lib/backfill-investment-packs'
 import { scanAndSweepUserDeposits } from '../../lib/scan-user-deposits'
+import { recordSystemError } from '../../lib/system-errors'
 
 const STALE_PENDING_HOURS = 48
 
@@ -35,6 +36,13 @@ export default async (): Promise<Response> => {
     await scanAndSweepUserDeposits(null)
   } catch (err: any) {
     console.error('[netlify/scheduled] scanAndSweepUserDeposits failed:', err)
+    void recordSystemError({
+      source: 'swallowed',
+      name: 'ScheduledScanAndSweepFailed',
+      message: err?.message ?? 'scanAndSweepUserDeposits failed',
+      path: 'netlify/functions/release-investment-packs.ts',
+      context: { stack: err?.stack },
+    })
   }
 
   const { data, error } = await supabaseAdmin.rpc('release_due_investment_packs', {
@@ -60,6 +68,13 @@ export default async (): Promise<Response> => {
     integrityText = `integrity: ${summary}`
   } catch (err: any) {
     console.error('[netlify/scheduled] run_integrity_checks failed:', err)
+    void recordSystemError({
+      source: 'swallowed',
+      name: 'ScheduledIntegrityChecksFailed',
+      message: err?.message ?? 'run_integrity_checks failed',
+      path: 'netlify/functions/release-investment-packs.ts',
+      context: { stack: err?.stack },
+    })
     integrityText = `integrity failed: ${err?.message ?? err}`
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
@@ -37,12 +37,13 @@ export default function ListStartupPage() {
   const [pitch, setPitch] = useState('')
   const [website, setWebsite] = useState('')
   const [twitter, setTwitter] = useState('')
-  const [logoUrl, setLogoUrl] = useState('')
   const [stage, setStage] = useState('')
 
   const [errors, setErrors] = useState<FormErrors>({})
   const [serverError, setServerError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [pendingListingKey, setPendingListingKey] = useState<string | null>(null)
+  const pendingListingKeyRef = useRef<string | null>(null)
 
   const canAfford = balance === null ? false : balance >= LISTING_FEE_USDC
 
@@ -126,6 +127,13 @@ export default function ListStartupPage() {
         return
       }
 
+      const idempotencyKey =
+        pendingListingKeyRef.current ?? (crypto as any).randomUUID()
+      if (!pendingListingKeyRef.current) {
+        pendingListingKeyRef.current = idempotencyKey
+        setPendingListingKey(idempotencyKey)
+      }
+
       const res = await fetch('/api/startup-listings', {
         method: 'POST',
         headers: {
@@ -140,8 +148,8 @@ export default function ListStartupPage() {
           pitch: pitch.trim() || null,
           website: website.trim() || null,
           twitter: twitter.trim() || null,
-          logo_url: logoUrl.trim() || null,
           stage: stage || null,
+          idempotency_key: idempotencyKey,
         }),
       })
 
@@ -158,6 +166,10 @@ export default function ListStartupPage() {
         setServerError(json.error || 'Failed to create listing')
         return
       }
+
+      // Clear the key on any final 2xx so a later submit is a new attempt.
+      pendingListingKeyRef.current = null
+      setPendingListingKey(null)
 
       router.push(`/startup/${json.slug}`)
     } catch (err: any) {
@@ -345,20 +357,6 @@ export default function ListStartupPage() {
                   </option>
                 ))}
               </select>
-            </div>
-
-            <div>
-              <label htmlFor="logo_url" className={labelClass}>
-                Logo URL
-              </label>
-              <input
-                id="logo_url"
-                type="url"
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                placeholder="https://..."
-                className={inputClass}
-              />
             </div>
 
             <div>

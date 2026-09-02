@@ -1,6 +1,7 @@
 import Stripe from 'stripe'
 import { supabaseAdmin } from './supabaseServer'
 import { Money } from './money'
+import { recordSystemError } from './system-errors'
 
 export async function backfillInvestmentPacks(userId: string | null = null) {
   const apiKey = process.env.STRIPE_SECRET_KEY
@@ -135,6 +136,13 @@ export async function backfillInvestmentPacks(userId: string | null = null) {
           `[backfill-investment-packs] update failed for ${row.id}:`,
           updateError
         )
+        void recordSystemError({
+          source: 'swallowed',
+          name: 'BackfillInvestmentPackUpdateFailed',
+          message: updateError.message,
+          path: 'lib/backfill-investment-packs.ts',
+          context: { rowId: row.id, stripeChargeId: row.stripe_charge_id, updateError: { message: updateError.message, code: updateError.code } },
+        })
         skipped++
       } else {
         filled++
@@ -144,6 +152,13 @@ export async function backfillInvestmentPacks(userId: string | null = null) {
         `[backfill-investment-packs] error for charge ${row.stripe_charge_id}:`,
         err?.message ?? err
       )
+      void recordSystemError({
+        source: 'swallowed',
+        name: 'BackfillInvestmentPackChargeFailed',
+        message: err?.message ?? 'backfill charge failed',
+        path: 'lib/backfill-investment-packs.ts',
+        context: { rowId: row.id, stripeChargeId: row.stripe_charge_id, stack: err?.stack },
+      })
       skipped++
     }
   }

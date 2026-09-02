@@ -191,3 +191,111 @@ describe('POST /api/startup-votes/cast', () => {
     expect(afterStartup.total_yes_votes).toBe(beforeStartup.total_yes_votes + 5)
   })
 })
+
+describe.sequential('POST /api/startup-votes/cast idempotency', () => {
+  let founder: Awaited<ReturnType<typeof createFixtureUser>>
+  let user: Awaited<ReturnType<typeof createFixtureUser>>
+  let startup: Awaited<ReturnType<typeof createFixtureStartup>>
+
+  beforeAll(async () => {
+    founder = await createFixtureUser()
+    user = await createFixtureUser()
+    startup = await createFixtureStartup(founder.id)
+
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+    const balanceRes = await getBalance(new Request('http://localhost:3000/api/startup-votes/balance', {
+      headers: { Authorization: 'Bearer mock-token' },
+    }))
+    const balance = await balanceRes.json()
+    expect(balance.total_spendable).toBe(100)
+  })
+
+  beforeEach(() => {
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
+  })
+
+  afterAll(async () => {
+    await cleanupFixtures(user.id, [startup.id])
+    await cleanupFixtures(founder.id, [])
+  })
+
+  async function castWithKey(direction: 'yes' | 'no', votes: number, key: string) {
+    const req = new Request('http://localhost:3000/api/startup-votes/cast', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer mock-token', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startup_id: startup.id, direction, votes, idempotency_key: key }),
+    })
+    return castVote(req)
+  }
+
+  async function currentAllocation() {
+    const { data, error } = await supabaseAdmin
+      .from('startup_vote_allocations')
+      .select('direction, votes')
+      .eq('user_id', user.id)
+      .eq('startup_id', startup.id)
+      .is('burned_at', null)
+      .single()
+    if (error) throw new Error(error.message)
+    return data
+  }
+
+  async function currentStartup() {
+    const { data, error } = await supabaseAdmin
+      .from('startup_startups')
+      .select('total_yes_votes, total_no_votes')
+      .eq('id', startup.id)
+      .single()
+    if (error) throw new Error(error.message)
+    return data
+  }
+
+  async function currentBalance() {
+    const res = await getBalance(new Request('http://localhost:3000/api/startup-votes/balance', {
+      headers: { Authorization: 'Bearer mock-token' },
+    }))
+    return res.json()
+  }
+
+  it('replays a cast with the same idempotency key without double-debiting or changing tallies', async () => {
+    const key = '55555555-5555-5555-5555-555555555555'
+    const firstRes = await castWithKey('yes', 40, key)
+    expect(firstRes.status).toBe(200)
+    const first = await firstRes.json()
+    expect(first.already_cast).toBe(false)
+    expect(first.deployed).toBe(40)
+
+    const balanceBefore = await currentBalance()
+    const startupBefore = await currentStartup()
+    const allocationBefore = await currentAllocation()
+
+    const secondRes = await castWithKey('yes', 40, key)
+    expect(secondRes.status).toBe(200)
+    const second = await secondRes.json()
+    expect(second.already_cast).toBe(true)
+    expect(second.deployed).toBe(first.deployed)
+    expect(second.from_grant).toBe(first.from_grant)
+    expect(second.from_pool).toBe(first.from_pool)
+
+    const balanceAfter = await currentBalance()
+    const startupAfter = await currentStartup()
+    const allocationAfter = await currentAllocation()
+
+    expect(balanceAfter.remaining_today).toBe(balanceBefore.remaining_today)
+    expect(balanceAfter.total_spendable).toBe(balanceBefore.total_spendable)
+    expect(balanceAfter.pool_balance).toBe(balanceBefore.pool_balance)
+    expect(startupAfter.total_yes_votes).toBe(startupBefore.total_yes_votes)
+    expect(startupAfter.total_no_votes).toBe(startupBefore.total_no_votes)
+    expect(allocationAfter.votes).toBe(allocationBefore.votes)
+    expect(allocationAfter.direction).toBe(allocationBefore.direction)
+  })
+
+  it('returns 409 when the same idempotency key is used for different parameters', async () => {
+    const key = '66666666-6666-6666-6666-666666666666'
+    const firstRes = await castWithKey('yes', 10, key)
+    expect(firstRes.status).toBe(200)
+
+    const secondRes = await castWithKey('no', 10, key)
+    expect(secondRes.status).toBe(409)
+  })
+})

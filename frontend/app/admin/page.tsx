@@ -1,10 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import Link from 'next/link'
 import { formatUsd, formatVoteCount } from '@/lib/format'
 import { getFreezeActionBody } from '@/lib/admin-freeze'
+import { AdminGraduationSections, GraduationAdmin } from '@/app/components/AdminGraduationSections'
+import { AdminUnknownWithdrawals, UnknownWithdrawal } from '@/app/components/AdminUnknownWithdrawals'
+import { AdminLedger, LedgerLiability } from '@/app/components/AdminLedger'
 
 type Startup = {
   id: string
@@ -61,7 +64,7 @@ type DepositNeedingAttention = {
 type Treasury = {
   sol: number
   usdc: number
-  backed_liability: number
+  backed_liability: string
   cheap_transfers: number
   expensive_transfers: number
   low: boolean
@@ -90,6 +93,22 @@ type AuditAction = {
   startup_id: string | null
   details: any
   created_at: string
+}
+
+type SystemError = {
+  id: number
+  fingerprint: string
+  source: string
+  name: string
+  message: string
+  stack: string | null
+  path: string | null
+  user_id: string | null
+  context: any
+  occurrences: number
+  first_seen: string
+  last_seen: string
+  resolved_at: string | null
 }
 
 const formatDate = (d: string | null) => {
@@ -131,6 +150,15 @@ export default function AdminPage() {
   const [loadingTreasury, setLoadingTreasury] = useState(false)
   const [integrity, setIntegrity] = useState<IntegrityRun | null>(null)
   const [loadingIntegrity, setLoadingIntegrity] = useState(false)
+  const [graduations, setGraduations] = useState<GraduationAdmin[] | null>(null)
+  const [loadingGraduations, setLoadingGraduations] = useState(false)
+  const [unknownWithdrawals, setUnknownWithdrawals] = useState<UnknownWithdrawal[] | null>(null)
+  const [loadingUnknownWithdrawals, setLoadingUnknownWithdrawals] = useState(false)
+  const [ledger, setLedger] = useState<LedgerLiability | null>(null)
+  const [loadingLedger, setLoadingLedger] = useState(false)
+  const [systemErrors, setSystemErrors] = useState<SystemError[] | null>(null)
+  const [loadingSystemErrors, setLoadingSystemErrors] = useState(false)
+  const [expandedSystemError, setExpandedSystemError] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showDeleted, setShowDeleted] = useState(true)
 
@@ -208,6 +236,10 @@ export default function AdminPage() {
           fetchDepositsNeedingAttention(token),
           fetchTreasury(token),
           fetchIntegrityChecks(token),
+          fetchGraduations(token),
+          fetchUnknownWithdrawals(token),
+          fetchLedger(token),
+          fetchSystemErrors(token),
         ])
       } else {
         setStatus('not-authorized')
@@ -366,6 +398,106 @@ export default function AdminPage() {
     }
   }
 
+  const fetchGraduations = async (tokenOverride?: string) => {
+    const token = tokenOverride || (await getToken())
+    if (!token) return
+    setLoadingGraduations(true)
+    try {
+      const res = await fetch('/api/admin/graduations', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        console.error(`[admin page] fetchGraduations HTTP ${res.status}:`, json)
+        setError(json.error || 'Failed to load graduations')
+        return
+      }
+      const json = await res.json()
+      setGraduations(json || [])
+    } catch (e) {
+      console.error('[admin page] fetchGraduations failed:', e)
+      setError('Failed to load graduations')
+    } finally {
+      setLoadingGraduations(false)
+    }
+  }
+
+  const fetchUnknownWithdrawals = async (tokenOverride?: string) => {
+    const token = tokenOverride || (await getToken())
+    if (!token) return
+    setLoadingUnknownWithdrawals(true)
+    try {
+      const res = await fetch('/api/admin/unknown-withdrawals', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        console.error(`[admin page] fetchUnknownWithdrawals HTTP ${res.status}:`, json)
+        setError(json.error || 'Failed to load unknown withdrawals')
+        return
+      }
+      const json = await res.json()
+      setUnknownWithdrawals(json || [])
+    } catch (e) {
+      console.error('[admin page] fetchUnknownWithdrawals failed:', e)
+      setError('Failed to load unknown withdrawals')
+    } finally {
+      setLoadingUnknownWithdrawals(false)
+    }
+  }
+
+  const fetchLedger = async (tokenOverride?: string) => {
+    const token = tokenOverride || (await getToken())
+    if (!token) return
+    setLoadingLedger(true)
+    try {
+      const res = await fetch('/api/admin/ledger', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        console.error(`[admin page] fetchLedger HTTP ${res.status}:`, json)
+        setError(json.error || 'Failed to load ledger liability')
+        return
+      }
+      const json = await res.json()
+      setLedger(json)
+    } catch (e) {
+      console.error('[admin page] fetchLedger failed:', e)
+      setError('Failed to load ledger liability')
+    } finally {
+      setLoadingLedger(false)
+    }
+  }
+
+  const fetchSystemErrors = async (tokenOverride?: string) => {
+    const token = tokenOverride || (await getToken())
+    if (!token) return
+    setLoadingSystemErrors(true)
+    try {
+      const res = await fetch('/api/admin/system-errors', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        console.error(`[admin page] fetchSystemErrors HTTP ${res.status}:`, json)
+        setError(json.error || 'Failed to load system errors')
+        return
+      }
+      const json = await res.json()
+      setSystemErrors(json || [])
+    } catch (e) {
+      console.error('[admin page] fetchSystemErrors failed:', e)
+      setError('Failed to load system errors')
+    } finally {
+      setLoadingSystemErrors(false)
+    }
+  }
+
   const fetchActions = async (tokenOverride?: string) => {
     const token = tokenOverride || (await getToken())
     if (!token) return
@@ -484,6 +616,10 @@ export default function AdminPage() {
       fetchDepositsNeedingAttention(token),
       fetchTreasury(token),
       fetchIntegrityChecks(token),
+      fetchGraduations(token),
+      fetchUnknownWithdrawals(token),
+      fetchLedger(token),
+      fetchSystemErrors(token),
     ])
   }
 
@@ -918,6 +1054,109 @@ export default function AdminPage() {
 
         <section
           className={`mb-8 rounded-xl border p-5 shadow-sm ${
+            (systemErrors || []).length > 0
+              ? 'border-[#EF4444]/50 bg-[#FEF2F2]'
+              : 'border-[#E5E7EB] bg-white'
+          }`}
+        >
+          <h2 className="mb-1 text-lg font-semibold text-[#111827]">System errors</h2>
+          <p className="mb-4 text-sm text-[#6B7280]">
+            Unresolved server/client/swallowed errors grouped by fingerprint. High occurrence counts mean a
+            widespread or repeating problem.
+          </p>
+
+          {loadingSystemErrors ? (
+            <p className="text-sm text-[#6B7280]">Loading system errors...</p>
+          ) : (
+            <>
+              <div className="mb-4">
+                <span className="text-3xl font-bold text-[#111827]">{(systemErrors || []).length}</span>
+                <span className="ml-2 text-sm text-[#6B7280]">unresolved groups</span>
+              </div>
+
+              {(systemErrors || []).length === 0 ? (
+                <p className="text-sm text-[#6B7280]">No unresolved system errors.</p>
+              ) : (
+                <div className="-mx-5 overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="bg-[#F9FAFB] text-[#6B7280]">
+                      <tr>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Name</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Source</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Occurrences</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Last seen</th>
+                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Message</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E5E7EB]">
+                      {(systemErrors || []).map((err) => {
+                        const expanded = expandedSystemError === err.id
+                        return (
+                          <Fragment key={err.id}>
+                            <tr
+                              className="cursor-pointer hover:bg-[#F9FAFB]"
+                              onClick={() => setExpandedSystemError(expanded ? null : err.id)}
+                            >
+                              <td className="px-4 py-3 font-medium text-[#111827]">{err.name}</td>
+                              <td className="px-4 py-3 text-[#6B7280]">
+                                <span className="inline-flex rounded bg-[#E5E7EB] px-2 py-0.5 text-xs font-semibold text-[#374151]">
+                                  {err.source}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right font-semibold text-[#111827]">
+                                {err.occurrences}
+                              </td>
+                              <td className="px-4 py-3 text-[#6B7280]">{formatDate(err.last_seen)}</td>
+                              <td
+                                className="max-w-[300px] truncate px-4 py-3 text-[#111827]"
+                                title={err.message}
+                              >
+                                {err.message}
+                              </td>
+                            </tr>
+                            {expanded && (
+                              <tr>
+                                <td colSpan={5} className="px-4 py-3">
+                                  <div className="space-y-2 text-xs text-[#374151]">
+                                    <p>
+                                      <span className="font-semibold">Path:</span> {err.path ?? '—'}
+                                    </p>
+                                    {err.user_id && (
+                                      <p>
+                                        <span className="font-semibold">User:</span> {err.user_id}
+                                      </p>
+                                    )}
+                                    <p>
+                                      <span className="font-semibold">First seen:</span>{' '}
+                                      {formatDate(err.first_seen)}
+                                    </p>
+                                    {err.stack && (
+                                      <pre className="max-h-48 overflow-auto rounded-lg border border-[#E5E7EB] bg-white p-2 text-[10px] text-[#6B7280]">
+                                        {err.stack}
+                                      </pre>
+                                    )}
+                                    {err.context && (
+                                      <pre className="max-h-48 overflow-auto rounded-lg border border-[#E5E7EB] bg-white p-2 text-[10px] text-[#6B7280]">
+                                        {JSON.stringify(err.context, null, 2)}
+                                      </pre>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        <section
+          className={`mb-8 rounded-xl border p-5 shadow-sm ${
             (stuckPacks || []).length > 0
               ? 'border-[#F59E0B]/30 bg-[#FEF3C7]'
               : 'border-[#E5E7EB] bg-white'
@@ -1134,6 +1373,18 @@ export default function AdminPage() {
             </div>
           )}
         </section>
+
+        <AdminGraduationSections
+          graduations={graduations ?? []}
+          loading={loadingGraduations}
+        />
+
+        <AdminUnknownWithdrawals
+          withdrawals={unknownWithdrawals ?? []}
+          loading={loadingUnknownWithdrawals}
+        />
+
+        <AdminLedger ledger={ledger} loading={loadingLedger} />
 
         <section
           className={`mb-8 rounded-xl border p-5 shadow-sm ${

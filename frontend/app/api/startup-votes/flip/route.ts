@@ -25,15 +25,29 @@ export async function POST(request: Request) {
     }
 
     const startupId = body?.startup_id
+    const idempotencyKey = body?.idempotency_key
 
     if (!startupId || typeof startupId !== 'string' || !UUID_REGEX.test(startupId)) {
       return NextResponse.json({ error: 'Missing or invalid startup_id (must be a UUID)' }, { status: 400 })
     }
 
-    const { data: flipData, error: flipError } = await supabaseAdmin.rpc('flip_vote', {
+    if (
+      idempotencyKey !== undefined &&
+      idempotencyKey !== null &&
+      (typeof idempotencyKey !== 'string' || !UUID_REGEX.test(idempotencyKey))
+    ) {
+      return NextResponse.json({ error: 'idempotency_key must be a UUID when provided' }, { status: 400 })
+    }
+
+    const rpcParams: any = {
       p_user_id: user.id,
       p_startup_id: startupId,
-    })
+    }
+    if (idempotencyKey) {
+      rpcParams.p_idempotency_key = idempotencyKey
+    }
+
+    const { data: flipData, error: flipError } = await supabaseAdmin.rpc('flip_vote', rpcParams)
 
     if (flipError) {
       const msg = flipError.message || ''
@@ -47,6 +61,9 @@ export async function POST(request: Request) {
       }
       if (msg.includes('Startup not found')) {
         return NextResponse.json({ error: msg }, { status: 404 })
+      }
+      if (msg.includes('idempotency key mismatch')) {
+        return NextResponse.json({ error: msg }, { status: 409 })
       }
 
       return NextResponse.json({ error: msg || 'Failed to flip vote' }, { status: 500 })
@@ -64,6 +81,7 @@ export async function POST(request: Request) {
       votes: Number(result.r_votes ?? 0),
       net_votes: Number(result.r_net_votes ?? 0),
       phase_closed: Boolean(result.r_phase_closed),
+      already_flipped: Boolean(result.r_already_flipped),
     })
   } catch (err: any) {
     const message = err?.message || 'Unauthorized'

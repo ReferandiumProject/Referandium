@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { backfillInvestmentPacks } from '@/lib/backfill-investment-packs'
+import { errorResponse } from '@/lib/errorResponse'
 
 export async function GET(request: Request) {
   try {
@@ -19,15 +20,23 @@ export async function GET(request: Request) {
     )
 
     if (grantError) {
-      console.error('[api/startup-votes/balance] claim_daily_grant error:', grantError)
-      return NextResponse.json({ error: grantError.message }, { status: 500 })
+      return errorResponse({
+        status: 500,
+        message: grantError.message || 'Failed to claim daily grant',
+        error: grantError,
+        request,
+      })
     }
 
     const grant = Array.isArray(grantData) ? grantData[0] : grantData
 
     if (!grant) {
-      console.error('[api/startup-votes/balance] claim_daily_grant returned no data')
-      return NextResponse.json({ error: 'Failed to claim daily grant' }, { status: 500 })
+      return errorResponse({
+        status: 500,
+        message: 'Failed to claim daily grant',
+        error: 'claim_daily_grant returned no data',
+        request,
+      })
     }
 
     const { data: releaseData, error: releaseError } = await supabaseAdmin.rpc(
@@ -48,8 +57,12 @@ export async function GET(request: Request) {
       .single()
 
     if (poolError && poolError.code !== 'PGRST116') {
-      console.error('[api/startup-votes/balance] startup_vote_pool fetch error:', poolError)
-      return NextResponse.json({ error: poolError.message }, { status: 500 })
+      return errorResponse({
+        status: 500,
+        message: poolError.message || 'Failed to load vote balance',
+        error: poolError,
+        request,
+      })
     }
 
     const poolBalance = Number(poolData?.available ?? 0)
@@ -72,7 +85,11 @@ export async function GET(request: Request) {
     if (message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    console.error('[api/startup-votes/balance] unexpected error:', err)
-    return NextResponse.json({ error: message }, { status: 500 })
+    return errorResponse({
+      status: 500,
+      message: message || 'Internal server error',
+      error: err,
+      request,
+    })
   }
 }

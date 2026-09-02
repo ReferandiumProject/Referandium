@@ -1,10 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
 import { useUser } from '@/app/context/UserContext'
+import { StartupGraduationClaim } from '@/app/components/StartupGraduationClaim'
+import { GraduationReport } from '@/app/components/GraduationReport'
+import type { GraduationReport as GraduationReportType } from '@/app/components/GraduationReport'
 import { Decimal } from '@/lib/decimal'
 import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
 
@@ -18,6 +21,8 @@ type CurveState = {
   capital_target: string
   graduated: boolean
   frozen: boolean
+  pool_address?: string | null
+  graduation_status?: string | null
   user_holding?: { tokens: string; cost_basis: string } | null
   available_usdc?: string | null
 }
@@ -534,6 +539,47 @@ function ExistingPositionForm({
   )
 }
 
+function solanaPoolExplorerLink(poolAddress: string | null | undefined): string | null {
+  return poolAddress ? `https://explorer.solana.com/address/${poolAddress}?cluster=devnet` : null
+}
+
+function graduationStatusMessage(
+  status: string | null | undefined,
+  raised: string,
+  target: string
+): string {
+  switch (status) {
+    case 'complete':
+      return `This startup raised ${formatUsd(raised)} of its ${formatUsd(
+        target
+      )} target. The token has been minted, the liquidity pool created, the LP tokens burned, the mint authority revoked, and the founder has been paid.`
+    case 'revoking':
+      return 'Mint authority is being revoked. This is the final step before the graduation is complete.'
+    case 'founder_paid':
+      return 'Founder payout is complete. Revoking the mint authority is the final step.'
+    case 'paying_founder':
+      return 'Founder payout is being processed.'
+    case 'burned':
+      return 'The LP tokens have been burned. Founder payout is next.'
+    case 'burning':
+      return 'The LP tokens are being burned.'
+    case 'pooled':
+      return 'The liquidity pool has been created. The LP tokens will be burned next.'
+    case 'pooling':
+      return 'The liquidity pool is being created on Raydium.'
+    case 'minted':
+      return 'The token has been minted. The liquidity pool is being created next.'
+    case 'minting':
+      return 'The token is being minted.'
+    case 'halted':
+      return 'Graduation is paused. The team will resume the process.'
+    default:
+      return `This startup raised ${formatUsd(raised)} of its ${formatUsd(
+        target
+      )} target. The token is being prepared for issuance.`
+  }
+}
+
 function CurvePanel({
   curve,
   loading,
@@ -710,7 +756,7 @@ function CurvePanel({
       <div className="mb-6">
         <h3 className="mb-1 text-lg font-semibold text-[#111827]">Capital raise</h3>
         <p className="mb-4 text-sm text-[#6B7280]">
-          Back this startup before the raise closes. Tokens represent your stake in the raise.
+          Back this startup before the raise closes. Tokens track this raise on a bonding curve.
         </p>
         <RaiseProgressBar
           progress={curve.progress}
@@ -718,11 +764,26 @@ function CurvePanel({
           target={curve.capital_target}
         />
         <div className="mt-3 flex items-center justify-between text-sm">
-          <span className="text-[#6B7280]">Current token price</span>
+          <span className="text-[#6B7280]">
+            {curve.graduated ? 'Final raise price' : 'Current token price'}
+          </span>
           <span className="font-medium text-[#111827]">
             ${formatPrice(curve.current_price)}
           </span>
         </div>
+        {curve.graduated && curve.pool_address && (
+          <div className="mt-2 flex items-center justify-end gap-1 text-xs text-[#6B7280]">
+            <span>Final bonding-curve price.</span>
+            <a
+              href={solanaPoolExplorerLink(curve.pool_address)!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-[#3B82F6] hover:underline"
+            >
+              View Raydium pool
+            </a>
+          </div>
+        )}
       </div>
 
       {hasHolding && curve.user_holding && (
@@ -754,12 +815,15 @@ function CurvePanel({
         </div>
       )}
 
-      {authenticated && curve.graduated && (
+      {curve.graduated && (
         <div className="rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-4 text-sm text-[#10B981]">
           <p className="font-semibold">Raise completed</p>
           <p className="mt-1">
-            This startup raised {formatUsd(curve.pool_usdc)} of its {formatUsd(curve.capital_target)}{' '}
-            target. The token is being prepared for issuance.
+            {graduationStatusMessage(
+              curve.graduation_status,
+              curve.pool_usdc,
+              curve.capital_target
+            )}
           </p>
         </div>
       )}
@@ -985,11 +1049,19 @@ export default function StartupDetailPage() {
   const [curveLoading, setCurveLoading] = useState(false)
   const [curveError, setCurveError] = useState<string | null>(null)
 
+  const [graduationReport, setGraduationReport] = useState<GraduationReportType | null>(null)
+  const [graduationReportLoading, setGraduationReportLoading] = useState(false)
+  const [graduationReportError, setGraduationReportError] = useState<string | null>(null)
+
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionSuccess, setActionSuccess] = useState<string | null>(null)
   const [thresholdNotice, setThresholdNotice] = useState<{ message: string } | null>(null)
   const [graduatedNotice, setGraduatedNotice] = useState<string | null>(null)
+  const [pendingCurveTradeKey, setPendingCurveTradeKey] = useState<string | null>(null)
+  const pendingCurveTradeKeyRef = useRef<string | null>(null)
+  const [pendingVoteKey, setPendingVoteKey] = useState<string | null>(null)
+  const pendingVoteKeyRef = useRef<string | null>(null)
 
   const authState = useMemo(
     () => (ready ? (authenticated ? 'auth' : 'anon') : 'pending'),
@@ -1053,7 +1125,7 @@ export default function StartupDetailPage() {
   }, [authState, slug])
 
   async function handleAction<T>(
-    action: () => Promise<T>,
+    action: (idempotencyKey: string) => Promise<T>,
     successMessage: string,
     votesConsumed?: number
   ) {
@@ -1062,7 +1134,18 @@ export default function StartupDetailPage() {
     setActionSuccess(null)
 
     try {
-      const result = await action()
+      const idempotencyKey =
+        pendingVoteKeyRef.current ?? (crypto as any).randomUUID()
+      if (!pendingVoteKeyRef.current) {
+        pendingVoteKeyRef.current = idempotencyKey
+        setPendingVoteKey(idempotencyKey)
+      }
+
+      const result = await action(idempotencyKey)
+      // Clear the key on any final 2xx so a later click is a new attempt.
+      pendingVoteKeyRef.current = null
+      setPendingVoteKey(null)
+
       const closed = (result as any)?.phase_closed === true
       if (closed) {
         const consumed = votesConsumed ?? 0
@@ -1087,12 +1170,12 @@ export default function StartupDetailPage() {
     }
   }
 
-  async function castVote(direction: 'yes' | 'no', votes: number) {
+  async function castVote(direction: 'yes' | 'no', votes: number, idempotencyKey: string) {
     const headers = await getAuthHeaders()
     const res = await fetch('/api/startup-votes/cast', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ startup_id: startup?.id, direction, votes }),
+      body: JSON.stringify({ startup_id: startup?.id, direction, votes, idempotency_key: idempotencyKey }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -1101,12 +1184,12 @@ export default function StartupDetailPage() {
     return data
   }
 
-  async function flipVote() {
+  async function flipVote(idempotencyKey: string) {
     const headers = await getAuthHeaders()
     const res = await fetch('/api/startup-votes/flip', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ startup_id: startup?.id }),
+      body: JSON.stringify({ startup_id: startup?.id, idempotency_key: idempotencyKey }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -1115,12 +1198,12 @@ export default function StartupDetailPage() {
     return data
   }
 
-  async function withdrawVote(votes: number) {
+  async function withdrawVote(votes: number, idempotencyKey: string) {
     const headers = await getAuthHeaders()
     const res = await fetch('/api/startup-votes/withdraw', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ startup_id: startup?.id, votes }),
+      body: JSON.stringify({ startup_id: startup?.id, votes, idempotency_key: idempotencyKey }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -1148,12 +1231,32 @@ export default function StartupDetailPage() {
     }
   }
 
-  async function buyTokens(usdc: string) {
+  async function fetchGraduationReport() {
+    if (!slug) return
+    setGraduationReportLoading(true)
+    setGraduationReportError(null)
+    setGraduationReport(null)
+    try {
+      const headers = await getAuthHeaders()
+      const res = await fetch(`/api/graduation-report/${slug}`, { headers })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to load graduation report (${res.status})`)
+      }
+      setGraduationReport(data as GraduationReportType)
+    } catch (err: any) {
+      setGraduationReportError(err.message || 'Failed to load graduation report')
+    } finally {
+      setGraduationReportLoading(false)
+    }
+  }
+
+  async function buyTokens(usdc: string, idempotencyKey: string) {
     const headers = await getAuthHeaders()
     const res = await fetch('/api/curve/buy', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ startup_id: startup?.id, usdc }),
+      body: JSON.stringify({ startup_id: startup?.id, usdc, idempotency_key: idempotencyKey }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -1162,12 +1265,12 @@ export default function StartupDetailPage() {
     return data
   }
 
-  async function sellTokens(tokens: string) {
+  async function sellTokens(tokens: string, idempotencyKey: string) {
     const headers = await getAuthHeaders()
     const res = await fetch('/api/curve/sell', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ startup_id: startup?.id, tokens }),
+      body: JSON.stringify({ startup_id: startup?.id, tokens, idempotency_key: idempotencyKey }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -1177,7 +1280,7 @@ export default function StartupDetailPage() {
   }
 
   async function handleCurveTrade<T>(
-    action: () => Promise<T>,
+    action: (idempotencyKey: string) => Promise<T>,
     successMessage: string
   ) {
     setActionLoading(true)
@@ -1186,7 +1289,19 @@ export default function StartupDetailPage() {
     setGraduatedNotice(null)
 
     try {
-      const result = await action()
+      const idempotencyKey =
+        pendingCurveTradeKeyRef.current ?? (crypto as any).randomUUID()
+      if (!pendingCurveTradeKeyRef.current) {
+        pendingCurveTradeKeyRef.current = idempotencyKey
+        setPendingCurveTradeKey(idempotencyKey)
+      }
+
+      const result = await action(idempotencyKey)
+
+      // Clear the key on any final 2xx so a later click is a new attempt.
+      pendingCurveTradeKeyRef.current = null
+      setPendingCurveTradeKey(null)
+
       if ((result as any)?.r_graduated) {
         setGraduatedNotice(
           'Your purchase completed the capital raise. The token is being prepared for issuance.'
@@ -1206,11 +1321,16 @@ export default function StartupDetailPage() {
 
   useEffect(() => {
     if (authState === 'pending') return
+    setCurve(null)
+    setCurveError(null)
+    setGraduationReport(null)
+    setGraduationReportError(null)
     if (startup && startup.phase !== 1) {
-      fetchCurve()
-    } else {
-      setCurve(null)
-      setCurveError(null)
+      if (startup.phase === 3) {
+        fetchGraduationReport()
+      } else {
+        fetchCurve()
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authState, slug, startup?.phase])
@@ -1346,23 +1466,45 @@ export default function StartupDetailPage() {
                 onCast={(direction, votes) => {
                   const prior = startup?.user_position?.votes ?? 0
                   return handleAction(
-                    () => castVote(direction, votes),
+                    (idempotencyKey) => castVote(direction, votes, idempotencyKey),
                     `Votes cast successfully.`,
                     prior > 0 ? prior + votes : votes
                   )
                 }}
                 onFlip={() => {
                   const prior = startup?.user_position?.votes ?? 0
-                  return handleAction(() => flipVote(), `Your position was flipped.`, prior)
+                  return handleAction((idempotencyKey) => flipVote(idempotencyKey), `Your position was flipped.`, prior)
                 }}
                 onWithdraw={(votes) => {
                   const prior = startup?.user_position?.votes ?? 0
-                  return handleAction(() => withdrawVote(votes), `Votes withdrawn back to your pool.`, prior)
+                  return handleAction(
+                    (idempotencyKey) => withdrawVote(votes, idempotencyKey),
+                    `Votes withdrawn back to your pool.`,
+                    prior
+                  )
                 }}
                 loading={actionLoading}
                 error={actionError}
                 success={actionSuccess}
               />
+            ) : startup.phase === 3 ? (
+              graduationReportLoading ? (
+                <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+                  <div className="space-y-3">
+                    <div className="h-4 animate-pulse rounded bg-[#E5E7EB]" />
+                    <div className="h-24 animate-pulse rounded bg-[#E5E7EB]" />
+                    <div className="h-10 animate-pulse rounded bg-[#E5E7EB]" />
+                  </div>
+                </div>
+              ) : graduationReport ? (
+                <GraduationReport report={graduationReport} startupName={startup.name} />
+              ) : (
+                <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+                  <div className="text-sm text-[#EF4444]">
+                    {graduationReportError || 'Could not load graduation report.'}
+                  </div>
+                </div>
+              )
             ) : curveLoading || curveError ? (
               <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
                 {curveLoading ? (
@@ -1384,13 +1526,21 @@ export default function StartupDetailPage() {
                 error={actionError}
                 success={actionSuccess}
                 onBuy={(usdc) =>
-                  handleCurveTrade(() => buyTokens(usdc), 'Purchase confirmed.')
+                  handleCurveTrade((idempotencyKey) => buyTokens(usdc, idempotencyKey), 'Purchase confirmed.')
                 }
                 onSell={(tokens) =>
-                  handleCurveTrade(() => sellTokens(tokens), 'Sale confirmed.')
+                  handleCurveTrade((idempotencyKey) => sellTokens(tokens, idempotencyKey), 'Sale confirmed.')
                 }
               />
             ) : null}
+            {(graduationReport || curve?.graduated) && (
+              <div className="mt-6">
+                <StartupGraduationClaim
+                  startupId={startup.id}
+                  graduated
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -63,6 +63,17 @@ export async function GET(
       return NextResponse.json({ error: 'Curve not found' }, { status: 404 })
     }
 
+    const { data: graduation, error: gradError } = await supabaseAdmin
+      .from('graduations')
+      .select('pool_address, status')
+      .eq('startup_id', startup.id)
+      .maybeSingle()
+
+    if (gradError) {
+      console.error('[api/curve/[slug]] graduation query error:', gradError)
+      return NextResponse.json({ error: gradError.message }, { status: 500 })
+    }
+
     const result: any = {
       startup_id: startup.id,
       name: startup.name,
@@ -73,6 +84,8 @@ export async function GET(
       capital_target: String(curve.capital_target),
       graduated: Boolean(curve.graduated_at),
       frozen: Boolean(curve.frozen_at),
+      pool_address: graduation?.pool_address ?? null,
+      graduation_status: graduation?.status ?? null,
     }
 
     if (userId) {

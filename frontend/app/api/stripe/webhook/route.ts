@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { Money } from '@/lib/money'
+import { errorResponse } from '@/lib/errorResponse'
 import Stripe from 'stripe'
 
 const CHECKOUT_SUCCESS_EVENTS = new Set([
@@ -36,8 +37,13 @@ export async function POST(request: Request) {
   const apiKey = process.env.STRIPE_SECRET_KEY
 
   if (!secret || !apiKey) {
-    console.error('[api/stripe/webhook] missing Stripe configuration')
-    return new NextResponse('Webhook configuration error', { status: 500 })
+    return errorResponse({
+      status: 500,
+      message: 'Webhook configuration error',
+      error: 'Missing STRIPE_WEBHOOK_SECRET or STRIPE_SECRET_KEY',
+      request,
+      kind: 'text',
+    })
   }
 
   const stripe = new Stripe(apiKey, { apiVersion: '2026-07-29.dahlia' })
@@ -65,8 +71,13 @@ export async function POST(request: Request) {
     const disputeAmount = dispute.amount
 
     if (typeof disputeChargeId !== 'string' || typeof disputeAmount !== 'number') {
-      console.error('[api/stripe/webhook] dispute missing charge or amount')
-      return new NextResponse('Dispute details incomplete', { status: 500 })
+      return errorResponse({
+        status: 500,
+        message: 'Dispute details incomplete',
+        error: 'Dispute missing charge or amount',
+        request,
+        kind: 'text',
+      })
     }
 
     const { data: payment } = await supabaseAdmin
@@ -97,8 +108,13 @@ export async function POST(request: Request) {
       if (insertError.message?.includes('unique')) {
         return new NextResponse(null, { status: 200 })
       }
-      console.error('[api/stripe/webhook] failed to insert dispute:', insertError)
-      return new NextResponse('Dispute insert failed', { status: 500 })
+      return errorResponse({
+        status: 500,
+        message: 'Dispute insert failed',
+        error: insertError,
+        request,
+        kind: 'text',
+      })
     }
 
     console.log('[api/stripe/webhook] dispute recorded:', dispute.id, 'for charge:', disputeChargeId)
@@ -166,14 +182,24 @@ export async function POST(request: Request) {
       expand: ['payment_intent.latest_charge'],
     })
   } catch (err: any) {
-    console.error('[api/stripe/webhook] failed to retrieve checkout session:', err.message)
-    return new NextResponse('Failed to retrieve payment details', { status: 500 })
+    return errorResponse({
+      status: 500,
+      message: 'Failed to retrieve payment details',
+      error: err,
+      request,
+      kind: 'text',
+    })
   }
 
   const paymentIntent = expandedSession.payment_intent
   if (typeof paymentIntent !== 'object' || !paymentIntent) {
-    console.error('[api/stripe/webhook] payment_intent not expanded')
-    return new NextResponse('Payment details incomplete', { status: 500 })
+    return errorResponse({
+      status: 500,
+      message: 'Payment details incomplete',
+      error: 'payment_intent not expanded',
+      request,
+      kind: 'text',
+    })
   }
 
   const rawCharge = paymentIntent.latest_charge
@@ -184,8 +210,13 @@ export async function POST(request: Request) {
         ? rawCharge.id
         : null
   if (!chargeId) {
-    console.error('[api/stripe/webhook] charge id not available')
-    return new NextResponse('Payment details incomplete', { status: 500 })
+    return errorResponse({
+      status: 500,
+      message: 'Payment details incomplete',
+      error: 'charge id not available',
+      request,
+      kind: 'text',
+    })
   }
   const paymentIntentId = paymentIntent.id
 
@@ -199,12 +230,22 @@ export async function POST(request: Request) {
       })
 
       if (grantError) {
-        console.error('[api/stripe/webhook] grant_listing_credits failed:', grantError)
-        return new NextResponse('Grant failed', { status: 500 })
+        return errorResponse({
+          status: 500,
+          message: 'Grant failed',
+          error: grantError,
+          request,
+          kind: 'text',
+        })
       }
     } catch (err: any) {
-      console.error('[api/stripe/webhook] unexpected error granting credits:', err)
-      return new NextResponse('Grant failed', { status: 500 })
+      return errorResponse({
+        status: 500,
+        message: 'Grant failed',
+        error: err,
+        request,
+        kind: 'text',
+      })
     }
 
     const { error: updateError } = await supabaseAdmin
@@ -222,8 +263,13 @@ export async function POST(request: Request) {
       if (updateError.message?.includes('unique')) {
         return new NextResponse(null, { status: 200 })
       }
-      console.error('[api/stripe/webhook] failed to update listing payment:', updateError)
-      return new NextResponse('Update failed', { status: 500 })
+      return errorResponse({
+        status: 500,
+        message: 'Update failed',
+        error: updateError,
+        request,
+        kind: 'text',
+      })
     }
 
     await linkDisputesToPayment(chargeId, paymentId, paymentIntentId)
@@ -249,8 +295,13 @@ export async function POST(request: Request) {
     if (updateError.message?.includes('unique')) {
       return new NextResponse(null, { status: 200 })
     }
-    console.error('[api/stripe/webhook] failed to update investment payment:', updateError)
-    return new NextResponse('Update failed', { status: 500 })
+    return errorResponse({
+      status: 500,
+      message: 'Update failed',
+      error: updateError,
+      request,
+      kind: 'text',
+    })
   }
 
   await linkDisputesToPayment(chargeId, paymentId, paymentIntentId)
