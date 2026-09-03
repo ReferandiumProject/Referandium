@@ -38,13 +38,13 @@ function solanaTxExplorerLink(signature: string | null | undefined): string | nu
 function holderDistributionMessage(total: number, claimed: number, dust: number): string {
   const unclaimed = total - claimed - dust
   const share = (n: number) => (n === 1 ? 'share' : 'shares')
-  const haveHas = claimed === 1 ? 'has' : 'have'
+  const haveHas = total === 1 ? 'has' : 'have'
   let s = `${claimed} of ${total} holder ${share(total)} ${haveHas} been claimed`
   if (dust > 0) {
     s += `. ${dust} ${share(dust)} ${dust === 1 ? 'was' : 'were'} below the smallest on-chain unit and became dust in the LP`
   }
   if (unclaimed > 0) {
-    s += `. ${unclaimed} ${share(unclaimed)} still waiting in escrow to be claimed`
+    s += `. ${unclaimed} ${share(unclaimed)} ${unclaimed === 1 ? 'is' : 'are'} still waiting in escrow to be claimed`
   }
   return s + '.'
 }
