@@ -72,7 +72,7 @@ export function CurvePriceChart({
         timeScale: {
           timeVisible: true,
           secondsVisible: false,
-          rightOffset: 2,
+          rightOffset: 0,
           borderColor: '#E5E7EB',
         },
         handleScroll: false,
@@ -91,34 +91,41 @@ export function CurvePriceChart({
           minMove: 0.000000000001,
         },
         lastValueVisible: false,
-        autoscaleInfoProvider: () => {
-          if (minPrice === 0 && maxPrice === 0) return null
-          if (minPrice === maxPrice) {
-            return {
-              priceRange: {
-                minValue: minPrice * 0.99,
-                maxValue: maxPrice * 1.01,
-              },
-            }
-          }
-          return {
-            priceRange: {
-              minValue: minPrice * 0.999,
-              maxValue: maxPrice * 1.001,
-            },
-          }
-        },
+        priceLineVisible: false,
       })
 
       series.setData(
         seriesData.map((d) => ({ time: d.time as UTCTimestamp, value: d.value }))
       )
-      requestAnimationFrame(() => chart.timeScale().fitContent())
 
+      // Explicitly fit the full series so it is never silently clipped.
+      if (seriesData.length > 0) {
+        const min = minPrice
+        const max = maxPrice
+        const range =
+          min === max
+            ? { from: min * 0.99, to: max * 1.01 }
+            : { from: min * 0.999, to: max * 1.001 }
+        series.priceScale().setVisibleRange(range)
+        chart.timeScale().setVisibleLogicalRange({
+          from: 0,
+          to: seriesData.length + 1,
+        })
+      }
+
+      // Refit on resize so the time axis stays full-width as the canvas grows.
       let rafId = 0
       const resizeObserver = new ResizeObserver(() => {
+        if (!containerRef.current) return
         if (rafId) cancelAnimationFrame(rafId)
-        rafId = requestAnimationFrame(() => chart.timeScale().fitContent())
+        rafId = requestAnimationFrame(() => {
+          if (seriesData.length > 0) {
+            chart.timeScale().setVisibleLogicalRange({
+              from: 0,
+              to: seriesData.length + 1,
+            })
+          }
+        })
       })
       resizeObserver.observe(containerRef.current)
 
