@@ -178,25 +178,29 @@ export function GraduationReport({
               ${formatPrice(report.final_price, 12)}
             </span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[#6B7280]">Opening pool price</span>
-            <span className="font-medium text-[#111827]">
-              ${report.opening_pool_price ? formatPrice(report.opening_pool_price, 12) : '—'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[#6B7280]">Current price</span>
-            {report.pool_price ? (
-              <span className="font-medium text-[#111827]">
-                ${formatPrice(report.pool_price, 12)}
-              </span>
-            ) : (
-              <span className="text-[#6B7280]">Unavailable</span>
-            )}
-          </div>
+          {report.pool_address && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-[#6B7280]">Opening pool price</span>
+                <span className="font-medium text-[#111827]">
+                  ${report.opening_pool_price ? formatPrice(report.opening_pool_price, 12) : '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[#6B7280]">Current price</span>
+                {report.pool_price ? (
+                  <span className="font-medium text-[#111827]">
+                    ${formatPrice(report.pool_price, 12)}
+                  </span>
+                ) : (
+                  <span className="text-[#6B7280]">Unavailable</span>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
-        {report.opening_pool_price && report.final_price && (
+        {report.pool_address && report.opening_pool_price && report.final_price && (
           <p className="mt-3 text-xs leading-relaxed text-[#6B7280]">
             The drop from the final curve price to the opening pool price is structural: part of
             the raise went to the founder, so the pool starts with fewer USDC behind each token

@@ -113,6 +113,7 @@ export async function GET(
       pool_price: graduation.pool_price ? String(graduation.pool_price) : null,
       pool_price_read_at: graduation.pool_price_read_at,
       opening_pool_price: (() => {
+        if (!graduation.pool_address) return null
         const liquidity = graduation.liquidity_usdc
         const tokens = graduation.tokens_to_lp
         if (!liquidity || !tokens) return null
