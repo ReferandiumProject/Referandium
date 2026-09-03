@@ -10,6 +10,8 @@ import { GraduationReport } from '@/app/components/GraduationReport'
 import type { GraduationReport as GraduationReportType } from '@/app/components/GraduationReport'
 import { Decimal } from '@/lib/decimal'
 import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
+import { CurvePriceChart } from '@/app/components/CurvePriceChart'
+import type { CurveTrade } from '@/app/components/CurvePriceChart'
 
 type CurveState = {
   startup_id: string
@@ -1053,6 +1055,14 @@ export default function StartupDetailPage() {
   const [graduationReportLoading, setGraduationReportLoading] = useState(false)
   const [graduationReportError, setGraduationReportError] = useState<string | null>(null)
 
+  const [curveTrades, setCurveTrades] = useState<{
+    opening_price: string
+    trades: CurveTrade[]
+    graduated: boolean
+  } | null>(null)
+  const [curveTradesLoading, setCurveTradesLoading] = useState(false)
+  const [curveTradesError, setCurveTradesError] = useState<string | null>(null)
+
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionSuccess, setActionSuccess] = useState<string | null>(null)
@@ -1251,6 +1261,25 @@ export default function StartupDetailPage() {
     }
   }
 
+  async function fetchCurveTrades() {
+    if (!slug) return
+    setCurveTradesLoading(true)
+    setCurveTradesError(null)
+    try {
+      const headers = await getAuthHeaders()
+      const res = await fetch(`/api/curve/${slug}/trades`, { headers })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to load curve trades (${res.status})`)
+      }
+      setCurveTrades(data)
+    } catch (err: any) {
+      setCurveTradesError(err.message || 'Failed to load curve trades')
+    } finally {
+      setCurveTradesLoading(false)
+    }
+  }
+
   async function buyTokens(usdc: string, idempotencyKey: string) {
     const headers = await getAuthHeaders()
     const res = await fetch('/api/curve/buy', {
@@ -1311,6 +1340,7 @@ export default function StartupDetailPage() {
         setActionSuccess(successMessage)
       }
       await fetchCurve()
+      await fetchCurveTrades()
       await fetchBalance()
     } catch (err: any) {
       setActionError(err.message || 'Trade failed')
@@ -1326,6 +1356,7 @@ export default function StartupDetailPage() {
     setGraduationReport(null)
     setGraduationReportError(null)
     if (startup && startup.phase !== 1) {
+      fetchCurveTrades()
       if (startup.phase === 3) {
         fetchGraduationReport()
       } else {
@@ -1445,6 +1476,24 @@ export default function StartupDetailPage() {
                 </div>
               )}
 
+              {startup.phase === 2 && (
+                <div className="mt-8 rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+                  <h3 className="mb-1 text-lg font-semibold text-[#111827]">Price history</h3>
+                  <p className="mb-4 text-sm text-[#6B7280]">
+                    Step function of every trade on the bonding curve.
+                  </p>
+                  {curveTradesLoading ? (
+                    <div className="h-80 animate-pulse rounded-lg bg-[#E5E7EB]" />
+                  ) : curveTradesError ? (
+                    <div className="text-sm text-[#EF4444]">{curveTradesError}</div>
+                  ) : curveTrades && curveTrades.trades.length > 0 ? (
+                    <CurvePriceChart {...curveTrades} />
+                  ) : (
+                    <div className="text-sm text-[#6B7280]">No trades yet.</div>
+                  )}
+                </div>
+              )}
+
               {startup.phase !== 1 && (
                 <div className="mt-8 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-sm text-[#6B7280]">
                   <h4 className="mb-1 font-semibold text-[#111827]">Community vote history</h4>
@@ -1497,7 +1546,11 @@ export default function StartupDetailPage() {
                   </div>
                 </div>
               ) : graduationReport ? (
-                <GraduationReport report={graduationReport} startupName={startup.name} />
+                <GraduationReport
+                  report={graduationReport}
+                  startupName={startup.name}
+                  trades={curveTrades}
+                />
               ) : (
                 <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
                   <div className="text-sm text-[#EF4444]">
