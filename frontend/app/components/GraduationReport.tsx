@@ -174,7 +174,7 @@ export function GraduationReport({
         )}
       </div>
 
-      {trades && trades.trades.length > 0 && (
+      {trades && (
         <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
           <h3 className="mb-1 text-lg font-semibold text-[#111827]">Price history</h3>
           <p className="mb-4 text-sm text-[#6B7280]">

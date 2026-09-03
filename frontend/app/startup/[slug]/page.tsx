@@ -1486,10 +1486,10 @@ export default function StartupDetailPage() {
                     <div className="h-80 animate-pulse rounded-lg bg-[#E5E7EB]" />
                   ) : curveTradesError ? (
                     <div className="text-sm text-[#EF4444]">{curveTradesError}</div>
-                  ) : curveTrades && curveTrades.trades.length > 0 ? (
+                  ) : curveTrades ? (
                     <CurvePriceChart {...curveTrades} />
                   ) : (
-                    <div className="text-sm text-[#6B7280]">No trades yet.</div>
+                    <div className="text-sm text-[#6B7280]">No price history available.</div>
                   )}
                 </div>
               )}
