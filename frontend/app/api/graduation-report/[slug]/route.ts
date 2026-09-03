@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { Decimal } from '@/lib/decimal'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -50,7 +51,9 @@ export async function GET(
         authority_revoke_signature,
         liquidity_usdc::text,
         lp_mint_address,
-        lp_token_account
+        lp_token_account,
+        pool_price::text,
+        pool_price_read_at
       `
       )
       .eq('startup_id', startup.id)
@@ -107,6 +110,20 @@ export async function GET(
       liquidity_usdc: String(graduation.liquidity_usdc ?? 0),
       lp_mint_address: graduation.lp_mint_address,
       lp_token_account: graduation.lp_token_account,
+      pool_price: graduation.pool_price ? String(graduation.pool_price) : null,
+      pool_price_read_at: graduation.pool_price_read_at,
+      opening_pool_price: (() => {
+        const liquidity = graduation.liquidity_usdc
+        const tokens = graduation.tokens_to_lp
+        if (!liquidity || !tokens) return null
+        try {
+          return Decimal.parse(String(liquidity))
+            .div(Decimal.parse(String(tokens)), 18)
+            .toString()
+        } catch {
+          return null
+        }
+      })(),
       capital_target: String(curve?.capital_target ?? 0),
       pool_usdc: String(curve?.pool_usdc ?? 0),
       final_price: String(curve?.price ?? 0),

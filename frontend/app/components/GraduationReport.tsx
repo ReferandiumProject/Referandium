@@ -1,6 +1,7 @@
 'use client'
 
 import { formatTokenAmount, formatUsd, formatUsdc, formatPrice } from '@/lib/format'
+import { Decimal } from '@/lib/decimal'
 import { CurvePriceChart } from '@/app/components/CurvePriceChart'
 import type { CurveTrade } from '@/app/components/CurvePriceChart'
 
@@ -21,6 +22,9 @@ export type GraduationReport = {
   liquidity_usdc: string
   lp_mint_address: string | null
   lp_token_account: string | null
+  pool_price: string | null
+  pool_price_read_at: string | null
+  opening_pool_price: string | null
   capital_target: string
   pool_usdc: string
   final_price: string
@@ -35,6 +39,14 @@ function solanaAddressExplorerLink(address: string | null | undefined): string |
 
 function solanaTxExplorerLink(signature: string | null | undefined): string | null {
   return signature ? `https://explorer.solana.com/tx/${signature}?cluster=devnet` : null
+}
+
+function priceDropPercent(finalPrice: string, openingPrice: string): string {
+  const final = Decimal.parse(finalPrice)
+  const opening = Decimal.parse(openingPrice)
+  const ratio = opening.div(final, 18)
+  const pct = (Number(ratio.toString()) - 1) * 100
+  return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`
 }
 
 function holderDistributionMessage(total: number, claimed: number, dust: number): string {
@@ -159,10 +171,39 @@ export function GraduationReport({
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between text-sm">
-          <span className="text-[#6B7280]">Final raise price</span>
-          <span className="font-medium text-[#111827]">${formatPrice(report.final_price)}</span>
+        <div className="mt-3 space-y-2 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[#6B7280]">Final raise price</span>
+            <span className="font-medium text-[#111827]">
+              ${formatPrice(report.final_price, 12)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[#6B7280]">Opening pool price</span>
+            <span className="font-medium text-[#111827]">
+              ${report.opening_pool_price ? formatPrice(report.opening_pool_price, 12) : '—'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[#6B7280]">Current price</span>
+            {report.pool_price ? (
+              <span className="font-medium text-[#111827]">
+                ${formatPrice(report.pool_price, 12)}
+              </span>
+            ) : (
+              <span className="text-[#6B7280]">Unavailable</span>
+            )}
+          </div>
         </div>
+
+        {report.opening_pool_price && report.final_price && (
+          <p className="mt-3 text-xs leading-relaxed text-[#6B7280]">
+            The drop from the final curve price to the opening pool price is structural: part of
+            the raise went to the founder, so the pool starts with fewer USDC behind each token
+            ({priceDropPercent(report.final_price, report.opening_pool_price)} on this startup).
+            It is not a loss caused by anyone.
+          </p>
+        )}
 
         {report.pool_address && (
           <div className="mt-2 text-right text-xs text-[#6B7280]">
