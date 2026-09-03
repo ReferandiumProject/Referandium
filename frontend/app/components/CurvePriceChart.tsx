@@ -26,6 +26,13 @@ export function CurvePriceChart({
     [opening_price, trades]
   )
 
+  const { minPrice, maxPrice } = useMemo(() => {
+    const values = seriesData.map((d) => d.value)
+    return {
+      minPrice: values.length ? Math.min(...values) : 0,
+      maxPrice: values.length ? Math.max(...values) : 0,
+    }
+  }, [seriesData])
 
   useEffect(() => {
     let mounted = true
@@ -60,13 +67,12 @@ export function CurvePriceChart({
         },
         rightPriceScale: {
           autoScale: true,
-          scaleMargins: { top: 0.15, bottom: 0.15 },
         },
         leftPriceScale: { visible: false },
         timeScale: {
           timeVisible: true,
           secondsVisible: false,
-          rightOffset: 5,
+          rightOffset: 2,
           borderColor: '#E5E7EB',
         },
         handleScroll: false,
@@ -84,13 +90,37 @@ export function CurvePriceChart({
           precision: 12,
           minMove: 0.000000000001,
         },
-        lastValueVisible: true,
+        lastValueVisible: false,
+        autoscaleInfoProvider: () => {
+          if (minPrice === 0 && maxPrice === 0) return null
+          if (minPrice === maxPrice) {
+            return {
+              priceRange: {
+                minValue: minPrice * 0.99,
+                maxValue: maxPrice * 1.01,
+              },
+            }
+          }
+          return {
+            priceRange: {
+              minValue: minPrice * 0.999,
+              maxValue: maxPrice * 1.001,
+            },
+          }
+        },
       })
 
       series.setData(
         seriesData.map((d) => ({ time: d.time as UTCTimestamp, value: d.value }))
       )
-      chart.timeScale().fitContent()
+      requestAnimationFrame(() => chart.timeScale().fitContent())
+
+      let rafId = 0
+      const resizeObserver = new ResizeObserver(() => {
+        if (rafId) cancelAnimationFrame(rafId)
+        rafId = requestAnimationFrame(() => chart.timeScale().fitContent())
+      })
+      resizeObserver.observe(containerRef.current)
 
       if (graduated && seriesData.length > 1) {
         createSeriesMarkers(series, [
@@ -108,6 +138,7 @@ export function CurvePriceChart({
       chartApiRef.current = { chart, series }
 
       cleanup = () => {
+        resizeObserver.disconnect()
         chart.remove()
         chartApiRef.current = null
       }
