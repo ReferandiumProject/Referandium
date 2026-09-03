@@ -60,8 +60,8 @@ export function formatUsd(
   try {
     const d = parseDecimalOrThrow(input)
     const fixed = d.toFixed(decimals)
-    const [int, frac] = fixed.split('.')
-    return `$${groupIntegerDigits(int)}.${frac}`
+    const [int, frac = ''] = fixed.split('.')
+    return `$${groupIntegerDigits(int)}.${frac.padEnd(decimals, '0')}`
   } catch (err) {
     console.error('[format] formatUsd: failed to parse USDC amount', { input, err })
     return FORMAT_FALLBACK
@@ -77,8 +77,8 @@ export function formatUsdc(
   try {
     const d = parseDecimalOrThrow(input)
     const fixed = d.toFixed(decimals)
-    const [int, frac] = fixed.split('.')
-    return `${groupIntegerDigits(int)}.${frac}`
+    const [int, frac = ''] = fixed.split('.')
+    return `${groupIntegerDigits(int)}.${frac.padEnd(decimals, '0')}`
   } catch (err) {
     console.error('[format] formatUsdc: failed to parse USDC amount', { input, err })
     return FORMAT_FALLBACK

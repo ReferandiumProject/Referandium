@@ -41,7 +41,7 @@ function holderDistributionMessage(total: number, claimed: number, dust: number)
   const haveHas = claimed === 1 ? 'has' : 'have'
   let s = `${claimed} of ${total} holder ${share(total)} ${haveHas} been claimed`
   if (dust > 0) {
-    s += `. ${dust} ${share(dust)} below the smallest on-chain unit and became dust in the LP`
+    s += `. ${dust} ${share(dust)} ${dust === 1 ? 'was' : 'were'} below the smallest on-chain unit and became dust in the LP`
   }
   if (unclaimed > 0) {
     s += `. ${unclaimed} ${share(unclaimed)} still waiting in escrow to be claimed`
