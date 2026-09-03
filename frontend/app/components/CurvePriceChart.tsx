@@ -26,12 +26,9 @@ export function CurvePriceChart({
     [opening_price, trades]
   )
 
-  const { minPrice, maxPrice } = useMemo(() => {
+  const maxPrice = useMemo(() => {
     const values = seriesData.map((d) => d.value)
-    return {
-      minPrice: values.length ? Math.min(...values) : 0,
-      maxPrice: values.length ? Math.max(...values) : 0,
-    }
+    return values.length ? Math.max(...values) : 0
   }, [seriesData])
 
   useEffect(() => {
@@ -100,13 +97,8 @@ export function CurvePriceChart({
 
       // Explicitly fit the full series so it is never silently clipped.
       if (seriesData.length > 0) {
-        const min = minPrice
         const max = maxPrice
-        const range =
-          min === max
-            ? { from: min * 0.99, to: max * 1.01 }
-            : { from: min * 0.999, to: max * 1.001 }
-        series.priceScale().setVisibleRange(range)
+        series.priceScale().setVisibleRange({ from: 0, to: max * 1.05 })
         chart.timeScale().setVisibleLogicalRange({
           from: 0,
           to: seriesData.length + 1,
