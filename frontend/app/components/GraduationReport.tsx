@@ -2,8 +2,6 @@
 
 import { formatTokenAmount, formatUsd, formatUsdc, formatPrice } from '@/lib/format'
 import { Decimal } from '@/lib/decimal'
-import { CurvePriceChart } from '@/app/components/CurvePriceChart'
-import type { CurveTrade } from '@/app/components/CurvePriceChart'
 
 export type GraduationReport = {
   token_name: string | null
@@ -115,15 +113,9 @@ function ExternalLink({
 export function GraduationReport({
   report,
   startupName,
-  trades,
 }: {
   report: GraduationReport
   startupName: string
-  trades?: {
-    opening_price: string
-    trades: CurveTrade[]
-    graduated: boolean
-  } | null
 }) {
   const tokenLabel = report.token_symbol || report.token_name || 'tokens'
   const progress =
@@ -218,16 +210,6 @@ export function GraduationReport({
           </div>
         )}
       </div>
-
-      {trades && (
-        <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-          <h3 className="mb-1 text-lg font-semibold text-[#111827]">Price history</h3>
-          <p className="mb-4 text-sm text-[#6B7280]">
-            Step function up to graduation. The curve closed here; trading continued on Raydium.
-          </p>
-          <CurvePriceChart {...trades} heightClassName="h-64" />
-        </div>
-      )}
 
       <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
         <h3 className="mb-1 text-lg font-semibold text-[#111827]">Token at a glance</h3>

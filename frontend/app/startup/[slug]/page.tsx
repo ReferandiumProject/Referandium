@@ -11,7 +11,7 @@ import type { GraduationReport as GraduationReportType } from '@/app/components/
 import { Decimal } from '@/lib/decimal'
 import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
 import { CurvePriceChart } from '@/app/components/CurvePriceChart'
-import type { CurveTrade } from '@/app/components/CurvePriceChart'
+import type { CurveTrade } from '@/lib/curve-time-series'
 
 type CurveState = {
   startup_id: string
@@ -1406,6 +1406,24 @@ export default function StartupDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] px-4 py-10 text-[#111827]">
+      {startup.phase !== 1 && (
+        <div className="mx-auto mb-6 max-w-[1200px] rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+          <h3 className="mb-1 text-lg font-semibold text-[#111827]">Price history</h3>
+          <p className="mb-4 text-sm text-[#6B7280]">
+            Step function of every trade on the bonding curve.
+          </p>
+          {curveTradesLoading ? (
+            <div className="h-80 animate-pulse rounded-lg bg-[#E5E7EB]" />
+          ) : curveTradesError ? (
+            <div className="text-sm text-[#EF4444]">{curveTradesError}</div>
+          ) : curveTrades ? (
+            <CurvePriceChart {...curveTrades} />
+          ) : (
+            <div className="text-sm text-[#6B7280]">No price history available.</div>
+          )}
+        </div>
+      )}
+
       <div className="mx-auto max-w-[1200px]">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
@@ -1476,24 +1494,6 @@ export default function StartupDetailPage() {
                 </div>
               )}
 
-              {startup.phase === 2 && (
-                <div className="mt-8 rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-                  <h3 className="mb-1 text-lg font-semibold text-[#111827]">Price history</h3>
-                  <p className="mb-4 text-sm text-[#6B7280]">
-                    Step function of every trade on the bonding curve.
-                  </p>
-                  {curveTradesLoading ? (
-                    <div className="h-80 animate-pulse rounded-lg bg-[#E5E7EB]" />
-                  ) : curveTradesError ? (
-                    <div className="text-sm text-[#EF4444]">{curveTradesError}</div>
-                  ) : curveTrades ? (
-                    <CurvePriceChart {...curveTrades} />
-                  ) : (
-                    <div className="text-sm text-[#6B7280]">No price history available.</div>
-                  )}
-                </div>
-              )}
-
               {startup.phase !== 1 && (
                 <div className="mt-8 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-sm text-[#6B7280]">
                   <h4 className="mb-1 font-semibold text-[#111827]">Community vote history</h4>
@@ -1549,7 +1549,6 @@ export default function StartupDetailPage() {
                 <GraduationReport
                   report={graduationReport}
                   startupName={startup.name}
-                  trades={curveTrades}
                 />
               ) : (
                 <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">

@@ -57,7 +57,7 @@ export async function GET(
     const { data: trades, error: tradesError } = await supabaseAdmin
       .from('startup_curve_trades')
       .select(
-        'id, side, usdc_gross::text, tokens::text, price_after::text, pool_usdc_after::text'
+        'id, created_at, side, usdc_gross::text, tokens::text, price_after::text, pool_usdc_after::text'
       )
       .eq('startup_id', startup.id)
       .order('id')
