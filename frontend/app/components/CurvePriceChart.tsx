@@ -107,7 +107,7 @@ export function CurvePriceChart({
           mode: CrosshairMode.Normal,
         },
         rightPriceScale: {
-          autoScale: false,
+          autoScale: true,
         },
         leftPriceScale: { visible: false },
         localization: {
@@ -124,6 +124,12 @@ export function CurvePriceChart({
         handleScale: false,
       })
 
+      const autoscaleMax = Math.max(
+        maxPrice,
+        opening_pool_price ? Number(opening_pool_price) : 0
+      )
+      console.log('[CurvePriceChart] autoscaleMax', autoscaleMax)
+
       const priceSeries = chart.addSeries(CandlestickSeries, {
         upColor: '#10B981',
         downColor: '#EF4444',
@@ -137,6 +143,14 @@ export function CurvePriceChart({
           formatter: (price: number) =>
             formatCompactPrice(price) ?? '',
         },
+        autoscaleInfoProvider: () => {
+          return {
+            priceRange: {
+              minValue: 0,
+              maxValue: autoscaleMax * 1.05,
+            },
+          }
+        },
         lastValueVisible: false,
         priceLineVisible: false,
       })
@@ -144,9 +158,6 @@ export function CurvePriceChart({
       priceSeries.setData(seriesData)
 
       if (seriesData.length > 0) {
-        const poolValue = opening_pool_price ? Number(opening_pool_price) : 0
-        const max = Math.max(maxPrice, poolValue)
-        priceSeries.priceScale().setVisibleRange({ from: 0, to: max * 1.05 })
         chart.timeScale().setVisibleLogicalRange({
           from: 0,
           to: ohlc.length + (poolData.length === 2 ? 2 : 1),
