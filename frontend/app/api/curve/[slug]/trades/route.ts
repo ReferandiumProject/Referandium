@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { buildCurveOHLC } from '@/lib/curve-time-series'
+import { recordSystemError } from '@/lib/system-errors'
 
 export async function GET(
   request: Request,
@@ -56,13 +57,19 @@ export async function GET(
 
     const { data: rows, error: ohlcError } = await supabaseAdmin.rpc(
       'curve_ohlc',
-      { startup_id: startup.id, interval: '1 hour' }
+      { p_startup_id: startup.id, p_interval: '1 hour' }
     )
 
     if (ohlcError) {
-      console.error('[api/curve/[slug]/trades] curve_ohlc rpc error:', ohlcError)
+      await recordSystemError({
+        source: 'server',
+        name: 'curve_ohlc_rpc',
+        message: ohlcError.message,
+        path: `/api/curve/${slug}/trades`,
+        context: { startup_id: startup.id, slug, interval: '1 hour' },
+      })
       return NextResponse.json(
-        { error: ohlcError.message },
+        { error: 'Price history is unavailable right now.' },
         { status: 500 }
       )
     }

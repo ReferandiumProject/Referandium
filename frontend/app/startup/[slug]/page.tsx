@@ -1409,7 +1409,7 @@ export default function StartupDetailPage() {
         <div className="mx-auto mb-6 max-w-[1200px] rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
           <h3 className="mb-1 text-lg font-semibold text-[#111827]">Price history</h3>
           <p className="mb-4 text-sm text-[#6B7280]">
-            Step function of every trade on the bonding curve.
+            Hourly OHLC candles of every trade on the bonding curve.
           </p>
           {curveTradesLoading ? (
             <div className="h-80 animate-pulse rounded-lg bg-[#E5E7EB]" />
