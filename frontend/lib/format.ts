@@ -152,8 +152,18 @@ export function formatCompactPrice(
 ): string {
   if (input === null || input === undefined) return FORMAT_FALLBACK
   try {
-    const d = parseDecimalOrThrow(input)
-    return formatCompactNumber(Number(d.toString()))
+    if (typeof input === 'number') {
+      if (!Number.isFinite(input)) return FORMAT_FALLBACK
+      return formatCompactNumber(input)
+    }
+    try {
+      const d = parseDecimalOrThrow(input)
+      return formatCompactNumber(Number(d.toString()))
+    } catch {
+      const n = Number(input)
+      if (!Number.isFinite(n)) return FORMAT_FALLBACK
+      return formatCompactNumber(n)
+    }
   } catch (err) {
     console.error('[format] formatCompactPrice: failed to parse price', { input, err })
     return FORMAT_FALLBACK

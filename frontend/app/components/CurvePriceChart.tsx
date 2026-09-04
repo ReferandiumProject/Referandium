@@ -63,9 +63,10 @@ export function CurvePriceChart({
   const poolData = useMemo(() => {
     if (!graduated || !opening_pool_price || seriesData.length < 2) return []
     const last = seriesData[seriesData.length - 1]
+    const value = Number(opening_pool_price)
     return [
-      { time: last.time, value: last.value },
-      { time: last.time + 1, value: Number(opening_pool_price) },
+      { time: last.time, value },
+      { time: last.time + 1, value },
     ]
   }, [graduated, opening_pool_price, seriesData])
 
@@ -109,7 +110,7 @@ export function CurvePriceChart({
         leftPriceScale: { visible: false },
         localization: {
           priceFormatter: (price: number) =>
-            formatCompactPrice(price.toString()) ?? '',
+            formatCompactPrice(price) ?? '',
         },
         timeScale: {
           timeVisible: true,
@@ -131,7 +132,7 @@ export function CurvePriceChart({
           type: 'custom',
           minMove: 0.000000000001,
           formatter: (price: number) =>
-            formatCompactPrice(price.toString()) ?? '',
+            formatCompactPrice(price) ?? '',
         },
         lastValueVisible: false,
         priceLineVisible: false,
@@ -146,7 +147,7 @@ export function CurvePriceChart({
         priceSeries.priceScale().setVisibleRange({ from: 0, to: max * 1.05 })
         chart.timeScale().setVisibleLogicalRange({
           from: 0,
-          to: seriesData.length + 1,
+          to: seriesData.length + (poolData.length === 2 ? 2 : 1),
         })
       }
 
@@ -187,7 +188,7 @@ export function CurvePriceChart({
             type: 'custom',
             minMove: 0.000000000001,
             formatter: (price: number) =>
-              formatCompactPrice(price.toString()) ?? '',
+              formatCompactPrice(price) ?? '',
           },
           lastValueVisible: false,
           priceLineVisible: false,
@@ -198,6 +199,16 @@ export function CurvePriceChart({
             value: d.value,
           }))
         )
+        createSeriesMarkers(poolSeries, [
+          {
+            time: (poolData[1].time as number) as UTCTimestamp,
+            position: 'aboveBar',
+            color: '#F59E0B',
+            shape: 'circle',
+            text: 'Pool open',
+            size: 1,
+          },
+        ])
       }
 
       const crosshairHandler = (param: any) => {
@@ -214,7 +225,7 @@ export function CurvePriceChart({
         }
         setReadout({
           time: formatTimeLabel(param.time as number),
-          price: formatCompactPrice(item.value.toString()),
+          price: formatCompactPrice(item.value),
         })
       }
       chart.subscribeCrosshairMove(crosshairHandler)
@@ -228,7 +239,7 @@ export function CurvePriceChart({
           if (seriesData.length > 0) {
             chart.timeScale().setVisibleLogicalRange({
               from: 0,
-              to: seriesData.length + 1,
+              to: seriesData.length + (poolData.length === 2 ? 2 : 1),
             })
           }
         })
