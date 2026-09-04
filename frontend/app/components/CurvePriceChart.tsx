@@ -54,8 +54,7 @@ export function CurvePriceChart({
   )
 
   const maxPrice = useMemo(() => {
-    const prices = ohlc.flatMap((d) => [d.open, d.high, d.low, d.close])
-    return prices.length ? Math.max(...prices) : 0
+    return ohlc.length ? Math.max(0, ...ohlc.map((d) => d.high)) : 0
   }, [ohlc])
 
   const lastTradeTime = useMemo(() => {
@@ -108,7 +107,7 @@ export function CurvePriceChart({
           mode: CrosshairMode.Normal,
         },
         rightPriceScale: {
-          autoScale: true,
+          autoScale: false,
         },
         leftPriceScale: { visible: false },
         localization: {

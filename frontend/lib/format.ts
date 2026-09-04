@@ -138,14 +138,20 @@ const PRICE_MIN_MOVE = 0.000000000001
 
 function formatCompactNumber(value: number, prefix = '$'): string {
   if (value === 0 || Math.abs(value) < PRICE_MIN_MOVE) return `${prefix}0`
-  const abs = Math.abs(value)
-  const exp = Math.floor(Math.log10(abs))
+  let abs = Math.abs(value)
+  let exp = Math.floor(Math.log10(abs))
   if (exp >= -3) {
     return `${prefix}${groupedDecimalOrThrow(abs.toString(), 6)}`
   }
+  // Round to 5 significant figures first so values like 9.9999e-8 carry
+  // up to 1e-7. Recompute the exponent after rounding so the zero count
+  // stays correct at power-of-10 boundaries.
+  const rounded = Number(abs.toPrecision(5))
+  exp = Math.floor(Math.log10(rounded))
+  abs = rounded
   const leadingZeros = -exp - 1
   const sig = abs * Math.pow(10, -exp)
-  const sigStr = Number(sig.toPrecision(5)).toString().replace('.', '')
+  const sigStr = sig.toString().replace('.', '')
   return `${prefix}0.0${toSubscript(leadingZeros)}${sigStr}`
 }
 
