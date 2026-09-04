@@ -8,14 +8,25 @@ export type CurveTrade = {
   pool_usdc_after: string
 }
 
+export type CurveVolumePoint = {
+  time: number
+  value: number
+  color: string
+}
+
 export function buildCurveTimeSeries(
   opening_price: string,
   trades: CurveTrade[]
-): { data: { time: number; value: number }[]; lastTime: number } {
+): {
+  data: { time: number; value: number }[]
+  volume: CurveVolumePoint[]
+  lastTime: number
+} {
   // Order by id so fixture bulk inserts and real trade sequences keep their
   // intended sequence even when created_at values collide.
   const ordered = [...trades].sort((a, b) => a.id - b.id)
   const data: { time: number; value: number }[] = []
+  const volume: CurveVolumePoint[] = []
   let lastTime = 0
 
   if (ordered.length > 0) {
@@ -32,6 +43,11 @@ export function buildCurveTimeSeries(
         time = lastTime + 1
       }
       data.push({ time, value: Number(t.price_after) })
+      volume.push({
+        time,
+        value: Number(t.usdc_gross),
+        color: t.side === 'sell' ? '#EF4444' : '#10B981',
+      })
       lastTime = time
     }
   } else {
@@ -40,5 +56,5 @@ export function buildCurveTimeSeries(
     lastTime = now
   }
 
-  return { data, lastTime }
+  return { data, volume, lastTime }
 }

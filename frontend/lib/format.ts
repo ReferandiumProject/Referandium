@@ -125,6 +125,41 @@ export function formatPrice(
   }
 }
 
+const SUBSCRIPT_DIGITS = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉']
+
+function toSubscript(n: number): string {
+  return String(n)
+    .split('')
+    .map((d) => SUBSCRIPT_DIGITS[Number(d)])
+    .join('')
+}
+
+function formatCompactNumber(value: number, prefix = '$'): string {
+  if (value === 0) return `${prefix}0`
+  const abs = Math.abs(value)
+  const exp = Math.floor(Math.log10(abs))
+  if (exp >= -3) {
+    return `${prefix}${groupedDecimalOrThrow(abs.toString(), 6)}`
+  }
+  const leadingZeros = -exp - 1
+  const sig = abs * Math.pow(10, -exp)
+  const sigStr = Number(sig.toPrecision(5)).toString()
+  return `${prefix}0.0${toSubscript(leadingZeros)}${sigStr}`
+}
+
+export function formatCompactPrice(
+  input: string | number | null | undefined
+): string {
+  if (input === null || input === undefined) return FORMAT_FALLBACK
+  try {
+    const d = parseDecimalOrThrow(input)
+    return formatCompactNumber(Number(d.toString()))
+  } catch (err) {
+    console.error('[format] formatCompactPrice: failed to parse price', { input, err })
+    return FORMAT_FALLBACK
+  }
+}
+
 /** Formats an integer vote count as "10,000". */
 export function formatVoteCount(input: number | null | undefined): string {
   if (input === null || input === undefined) return FORMAT_FALLBACK

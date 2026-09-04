@@ -1417,7 +1417,10 @@ export default function StartupDetailPage() {
           ) : curveTradesError ? (
             <div className="text-sm text-[#EF4444]">{curveTradesError}</div>
           ) : curveTrades ? (
-            <CurvePriceChart {...curveTrades} />
+            <CurvePriceChart
+              {...curveTrades}
+              opening_pool_price={graduationReport?.opening_pool_price}
+            />
           ) : (
             <div className="text-sm text-[#6B7280]">No price history available.</div>
           )}
