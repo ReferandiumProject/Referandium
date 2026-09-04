@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
-import { Decimal } from '@/lib/decimal'
+import { buildCurveOHLC } from '@/lib/curve-time-series'
 
 export async function GET(
   request: Request,
@@ -42,7 +42,7 @@ export async function GET(
 
     const { data: curve, error: curveError } = await supabaseAdmin
       .from('startup_curves')
-      .select('initial_v_t::text, initial_v_s::text, graduated_at')
+      .select('graduated_at')
       .eq('startup_id', startup.id)
       .single()
 
@@ -54,33 +54,27 @@ export async function GET(
       )
     }
 
-    const { data: trades, error: tradesError } = await supabaseAdmin
-      .from('startup_curve_trades')
-      .select(
-        'id, created_at, side, usdc_gross::text, tokens::text, price_after::text, pool_usdc_after::text'
-      )
-      .eq('startup_id', startup.id)
-      .order('id')
+    const { data: rows, error: ohlcError } = await supabaseAdmin.rpc(
+      'curve_ohlc',
+      { startup_id: startup.id, interval: '1 hour' }
+    )
 
-    if (tradesError) {
-      console.error('[api/curve/[slug]/trades] trades query error:', tradesError)
+    if (ohlcError) {
+      console.error('[api/curve/[slug]/trades] curve_ohlc rpc error:', ohlcError)
       return NextResponse.json(
-        { error: tradesError.message },
+        { error: ohlcError.message },
         { status: 500 }
       )
     }
 
-    const openingPrice = Decimal.parse(curve.initial_v_t)
-      .div(Decimal.parse(curve.initial_v_s), 18)
-      .toString()
+    const ohlc = buildCurveOHLC(rows ?? [])
 
     return NextResponse.json({
       startup_id: startup.id,
       name: startup.name,
       slug,
-      opening_price: openingPrice,
-      trades: trades ?? [],
-      graduated: Boolean(curve.graduated_at),
+      ohlc,
+      graduated: Boolean(curve?.graduated_at),
     })
   } catch (err: any) {
     console.error('[api/curve/[slug]/trades] unexpected error:', err)

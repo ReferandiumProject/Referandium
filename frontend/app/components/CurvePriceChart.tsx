@@ -2,13 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { UTCTimestamp } from 'lightweight-charts'
-import { buildCurveTimeSeries } from '@/lib/curve-time-series'
-import type { CurveTrade } from '@/lib/curve-time-series'
+import type { CurveOHLCPoint } from '@/lib/curve-time-series'
 import { formatCompactPrice } from '@/lib/format'
 
 export type CurvePriceChartProps = {
-  opening_price: string
-  trades: CurveTrade[]
+  ohlc: CurveOHLCPoint[]
   graduated?: boolean
   opening_pool_price?: string | null
   heightClassName?: string
@@ -27,8 +25,7 @@ function formatTimeLabel(t: number): string {
 }
 
 export function CurvePriceChart({
-  opening_price,
-  trades,
+  ohlc,
   graduated = false,
   opening_pool_price,
   heightClassName = 'h-80',
@@ -37,7 +34,6 @@ export function CurvePriceChart({
   const chartApiRef = useRef<{
     chart: any
     priceSeries: any
-    volumeSeries: any
     poolSeries?: any
   } | null>(null)
   const [readout, setReadout] = useState<{
@@ -45,30 +41,39 @@ export function CurvePriceChart({
     price: string
   } | null>(null)
 
-  const { data: seriesData, volume, lastTime } = useMemo(
-    () => buildCurveTimeSeries(opening_price, trades),
-    [opening_price, trades]
+  const seriesData = useMemo(
+    () =>
+      ohlc.map((d) => ({
+        time: d.time as UTCTimestamp,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      })),
+    [ohlc]
   )
 
   const maxPrice = useMemo(() => {
-    const values = seriesData.map((d) => d.value)
-    return values.length ? Math.max(...values) : 0
-  }, [seriesData])
+    const prices = ohlc.flatMap((d) => [d.open, d.high, d.low, d.close])
+    return prices.length ? Math.max(...prices) : 0
+  }, [ohlc])
 
-  const maxVolume = useMemo(() => {
-    const values = volume.map((v) => v.value)
-    return values.length ? Math.max(...values) : 0
-  }, [volume])
+  const lastTradeTime = useMemo(() => {
+    if (ohlc.length === 0) return 0
+    const lastWithTrades = [...ohlc].reverse().find((d) => (d.trades ?? 0) > 0)
+    return lastWithTrades ? lastWithTrades.time : ohlc[ohlc.length - 1].time
+  }, [ohlc])
 
   const poolData = useMemo(() => {
-    if (!graduated || !opening_pool_price || seriesData.length < 2) return []
-    const last = seriesData[seriesData.length - 1]
+    if (!graduated || !opening_pool_price || ohlc.length < 2) return []
+    const last = ohlc[ohlc.length - 1]
     const value = Number(opening_pool_price)
+    const interval = ohlc.length > 1 ? ohlc[1].time - ohlc[0].time : 3600
     return [
       { time: last.time, value },
-      { time: last.time + 1, value },
+      { time: last.time + interval, value },
     ]
-  }, [graduated, opening_pool_price, seriesData])
+  }, [graduated, opening_pool_price, ohlc])
 
   useEffect(() => {
     let mounted = true
@@ -78,11 +83,9 @@ export function CurvePriceChart({
       const [
         {
           createChart,
-          AreaSeries,
-          HistogramSeries,
+          CandlestickSeries,
           LineSeries,
           ColorType,
-          LineType,
           LineStyle,
           CrosshairMode,
           createSeriesMarkers,
@@ -122,12 +125,13 @@ export function CurvePriceChart({
         handleScale: false,
       })
 
-      const priceSeries = chart.addSeries(AreaSeries, {
-        lineType: LineType.WithSteps,
-        lineColor: '#3B82F6',
-        topColor: 'rgba(59, 130, 246, 0.35)',
-        bottomColor: 'rgba(59, 130, 246, 0.02)',
-        lineWidth: 2,
+      const priceSeries = chart.addSeries(CandlestickSeries, {
+        upColor: '#10B981',
+        downColor: '#EF4444',
+        borderUpColor: '#10B981',
+        borderDownColor: '#EF4444',
+        wickUpColor: '#10B981',
+        wickDownColor: '#EF4444',
         priceFormat: {
           type: 'custom',
           minMove: 0.000000000001,
@@ -138,44 +142,16 @@ export function CurvePriceChart({
         priceLineVisible: false,
       })
 
-      priceSeries.setData(
-        seriesData.map((d) => ({ time: d.time as UTCTimestamp, value: d.value }))
-      )
+      priceSeries.setData(seriesData)
 
       if (seriesData.length > 0) {
-        const max = maxPrice
+        const poolValue = opening_pool_price ? Number(opening_pool_price) : 0
+        const max = Math.max(maxPrice, poolValue)
         priceSeries.priceScale().setVisibleRange({ from: 0, to: max * 1.05 })
         chart.timeScale().setVisibleLogicalRange({
           from: 0,
-          to: seriesData.length + (poolData.length === 2 ? 2 : 1),
+          to: ohlc.length + (poolData.length === 2 ? 2 : 1),
         })
-      }
-
-      const volumePane = chart.addPane()
-      volumePane.setHeight(80)
-      const volumeSeries = volumePane.addSeries(HistogramSeries, {
-        color: '#6B7280',
-        priceFormat: {
-          type: 'price',
-          precision: 6,
-          minMove: 0.000001,
-        },
-        priceLineVisible: false,
-        lastValueVisible: false,
-      })
-
-      volumeSeries.setData(
-        volume.map((v) => ({
-          time: v.time as UTCTimestamp,
-          value: v.value,
-          color: v.color,
-        }))
-      )
-
-      if (maxVolume > 0) {
-        volumeSeries
-          .priceScale()
-          .setVisibleRange({ from: 0, to: maxVolume * 1.2 })
       }
 
       let poolSeries
@@ -216,16 +192,16 @@ export function CurvePriceChart({
           setReadout(null)
           return
         }
-        const item = param.seriesData?.get(priceSeries) as
-          | { value: number }
+        const candle = param.seriesData?.get(priceSeries) as
+          | { close: number }
           | undefined
-        if (!item) {
+        if (!candle) {
           setReadout(null)
           return
         }
         setReadout({
           time: formatTimeLabel(param.time as number),
-          price: formatCompactPrice(item.value),
+          price: formatCompactPrice(candle.close),
         })
       }
       chart.subscribeCrosshairMove(crosshairHandler)
@@ -236,20 +212,20 @@ export function CurvePriceChart({
         if (!containerRef.current) return
         if (rafId) cancelAnimationFrame(rafId)
         rafId = requestAnimationFrame(() => {
-          if (seriesData.length > 0) {
+          if (ohlc.length > 0) {
             chart.timeScale().setVisibleLogicalRange({
               from: 0,
-              to: seriesData.length + (poolData.length === 2 ? 2 : 1),
+              to: ohlc.length + (poolData.length === 2 ? 2 : 1),
             })
           }
         })
       })
       resizeObserver.observe(containerRef.current)
 
-      if (graduated && seriesData.length > 1) {
+      if (graduated && ohlc.length > 0) {
         createSeriesMarkers(priceSeries, [
           {
-            time: lastTime as UTCTimestamp,
+            time: lastTradeTime as UTCTimestamp,
             position: 'aboveBar',
             color: '#10B981',
             shape: 'circle',
@@ -259,7 +235,7 @@ export function CurvePriceChart({
         ])
       }
 
-      chartApiRef.current = { chart, priceSeries, volumeSeries, poolSeries }
+      chartApiRef.current = { chart, priceSeries, poolSeries }
 
       cleanup = () => {
         chart.unsubscribeCrosshairMove(crosshairHandler)
@@ -275,7 +251,7 @@ export function CurvePriceChart({
       mounted = false
       cleanup()
     }
-  }, [seriesData, volume, lastTime, graduated, opening_pool_price])
+  }, [seriesData, ohlc, graduated, opening_pool_price])
 
   return (
     <div className={`relative w-full ${heightClassName}`}>

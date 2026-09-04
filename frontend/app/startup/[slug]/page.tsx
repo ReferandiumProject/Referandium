@@ -11,7 +11,7 @@ import type { GraduationReport as GraduationReportType } from '@/app/components/
 import { Decimal } from '@/lib/decimal'
 import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
 import { CurvePriceChart } from '@/app/components/CurvePriceChart'
-import type { CurveTrade } from '@/lib/curve-time-series'
+import type { CurveOHLCPoint } from '@/lib/curve-time-series'
 
 type CurveState = {
   startup_id: string
@@ -1056,8 +1056,7 @@ export default function StartupDetailPage() {
   const [graduationReportError, setGraduationReportError] = useState<string | null>(null)
 
   const [curveTrades, setCurveTrades] = useState<{
-    opening_price: string
-    trades: CurveTrade[]
+    ohlc: CurveOHLCPoint[]
     graduated: boolean
   } | null>(null)
   const [curveTradesLoading, setCurveTradesLoading] = useState(false)

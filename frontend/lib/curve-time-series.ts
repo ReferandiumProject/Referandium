@@ -14,6 +14,28 @@ export type CurveVolumePoint = {
   color: string
 }
 
+export type CurveOHLCPoint = {
+  time: number
+  open: number
+  high: number
+  low: number
+  close: number
+  volume_usdc?: number
+  trades?: number
+}
+
+export function buildCurveOHLC(rows: any[]): CurveOHLCPoint[] {
+  return rows.map((r) => ({
+    time: Math.floor(new Date(r.bucket_start).getTime() / 1000),
+    open: Number(r.o),
+    high: Number(r.h),
+    low: Number(r.l),
+    close: Number(r.c),
+    volume_usdc: r.volume_usdc != null ? Number(r.volume_usdc) : undefined,
+    trades: r.trades != null ? Number(r.trades) : undefined,
+  }))
+}
+
 export function buildCurveTimeSeries(
   opening_price: string,
   trades: CurveTrade[]
