@@ -143,7 +143,7 @@ function formatCompactNumber(value: number, prefix = '$'): string {
   }
   const leadingZeros = -exp - 1
   const sig = abs * Math.pow(10, -exp)
-  const sigStr = Number(sig.toPrecision(5)).toString()
+  const sigStr = Number(sig.toPrecision(5)).toString().replace('.', '')
   return `${prefix}0.0${toSubscript(leadingZeros)}${sigStr}`
 }
 
