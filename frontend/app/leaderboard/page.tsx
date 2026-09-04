@@ -86,6 +86,13 @@ const emptyCopy: Record<TabKey, { title: string; body: string }> = {
   },
 }
 
+const tabDescription: Record<TabKey, string> = {
+  voting: 'Voting leaderboard — startups ranked by what is moving right now.',
+  raising: 'Raising leaderboard — startups ranked by what is moving right now.',
+  completed:
+    'Completed token migrations, most recent first. No performance ranking is shown.',
+}
+
 export default function LeaderboardPage() {
   const [tab, setTab] = useState<TabKey>('voting')
   const [data, setData] = useState<LeaderboardData | null>(null)
@@ -139,8 +146,7 @@ export default function LeaderboardPage() {
             Leaderboard
           </h1>
           <p className="mx-auto max-w-2xl text-base leading-relaxed text-[#6B7280] sm:text-lg">
-            Startups ranked by what is moving right now. Votes, capital, and
-            graduation are scored separately — they do not share a ranking.
+            {tabDescription[tab]}
           </p>
         </div>
 
@@ -187,7 +193,7 @@ export default function LeaderboardPage() {
           </div>
         ) : phase === 3 ? (
           <div className="space-y-4">
-            {data?.leaderboard.map((item, index) => {
+            {data?.leaderboard.map((item) => {
               const g = item as GraduatedItem
               return (
                 <Link
@@ -196,9 +202,6 @@ export default function LeaderboardPage() {
                   className="group flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm transition-colors duration-200 hover:border-[#3B82F6]/50"
                 >
                   <div className="flex items-center gap-4">
-                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#F3F4F6] text-sm font-bold text-[#6B7280]">
-                      {index + 1}
-                    </span>
                     <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-[#3B82F6] text-sm font-bold text-white">
                       {getInitials(g.name)}
                     </div>
