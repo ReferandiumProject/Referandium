@@ -134,8 +134,10 @@ function toSubscript(n: number): string {
     .join('')
 }
 
+const PRICE_MIN_MOVE = 0.000000000001
+
 function formatCompactNumber(value: number, prefix = '$'): string {
-  if (value === 0) return `${prefix}0`
+  if (value === 0 || Math.abs(value) < PRICE_MIN_MOVE) return `${prefix}0`
   const abs = Math.abs(value)
   const exp = Math.floor(Math.log10(abs))
   if (exp >= -3) {
