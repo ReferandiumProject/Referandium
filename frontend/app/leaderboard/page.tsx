@@ -25,9 +25,17 @@ type ClosestToCrossingItem = {
   progress: number
 }
 
+type GraduatedItem = {
+  startup_id: string
+  slug: string
+  name: string
+  graduated_at: string
+  amount_raised: string
+}
+
 type LeaderboardData = {
   phase: number
-  leaderboard: LeaderboardItem[]
+  leaderboard: (LeaderboardItem | GraduatedItem)[]
   closestToCrossing?: ClosestToCrossingItem[]
 }
 
@@ -51,6 +59,31 @@ function formatScore(phase: number, score: number): string {
     return formatUsd(score, 2)
   }
   return formatVoteCount(Math.round(score))
+}
+
+function formatGraduatedAt(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+const emptyCopy: Record<TabKey, { title: string; body: string }> = {
+  voting: {
+    title: 'Nothing has moved in the last three days',
+    body: 'Check back when things pick up.',
+  },
+  raising: {
+    title: 'Nothing has moved in the last three days',
+    body: 'Check back when things pick up.',
+  },
+  completed: {
+    title: 'No graduations yet',
+    body: 'Graduations will appear here once a startup issues its token on chain.',
+  },
 }
 
 export default function LeaderboardPage() {
@@ -146,44 +179,81 @@ export default function LeaderboardPage() {
         ) : data?.leaderboard.length === 0 ? (
           <div className="rounded-xl border border-[#E5E7EB] bg-white py-16 text-center shadow-sm">
             <p className="text-lg font-medium text-[#111827]">
-              Nothing has moved in the last three days
+              {emptyCopy[tab].title}
             </p>
             <p className="mt-2 text-sm text-[#6B7280]">
-              Check back when the market gets going.
+              {emptyCopy[tab].body}
             </p>
+          </div>
+        ) : phase === 3 ? (
+          <div className="space-y-4">
+            {data?.leaderboard.map((item, index) => {
+              const g = item as GraduatedItem
+              return (
+                <Link
+                  key={g.startup_id}
+                  href={`/startup/${g.slug}`}
+                  className="group flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm transition-colors duration-200 hover:border-[#3B82F6]/50"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#F3F4F6] text-sm font-bold text-[#6B7280]">
+                      {index + 1}
+                    </span>
+                    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-[#3B82F6] text-sm font-bold text-white">
+                      {getInitials(g.name)}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#111827]">{g.name}</p>
+                      <p className="text-xs text-[#6B7280]">
+                        Graduated {formatGraduatedAt(g.graduated_at)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-[#3B82F6]">
+                      {formatUsd(g.amount_raised)}
+                    </p>
+                    <p className="text-xs text-[#6B7280]">raised</p>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         ) : (
           <div className="space-y-4">
-            {data?.leaderboard.map((item, index) => (
-              <Link
-                key={item.startup_id}
-                href={`/startup/${item.slug}`}
-                className="group flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm transition-colors duration-200 hover:border-[#3B82F6]/50"
-              >
-                <div className="flex items-center gap-4">
-                  <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#F3F4F6] text-sm font-bold text-[#6B7280]">
-                    {index + 1}
-                  </span>
-                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-[#3B82F6] text-sm font-bold text-white">
-                    {getInitials(item.name)}
+            {data?.leaderboard.map((item, index) => {
+              const row = item as LeaderboardItem
+              return (
+                <Link
+                  key={row.startup_id}
+                  href={`/startup/${row.slug}`}
+                  className="group flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm transition-colors duration-200 hover:border-[#3B82F6]/50"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#F3F4F6] text-sm font-bold text-[#6B7280]">
+                      {index + 1}
+                    </span>
+                    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-[#3B82F6] text-sm font-bold text-white">
+                      {getInitials(row.name)}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#111827]">{row.name}</p>
+                      <p className="text-xs text-[#6B7280]">
+                        {formatVoteCount(row.events)} events
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-[#111827]">{item.name}</p>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-[#3B82F6]">
+                      {formatScore(phase, row.score)}
+                    </p>
                     <p className="text-xs text-[#6B7280]">
-                      {formatVoteCount(item.events)} events
+                      {formatVoteCount(row.participants)} participants
                     </p>
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-[#3B82F6]">
-                    {formatScore(phase, item.score)}
-                  </p>
-                  <p className="text-xs text-[#6B7280]">
-                    {formatVoteCount(item.participants)} participants
-                  </p>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              )
+            })}
           </div>
         )}
 

@@ -19,6 +19,16 @@ function makeBuilder(result: { data: any; error: any }) {
   return builder
 }
 
+function makeGraduationBuilder(result: { data: any; error: any }) {
+  const builder = {
+    select: vi.fn(() => builder),
+    not: vi.fn(() => builder),
+    order: vi.fn(() => builder),
+    limit: vi.fn(() => Promise.resolve(result)),
+  }
+  return builder
+}
+
 describe('GET /api/leaderboard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -125,5 +135,49 @@ describe('GET /api/leaderboard', () => {
     expect(body.closestToCrossing).toHaveLength(2)
     expect(body.closestToCrossing[0].progress).toBe(0.8)
     expect(body.closestToCrossing[1].progress).toBe(0.3)
+  })
+
+  it('returns completed graduations ordered by recency', async () => {
+    vi.mocked(supabaseAdmin.from).mockReturnValue(
+      makeGraduationBuilder({
+        data: [
+          {
+            startup_id: 'designr',
+            startup_startups: {
+              id: 'designr',
+              name: 'Designr',
+              slug: 'designr',
+              logo_url: null,
+            },
+            graduated_at: '2026-09-01T00:00:00Z',
+            pool_usdc: '15000.000000',
+          },
+          {
+            startup_id: 'sentinel',
+            startup_startups: {
+              id: 'sentinel',
+              name: 'Sentinel',
+              slug: 'sentinel',
+              logo_url: null,
+            },
+            graduated_at: '2026-08-15T00:00:00Z',
+            pool_usdc: '23000.500000',
+          },
+        ],
+        error: null,
+      }) as any
+    )
+
+    const req = new Request('http://localhost:3000/api/leaderboard?phase=3')
+    const res = await getLeaderboard(req)
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.leaderboard).toHaveLength(2)
+    expect(body.leaderboard[0].slug).toBe('designr')
+    expect(body.leaderboard[0].graduated_at).toBe('2026-09-01T00:00:00Z')
+    expect(body.leaderboard[0].amount_raised).toBe('15000.000000')
+    expect(body.leaderboard[1].slug).toBe('sentinel')
+    expect(supabaseAdmin.rpc).not.toHaveBeenCalled()
   })
 })

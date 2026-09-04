@@ -11,6 +11,14 @@ export type LeaderboardItem = {
   events: number
 }
 
+export type GraduatedItem = {
+  startup_id: string
+  slug: string
+  name: string
+  graduated_at: string
+  amount_raised: string
+}
+
 export type ClosestToCrossingItem = {
   id: string
   slug: string
@@ -43,6 +51,35 @@ export async function GET(request: Request) {
   }
 
   try {
+    if (phase === 3) {
+      const { data: graduated, error: gradError } = await (supabaseAdmin as any)
+        .from('startup_curve_state')
+        .select(
+          'graduated_at, pool_usdc::text, startup_id, startup_startups!inner(id, name, slug, logo_url)'
+        )
+        .not('graduated_at', 'is', null)
+        .order('graduated_at', { ascending: false })
+        .limit(limit)
+
+      if (gradError) {
+        console.error('[api/leaderboard] graduation query error:', gradError)
+        return NextResponse.json(
+          { error: 'Failed to load leaderboard.' },
+          { status: 500 }
+        )
+      }
+
+      const leaderboard: GraduatedItem[] = (graduated ?? []).map((g: any) => ({
+        startup_id: String(g.startup_id ?? ''),
+        slug: String(g.startup_startups?.slug ?? ''),
+        name: String(g.startup_startups?.name ?? ''),
+        graduated_at: String(g.graduated_at ?? ''),
+        amount_raised: String(g.pool_usdc ?? 0),
+      }))
+
+      return NextResponse.json({ phase, leaderboard })
+    }
+
     const { data: rows, error: rpcError } = await (supabaseAdmin as any).rpc(
       'startup_momentum',
       {
