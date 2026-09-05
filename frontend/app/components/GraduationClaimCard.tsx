@@ -36,11 +36,13 @@ function explorerLink(signature: string): string {
 export function GraduationClaimCard({
   holding,
   userHasEmbeddedWallet,
+  getAccessToken,
   onClaim,
   showStartupLink = false,
 }: {
   holding: GraduationHolding
   userHasEmbeddedWallet: boolean
+  getAccessToken: () => Promise<string | null>
   onClaim?: () => Promise<void>
   showStartupLink?: boolean
 }) {
@@ -54,8 +56,13 @@ export function GraduationClaimCard({
     setSubmitting(true)
     setLocalError(null)
     try {
+      const token = await getAccessToken()
+      if (!token) {
+        throw new Error('Not authenticated')
+      }
       const res = await fetch(`/api/graduation-holders/${holding.id}/claim`, {
         method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {

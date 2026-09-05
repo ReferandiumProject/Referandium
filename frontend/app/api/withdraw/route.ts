@@ -10,6 +10,7 @@ import bs58 from 'bs58'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { errorResponse } from '@/lib/errorResponse'
 
 const USDC_DECIMALS = 6
 
@@ -207,7 +208,12 @@ export async function POST(request: Request) {
 
     if (!privateKeyBase58 || !rpcUrl || !usdcMint) {
       console.error('[api/withdraw] missing PLATFORM_WALLET_PRIVATE_KEY, SOLANA_RPC_URL, or USDC_MINT_ADDRESS env vars')
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+      return errorResponse({
+        status: 500,
+        message: 'Server configuration error',
+        error: 'Missing PLATFORM_WALLET_PRIVATE_KEY, SOLANA_RPC_URL, or USDC_MINT_ADDRESS env vars',
+        request,
+      })
     }
 
     const connection = new Connection(rpcUrl, 'finalized')
@@ -292,10 +298,12 @@ export async function POST(request: Request) {
             { status: 202 }
           )
         }
-        return NextResponse.json(
-          { error: 'Withdrawal could not be sent and has been refunded' },
-          { status: 500 }
-        )
+        return errorResponse({
+          status: 500,
+          message: 'Withdrawal could not be sent and has been refunded',
+          error: err,
+          request,
+        })
       }
 
       const outcome = await determineWithdrawalOutcome(connection, signature, recentBlockhash)
@@ -326,10 +334,12 @@ export async function POST(request: Request) {
           )
         }
         const reason = outcome.kind === 'failed' ? 'failed on-chain' : 'was dropped by the network'
-        return NextResponse.json(
-          { error: `Withdrawal ${reason} and has been refunded` },
-          { status: 500 }
-        )
+        return errorResponse({
+          status: 500,
+          message: `Withdrawal ${reason} and has been refunded`,
+          error: new Error(`Withdrawal ${reason} and has been refunded`),
+          request,
+        })
       }
 
       await markWithdrawalUnknown(reserved.withdrawal_id, signature, outcome.reason)
@@ -343,6 +353,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ signature, new_balance: reserved.new_balance })
   } catch (error: any) {
     console.error('[api/withdraw] unexpected error:', error)
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
+    return errorResponse({
+      status: 500,
+      message: error.message || 'Internal server error',
+      error,
+      request,
+    })
   }
 }

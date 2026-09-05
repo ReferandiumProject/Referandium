@@ -44,6 +44,7 @@ export function useProfileClaims() {
 
 export function ProfileGraduationClaims() {
   const { dbUser } = useUser()
+  const { getAccessToken } = usePrivy()
   const { holdings, loading, error, refresh } = useProfileClaims()
 
   if (loading) {
@@ -83,6 +84,7 @@ export function ProfileGraduationClaims() {
           key={holding.id}
           holding={holding}
           userHasEmbeddedWallet={!!dbUser?.custodial_wallet_address}
+          getAccessToken={getAccessToken}
           onClaim={refresh}
           showStartupLink
         />

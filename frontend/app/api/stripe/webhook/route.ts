@@ -166,7 +166,13 @@ export async function POST(request: Request) {
         return new NextResponse(null, { status: 200 })
       }
       console.error('[api/stripe/webhook] failed to update expired payment:', updateError)
-      return new NextResponse('Update failed', { status: 500 })
+      return errorResponse({
+        status: 500,
+        message: 'Update failed',
+        error: updateError,
+        request,
+        kind: 'text',
+      })
     }
 
     return new NextResponse(null, { status: 200 })

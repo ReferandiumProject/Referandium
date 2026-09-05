@@ -70,6 +70,7 @@ export function StartupGraduationClaim({
     <GraduationClaimCard
       holding={holding}
       userHasEmbeddedWallet={!!dbUser?.custodial_wallet_address}
+      getAccessToken={getAccessToken}
       onClaim={fetchHolding}
     />
   )
