@@ -14,6 +14,7 @@ export type GraduationAdmin = {
   mint_address: string | null
   escrow_address: string | null
   created_at: string
+  updated_at: string
   escrow_expected: string | null
   still_owed: string | null
   comparable: boolean | null
@@ -33,6 +34,22 @@ const formatDate = (d: string | null) => {
   }
 }
 
+const STUCK_THRESHOLD_MS = 60 * 60 * 1000
+
+const formatAge = (updatedAt: string) => {
+  const ms = Date.now() - new Date(updatedAt).getTime()
+  if (ms < 0) return '0m'
+  const days = Math.floor(ms / (24 * 3600000))
+  const hours = Math.floor((ms % (24 * 3600000)) / 3600000)
+  const minutes = Math.floor((ms % 3600000) / 60000)
+  if (days > 0) return `${days} day${days === 1 ? '' : 's'}`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
+}
+
+const isStuck = (g: { status: string; updated_at: string }) =>
+  g.status !== 'complete' && Date.now() - new Date(g.updated_at).getTime() > STUCK_THRESHOLD_MS
+
 export function AdminGraduationSections({
   graduations,
   loading,
@@ -40,25 +57,30 @@ export function AdminGraduationSections({
   graduations: GraduationAdmin[]
   loading: boolean
 }) {
-  const halted = graduations.filter((g) => g.status === 'halted')
+  const stuck = graduations.filter(isStuck)
 
   return (
     <>
       <section className="mb-8 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
         <h2 className="mb-1 text-lg font-semibold text-[#111827]">Graduations</h2>
         <p className="mb-4 text-sm text-[#6B7280]">
-          Every graduated startup and its current state. Halted graduations are stuck money and show
-          their reason.
+          Every graduated startup and its current state. Graduations that are not complete and have
+          not been updated in over an hour are stuck and need review.
         </p>
 
-        {halted.length > 0 && (
+        {stuck.length > 0 && (
           <div className="mb-4 rounded-lg border border-[#F59E0B]/30 bg-[#FEF3C7] p-3 text-sm text-[#92400E]">
-            <p className="font-semibold">{halted.length} halted graduation{halted.length === 1 ? '' : 's'}</p>
+            <p className="font-semibold">
+              {stuck.length} stuck graduation{stuck.length === 1 ? '' : 's'}
+            </p>
             <ul className="mt-1 list-disc space-y-1 pl-4">
-              {halted.map((g) => (
+              {stuck.map((g) => (
                 <li key={g.id}>
                   <span className="font-medium text-[#111827]">{g.startup_name}</span>{' '}
-                  {g.halted_reason ? `— ${g.halted_reason}` : '— no reason recorded'}
+                  <span className="font-semibold">
+                    {g.status}, {formatAge(g.updated_at)}
+                  </span>
+                  {g.halted_reason ? ` — ${g.halted_reason}` : ''}
                 </li>
               ))}
             </ul>
@@ -86,7 +108,7 @@ export function AdminGraduationSections({
                   <tr
                     key={g.id}
                     className={`${
-                      g.status === 'halted'
+                      isStuck(g)
                         ? 'bg-[#FEF3C7]'
                         : 'hover:bg-[#F9FAFB]'
                     }`}

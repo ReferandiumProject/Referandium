@@ -24,6 +24,7 @@ export type GraduationAdminRow = {
   mint_address: string | null
   escrow_address: string | null
   created_at: string
+  updated_at: string
   escrow_expected: string | null
   still_owed: string | null
   comparable: boolean | null
@@ -45,7 +46,7 @@ export async function GET(request: Request) {
     const { data: gradRows, error: gradError } = await supabaseAdmin
       .from('graduations')
       .select(
-        'id, status, halted_reason, startup_id, token_name, token_symbol, mint_address, escrow_address, created_at, startup_startups!inner (name, slug)'
+        'id, status, halted_reason, startup_id, token_name, token_symbol, mint_address, escrow_address, created_at, updated_at, startup_startups!inner (name, slug)'
       )
       .order('created_at', { ascending: false })
 
@@ -121,6 +122,7 @@ export async function GET(request: Request) {
         mint_address: (g.mint_address as string | null) ?? null,
         escrow_address: (g.escrow_address as string | null) ?? null,
         created_at: g.created_at as string,
+        updated_at: g.updated_at as string,
         escrow_expected: escrow?.escrow_expected ?? null,
         still_owed: escrow?.still_owed ?? null,
         comparable: escrow?.comparable ?? null,
