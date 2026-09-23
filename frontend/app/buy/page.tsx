@@ -15,6 +15,10 @@ type Balance = {
 const LISTING_PACKAGES = PURCHASE_PACKAGES.filter((p) => p.product === 'listing_pack')
 const INVESTMENT_PACKAGES = PURCHASE_PACKAGES.filter((p) => p.product === 'investment_pack')
 
+const RFRM_MINT = '8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump'
+const RFRM_JUPITER_URL =
+  'https://jup.ag/swap/SOL-8248ZQSM717buZAkWFRbsLEcgetSArqbpbkX638Vpump'
+
 function formatPrice(cents: number) {
   return formatUsd(cents / 100)
 }
@@ -28,6 +32,17 @@ export default function BuyPage() {
   const [buying, setBuying] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [releasedNotice, setReleasedNotice] = useState<{ count: number; usdc: number } | null>(null)
+  const [copiedMint, setCopiedMint] = useState(false)
+
+  const handleCopyMint = async () => {
+    try {
+      await navigator.clipboard.writeText(RFRM_MINT)
+      setCopiedMint(true)
+      setTimeout(() => setCopiedMint(false), 2000)
+    } catch {
+      setCopiedMint(false)
+    }
+  }
 
   const fetchState = async () => {
     const token = await getAccessToken()
@@ -272,6 +287,57 @@ export default function BuyPage() {
                 )}
               </button>
             ))}
+          </div>
+        </section>
+
+        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-[#111827]">RFRM</h2>
+          <p className="mt-1 text-sm text-[#6B7280]">
+            RFRM is not sold through Referandium. This card links out to Jupiter, a Solana DEX
+            aggregator — the purchase happens there with your own wallet, not with your platform
+            balance.
+          </p>
+
+          <div className="mt-4 max-w-md rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-base font-semibold text-[#111827]">RFRM</span>
+              <span className="rounded border border-[#3B82F6]/40 bg-[#3B82F6]/10 px-2 py-0.5 text-xs font-medium text-[#3B82F6]">
+                External ↗
+              </span>
+            </div>
+
+            <p className="mt-4 text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+              Mint address
+            </p>
+            <div className="mt-1 flex items-start gap-2">
+              <code className="break-all font-mono text-sm leading-snug text-[#111827]">
+                {RFRM_MINT}
+              </code>
+              <button
+                type="button"
+                onClick={handleCopyMint}
+                className="shrink-0 rounded border border-[#E5E7EB] bg-white px-2 py-1 text-xs font-medium text-[#3B82F6] transition-colors hover:border-[#3B82F6]"
+              >
+                {copiedMint ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-[#6B7280]">
+              The mint is the only way to confirm the real RFRM — token names can be impersonated
+              on Solana.
+            </p>
+
+            <p className="mt-3 text-xs text-[#6B7280]">
+              Liquidity on this pair is low, so buys will move the price.
+            </p>
+
+            <a
+              href={RFRM_JUPITER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
+            >
+              Buy on Jupiter ↗
+            </a>
           </div>
         </section>
       </div>
