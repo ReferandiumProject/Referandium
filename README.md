@@ -1,44 +1,37 @@
 # Referandium
 
-> **Private work-in-progress.** This repo is a shared development workspace and is not production-ready.
-
-## What this project is
-
-**Referandium** is a Polymarket-style USDC prediction market on Solana.
-
-This codebase also serves **Startup Sentiment Market**, a separate startup long/short sentiment product. The two products share infrastructure and are served from the same monorepo on two subdomains.
+Referandium is a startup sentiment market. Startups list, the crowd validates them with free daily voting tokens, validated startups raise USDC on a bonding curve, and successful raises graduate to a real SPL token on Solana. That is the entire product — `referandium.com` serves this and nothing else.
 
 ## Tech stack
 
-- **Frontend:** Next.js 14 (App Router), React, TypeScript, Tailwind CSS
+- **Frontend:** Next.js (App Router), React, TypeScript, Tailwind CSS
 - **Backend / database:** Supabase (PostgreSQL)
 - **Authentication:** Privy
-- **Blockchain:** Solana Devnet
+- **Payments:** Stripe (sandbox)
+- **Blockchain:** Solana devnet, USDC
 
-## Current status
+## Status
 
-- **Startup Sentiment Market:** live and complete.
-- **Referandium:** rebuild in progress. The schema, core pages, and trading logic exist but have not been live-tested yet.
+Not production-ready. Everything runs against Solana devnet with a sandbox payment processor — no real money moves anywhere.
 
 ## Project layout
 
 - `frontend/` — Next.js application
-- `backend/` — Solana / Anchor programs
-- `database/` — Supabase migrations and schema
+- `backend/` — Solana programs
+- `database/` — schema
 
 ## Getting started
 
 ```bash
 cd frontend
-npm install --legacy-peer-deps
-cp .env.example .env.local
-# Fill in all values in .env.local
+npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+The dev server is pinned to port 3000: http://localhost:3000.
 
-## Notes
+`frontend/.env.local` is required — see `frontend/.env.example` for the variables it must contain. Never commit real secrets; `.env.local` is gitignored.
 
-- `frontend/.env.local` is gitignored. Never commit real secrets.
-- All on-chain operations currently target **Solana Devnet**.
+## Documentation
+
+Design documentation and the development log live in a separate private repository, available on request.
