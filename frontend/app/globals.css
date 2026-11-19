@@ -2,28 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Palette — warm neutral light theme with a single cobalt accent.
+   Values are space-separated RGB so Tailwind opacity modifiers work. */
 :root {
-  --background: #FFFFFF;
-  --foreground: #0F172A;
-  --accent: #2563EB;
-  --accent-light: #EFF6FF;
-  --border: #E2E8F0;
-  --secondary: #64748B;
+  --canvas: 247 247 245;
+  --surface: 255 255 255;
+  --subtle: 241 241 238;
+  --line: 230 230 226;
+  --line-strong: 212 212 206;
+  --ink: 21 21 20;
+  --ink-soft: 63 63 60;
+  --muted: 110 110 105;
+  --faint: 156 156 150;
+  --accent: 45 79 224;
+  --accent-hover: 36 64 194;
+  --accent-soft: 238 241 253;
+  --yes: 21 127 61;
+  --yes-soft: 233 245 238;
+  --no: 200 50 43;
+  --no-soft: 251 236 234;
+  --warn: 161 92 7;
+  --warn-soft: 251 243 228;
+
+  color-scheme: light;
 }
 
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-[15px] leading-normal text-ink antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+
+  ::selection {
+    @apply bg-accent/15 text-ink;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent/40 ring-offset-2 ring-offset-canvas;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply text-ink;
+    letter-spacing: -0.015em;
+  }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer utilities {
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Solana wallet-adapter button, matched to the secondary button style. */
 .wallet-adapter-button {
-  background-color: white !important;
-  color: #0F172A !important;
-  border: 1px solid #E2E8F0 !important;
+  background-color: rgb(var(--surface)) !important;
+  color: rgb(var(--ink)) !important;
+  border: 1px solid rgb(var(--line-strong)) !important;
   border-radius: 8px !important;
-  font-size: 13px !important;
+  font-family: var(--font-sans) !important;
+  font-size: 14px !important;
   font-weight: 500 !important;
   height: 36px !important;
-  padding: 0 12px !important;
+  padding: 0 14px !important;
+  box-shadow: none !important;
 }
-.wallet-adapter-button:hover {
-  background-color: #F8FAFC !important;
+.wallet-adapter-button:not([disabled]):hover {
+  background-color: rgb(var(--subtle)) !important;
 }
 .wallet-adapter-button-trigger {
-  background-color: white !important;
+  background-color: rgb(var(--surface)) !important;
+}
+.wallet-adapter-modal-wrapper {
+  background-color: rgb(var(--surface)) !important;
+  border-radius: 14px !important;
+}
+.wallet-adapter-modal-title {
+  color: rgb(var(--ink)) !important;
 }

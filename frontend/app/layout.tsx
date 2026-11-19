@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Instrument_Sans, IBM_Plex_Mono } from 'next/font/google'
 import './globals.css'
 import AppWalletProvider from './components/AppWalletProvider'
 import { UserProvider } from './context/UserContext'
@@ -8,7 +8,13 @@ import TestBanner from './components/TestBanner'
 import Footer from './components/Footer'
 import ErrorBoundary from './components/ErrorBoundary'
 
-const inter = Inter({ subsets: ['latin'] })
+const sans = Instrument_Sans({ subsets: ['latin'], variable: '--font-sans', display: 'swap' })
+const mono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-mono',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Referandium | Startup Sentiment',
@@ -21,14 +27,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className} style={{ backgroundColor: '#FFFFFF', color: '#0F172A' }}>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+      <body className="flex min-h-screen flex-col">
         <ErrorBoundary>
           <AppWalletProvider>
             <UserProvider>
               <TestBanner />
               <Navbar />
-              <main>{children}</main>
+              <main className="flex-1">{children}</main>
               <Footer />
             </UserProvider>
           </AppWalletProvider>

@@ -1,7 +1,11 @@
 import type { Config } from 'tailwindcss'
 
+// Design tokens. Every color in the app comes from this palette — pages
+// should never reach for raw hex values. The values themselves live as CSS
+// variables in app/globals.css so they can be tuned in one place.
+const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`
+
 const config: Config = {
-  darkMode: 'class',
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -11,14 +15,49 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: '#2563eb',
-        yes: '#2563eb',
-        no: '#f97316',
-        startup: {
-          DEFAULT: '#0D9488',
-          light: '#CCFBF1',
-          dark: '#0F766E',
+        canvas: token('canvas'),
+        surface: token('surface'),
+        subtle: token('subtle'),
+        line: {
+          DEFAULT: token('line'),
+          strong: token('line-strong'),
         },
+        ink: {
+          DEFAULT: token('ink'),
+          soft: token('ink-soft'),
+        },
+        muted: token('muted'),
+        faint: token('faint'),
+        accent: {
+          DEFAULT: token('accent'),
+          hover: token('accent-hover'),
+          soft: token('accent-soft'),
+        },
+        yes: {
+          DEFAULT: token('yes'),
+          soft: token('yes-soft'),
+        },
+        no: {
+          DEFAULT: token('no'),
+          soft: token('no-soft'),
+        },
+        warn: {
+          DEFAULT: token('warn'),
+          soft: token('warn-soft'),
+        },
+      },
+      fontFamily: {
+        sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
+      fontSize: {
+        '2xs': ['0.6875rem', { lineHeight: '1rem' }],
+      },
+      maxWidth: {
+        page: '1160px',
+      },
+      boxShadow: {
+        pop: '0 1px 2px rgb(20 20 19 / 0.04), 0 8px 24px -6px rgb(20 20 19 / 0.12)',
       },
       keyframes: {
         'fade-in': {
@@ -27,7 +66,7 @@ const config: Config = {
         },
       },
       animation: {
-        'fade-in': 'fade-in 0.3s ease-out',
+        'fade-in': 'fade-in 0.2s ease-out',
       },
     },
   },
