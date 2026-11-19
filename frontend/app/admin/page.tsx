@@ -1607,8 +1607,8 @@ export default function AdminPage() {
       </div>
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-line bg-surface p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-line bg-surface p-6 shadow-pop">
             {modal.type === 'edit' && (
               <>
                 <h3 className="mb-4 text-[15px] font-semibold text-ink">Edit {modal.startup.name}</h3>

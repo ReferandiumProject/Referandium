@@ -117,7 +117,7 @@ function Tally({ yes, no }: { yes: number; no: number }) {
           <p className="text-[13px] text-muted">Yes</p>
           <p className="num text-[28px] font-semibold leading-none tracking-tight text-yes">{formatVoteCount(yes)}</p>
         </div>
-        <p className="num pb-0.5 text-[13px] text-muted">
+        <p className="num hidden pb-0.5 sm:block text-[13px] text-muted">
           {total > 0 ? `${yesPct}% yes of ${formatVoteCount(total)} votes` : 'No votes yet'}
         </p>
         <div className="text-right">
@@ -126,6 +126,9 @@ function Tally({ yes, no }: { yes: number; no: number }) {
         </div>
       </div>
       <SplitBar yes={yes} no={no} className="h-3" />
+      <p className="num mt-2 text-[13px] text-muted sm:hidden">
+        {total > 0 ? `${yesPct}% yes of ${formatVoteCount(total)} votes` : 'No votes yet'}
+      </p>
     </div>
   )
 }
