@@ -6,6 +6,7 @@ import { usePrivy } from '@privy-io/react-auth'
 import bs58 from 'bs58'
 import { getWalletLinkMessage } from '@/lib/wallet-link'
 import WalletButton from '@/app/components/ui/WalletButton'
+import { Notice, buttonClass } from '@/app/components/ui'
 
 type LinkedWallet = { address: string; created_at: string }
 
@@ -106,9 +107,9 @@ export default function WalletLinkingSection() {
   }
 
   return (
-    <section className="mb-6 rounded-xl border border-line bg-surface p-5">
-      <h2 className="mb-4 text-lg font-semibold text-ink">Linked wallets</h2>
-      <p className="mb-4 text-sm text-muted">
+    <section className="mb-4 rounded-xl border border-line bg-surface p-5 sm:p-6">
+      <h2 className="text-[15px] font-semibold">Linked wallets</h2>
+      <p className="mb-4 mt-1 text-sm text-muted">
         Connect an external Solana wallet so deposits from it are credited to your account.
       </p>
 
@@ -117,45 +118,34 @@ export default function WalletLinkingSection() {
           <WalletButton />
         </div>
       ) : (
-        <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-          <div className="text-sm">
-            <span className="font-medium text-ink">Selected wallet:</span>{' '}
-            <span className="font-mono text-muted">{publicKey?.toBase58()}</span>
+        <div className="mb-4 flex flex-col items-start gap-3 rounded-lg bg-canvas p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 text-sm">
+            <p className="text-[13px] text-muted">Selected wallet</p>
+            <p className="truncate font-mono text-[13px] text-ink">{publicKey?.toBase58()}</p>
           </div>
-          <button
-            type="button"
-            onClick={handleLink}
-            disabled={loading}
-            className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:opacity-50"
-          >
-            {loading ? 'Linking...' : 'Sign and link this wallet'}
+          <button type="button" onClick={handleLink} disabled={loading} className={buttonClass('primary', 'md', 'shrink-0')}>
+            {loading ? 'Linking…' : 'Sign and link this wallet'}
           </button>
         </div>
       )}
 
       {message && (
-        <div
-          className={`mb-4 rounded-lg border p-3 text-sm ${
-            message.type === 'error'
-              ? 'border-no/25 bg-no-soft text-no'
-              : 'border-yes/25 bg-yes-soft text-yes'
-          }`}
-        >
+        <Notice tone={message.type === 'error' ? 'no' : 'yes'} className="mb-4">
           {message.text}
-        </div>
+        </Notice>
       )}
 
       {fetching ? (
-        <p className="text-sm text-muted">Loading linked wallets...</p>
+        <p className="text-sm text-muted">Loading linked wallets…</p>
       ) : linkedWallets.length === 0 ? (
         <p className="text-sm text-muted">No linked wallets yet.</p>
       ) : (
-        <ul className="divide-y divide-line">
+        <ul className="divide-y divide-line border-t border-line">
           {linkedWallets.map((w) => (
-            <li key={w.address} className="flex items-center justify-between py-3">
-              <span className="font-mono text-sm text-ink">{w.address}</span>
-              <span className="text-xs text-muted">
-                {new Date(w.created_at).toLocaleDateString()}
+            <li key={w.address} className="flex items-center justify-between gap-4 py-3">
+              <span className="min-w-0 truncate font-mono text-[13px] text-ink">{w.address}</span>
+              <span className="shrink-0 text-[13px] text-muted">
+                Linked {new Date(w.created_at).toLocaleDateString()}
               </span>
             </li>
           ))}

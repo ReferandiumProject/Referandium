@@ -8,6 +8,7 @@ import { PublicKey } from '@solana/web3.js'
 import { getAssociatedTokenAddress } from '@solana/spl-token'
 import bs58 from 'bs58'
 import { useUser } from '../context/UserContext'
+import { Notice, buttonClass, cx, inputClass } from '@/app/components/ui'
 
 const NETWORK_FEE_USDC = 0.02
 const MINIMUM_DEPOSIT_USDC = 1.0
@@ -209,21 +210,23 @@ export default function EmbeddedDeposit({ onSuccess }: { onSuccess?: () => void 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <p className="text-sm text-muted">
-          <span className="font-medium text-ink">Embedded wallet:</span>{' '}
-          <span className="font-mono break-all">{custodialAddress ?? 'Loading...'}</span>
-        </p>
-        <p className="text-sm text-muted">
-          <span className="font-medium text-ink">USDC balance:</span>{' '}
-          {balance === null
-            ? 'Loading...'
-            : `${balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC`}
-        </p>
-      </div>
+      <dl className="grid gap-3 rounded-lg bg-canvas p-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-6">
+        <div className="min-w-0">
+          <dt className="text-[13px] text-muted">Your embedded wallet</dt>
+          <dd className="mt-0.5 break-all font-mono text-[13px] text-ink">{custodialAddress ?? 'Loading…'}</dd>
+        </div>
+        <div>
+          <dt className="text-[13px] text-muted">USDC in wallet</dt>
+          <dd className="num mt-0.5 font-medium text-ink">
+            {balance === null
+              ? 'Loading…'
+              : `${balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC`}
+          </dd>
+        </div>
+      </dl>
 
-      <p className="text-xs text-muted">
-        Send USDC (Solana) to the address above. Then enter the amount to deposit here. A flat{' '}
+      <p className="text-[13px] leading-relaxed text-muted">
+        Send USDC (Solana) to the address above, then enter the amount to deposit. A flat{' '}
         {NETWORK_FEE_USDC} USDC network fee is withheld. The minimum deposit is{' '}
         {MINIMUM_DEPOSIT_USDC.toFixed(2)} USDC.
       </p>
@@ -236,31 +239,17 @@ export default function EmbeddedDeposit({ onSuccess }: { onSuccess?: () => void 
           onChange={(e) => setAmount(e.target.value)}
           placeholder="Amount USDC"
           disabled={loading}
-          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none focus:border-accent sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
+          className={cx(inputClass, 'h-10 sm:w-48')}
         />
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {loading ? 'Depositing...' : 'Deposit from embedded wallet'}
+        <button type="submit" disabled={!canSubmit} className={buttonClass('primary', 'md', 'h-10')}>
+          {loading ? 'Depositing…' : 'Deposit from embedded wallet'}
         </button>
       </form>
 
-      {message && (
-        <div
-          className={`rounded-lg border p-3 text-sm ${
-            message.type === 'error'
-              ? 'border-no/25 bg-no-soft text-no'
-              : 'border-yes/25 bg-yes-soft text-yes'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
+      {message && <Notice tone={message.type === 'error' ? 'no' : 'yes'}>{message.text}</Notice>}
 
       {Number.isFinite(amountNumber) && amountNumber >= 0 && (
-        <p className="text-xs text-muted">
+        <p className="num text-[13px] text-muted">
           {amountNumber >= NETWORK_FEE_USDC
             ? `${amountNumber.toFixed(2)} USDC will be sent. ${netUsdc.toFixed(2)} USDC will be credited to your platform balance.`
             : 'Amount too small to cover the network fee.'}

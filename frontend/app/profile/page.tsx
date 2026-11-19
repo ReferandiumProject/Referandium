@@ -9,6 +9,7 @@ import EmbeddedDeposit from '@/app/components/EmbeddedDeposit'
 import { ProfileGraduationClaims } from '@/app/components/ProfileGraduationClaims'
 import { Decimal } from '@/lib/decimal'
 import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
+import { Badge, EmptyState, Logo, Notice, Progress, buttonClass, cx, inputClass } from '@/app/components/ui'
 
 const PRIVY_SIGNER_ID = process.env.NEXT_PUBLIC_PRIVY_SIGNER_ID!
 if (!PRIVY_SIGNER_ID) {
@@ -135,47 +136,16 @@ type EditableStartupFields = {
 // against a fabricated zero.
 const decimalUsdOrThrow = (s: string | null | undefined) => Decimal.parse(String(s ?? 0))
 
-function getInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-}
-
 function Avatar({ name, src }: { name: string; src: string | null }) {
-  if (src) {
-    return (
-      <img
-        src={src}
-        alt={name}
-        className="h-10 w-10 flex-shrink-0 rounded-lg object-cover"
-      />
-    )
-  }
-
-  return (
-    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-ink text-sm font-bold text-white">
-      {getInitials(name)}
-    </div>
-  )
+  return <Logo name={name} src={src} size={40} />
 }
 
 const STAGE_OPTIONS = ['Idea', 'Pre-seed', 'Seed', 'Series A', 'Series B+', 'Growth'] as const
 
 function PhaseBadge({ phase }: { phase: number }) {
-  const labels: Record<number, string> = { 1: 'Validating', 2: 'Raising', 3: 'Completed' }
-  const colors: Record<number, string> = {
-    1: 'bg-accent-soft text-accent',
-    2: 'bg-warn-soft text-warn',
-    3: 'bg-yes-soft text-yes',
-  }
-  return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${colors[phase] ?? 'bg-subtle text-muted'}`}>
-      {labels[phase] ?? `Phase ${phase}`}
-    </span>
-  )
+  const labels: Record<number, string> = { 1: 'Voting', 2: 'Raising', 3: 'Raise complete' }
+  const tones: Record<number, 'neutral' | 'accent' | 'yes'> = { 1: 'neutral', 2: 'accent', 3: 'yes' }
+  return <Badge tone={tones[phase] ?? 'neutral'}>{labels[phase] ?? `Phase ${phase}`}</Badge>
 }
 
 function MyStartupStats({ startup }: { startup: MyStartup }) {
@@ -183,20 +153,20 @@ function MyStartupStats({ startup }: { startup: MyStartup }) {
     return (
       <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
         <div>
-          <p className="text-xs text-muted">Distinct voters</p>
-          <p className="font-semibold text-ink">{formatVoteCount(startup.founder_stats.active_voters)}</p>
+          <p className="text-[13px] text-muted">Distinct voters</p>
+          <p className="num mt-0.5 font-semibold text-ink">{formatVoteCount(startup.founder_stats.active_voters)}</p>
         </div>
         <div>
-          <p className="text-xs text-muted">Lifetime voters</p>
-          <p className="font-semibold text-ink">{formatVoteCount(startup.founder_stats.lifetime_voters)}</p>
+          <p className="text-[13px] text-muted">Lifetime voters</p>
+          <p className="num mt-0.5 font-semibold text-ink">{formatVoteCount(startup.founder_stats.lifetime_voters)}</p>
         </div>
         <div>
-          <p className="text-xs text-muted">Yes votes</p>
-          <p className="font-medium text-ink">{formatVoteCount(startup.total_yes_votes)}</p>
+          <p className="text-[13px] text-muted">Yes votes</p>
+          <p className="num mt-0.5 font-medium text-ink">{formatVoteCount(startup.total_yes_votes)}</p>
         </div>
         <div>
-          <p className="text-xs text-muted">No votes</p>
-          <p className="font-medium text-ink">{formatVoteCount(startup.total_no_votes)}</p>
+          <p className="text-[13px] text-muted">No votes</p>
+          <p className="num mt-0.5 font-medium text-ink">{formatVoteCount(startup.total_no_votes)}</p>
         </div>
       </div>
     )
@@ -211,24 +181,19 @@ function MyStartupStats({ startup }: { startup: MyStartup }) {
             {formatUsd(startup.curve.pool_usdc)} / {formatUsd(startup.curve.capital_target)}
           </span>
         </div>
-        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-subtle">
-          <div
-            className="h-full bg-ink"
-            style={{ width: `${Math.min(100, Math.max(0, startup.curve.progress))}%` }}
-          />
-        </div>
+        <Progress value={startup.curve.progress} tone="accent" className="mt-1.5" />
         <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
           <div>
-            <p className="text-xs text-muted">Distinct holders</p>
-            <p className="font-semibold text-ink">{formatVoteCount(startup.founder_stats.token_holders)}</p>
+            <p className="text-[13px] text-muted">Distinct holders</p>
+            <p className="num mt-0.5 font-semibold text-ink">{formatVoteCount(startup.founder_stats.token_holders)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted">Trades</p>
-            <p className="font-medium text-ink">{formatVoteCount(startup.founder_stats.trade_count)}</p>
+            <p className="text-[13px] text-muted">Trades</p>
+            <p className="num mt-0.5 font-medium text-ink">{formatVoteCount(startup.founder_stats.trade_count)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted">Platform fees generated</p>
-            <p className="font-medium text-ink">{formatUsd(startup.founder_stats.platform_fees_generated)}</p>
+            <p className="text-[13px] text-muted">Platform fees generated</p>
+            <p className="num mt-0.5 font-medium text-ink">{formatUsd(startup.founder_stats.platform_fees_generated)}</p>
           </div>
         </div>
       </>
@@ -239,18 +204,18 @@ function MyStartupStats({ startup }: { startup: MyStartup }) {
   return (
     <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
       <div>
-        <p className="text-xs text-muted">Final amount raised</p>
-        <p className="font-semibold text-ink">
+        <p className="text-[13px] text-muted">Final amount raised</p>
+        <p className="num mt-0.5 font-semibold text-ink">
           {startup.curve ? formatUsd(startup.curve.pool_usdc) : '—'}
         </p>
       </div>
       <div>
-        <p className="text-xs text-muted">Distinct holders</p>
-        <p className="font-medium text-ink">{formatVoteCount(startup.founder_stats.token_holders)}</p>
+        <p className="text-[13px] text-muted">Distinct holders</p>
+        <p className="num mt-0.5 font-medium text-ink">{formatVoteCount(startup.founder_stats.token_holders)}</p>
       </div>
       <div>
-        <p className="text-xs text-muted">Platform fees generated</p>
-        <p className="font-medium text-ink">{formatUsd(startup.founder_stats.platform_fees_generated)}</p>
+        <p className="text-[13px] text-muted">Platform fees generated</p>
+        <p className="num mt-0.5 font-medium text-ink">{formatUsd(startup.founder_stats.platform_fees_generated)}</p>
       </div>
     </div>
   )
@@ -276,59 +241,59 @@ function MyStartupEditForm({
   onLogoFileSelect: (file: File | null) => void
 }) {
   return (
-    <div className="mt-4 rounded-lg border border-line bg-canvas p-4">
+    <div className="mt-4 border-t border-line pt-4">
       {error && (
-        <div className="mb-3 rounded-lg border border-no/25 bg-no-soft p-2 text-xs text-no">
+        <Notice tone="no" className="mb-3">
           {error}
-        </div>
+        </Notice>
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="sm:col-span-2">
-          <span className="mb-1 block text-xs font-medium text-muted">
+          <span className="mb-1.5 block text-sm font-medium text-ink">
             Description
           </span>
           <textarea
             value={form.description}
             onChange={(e) => onChange({ description: e.target.value })}
             rows={3}
-            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+            className={cx(inputClass, 'text-sm')}
           />
         </label>
         <label className="sm:col-span-2">
-          <span className="mb-1 block text-xs font-medium text-muted">
+          <span className="mb-1.5 block text-sm font-medium text-ink">
             Pitch
           </span>
           <textarea
             value={form.pitch}
             onChange={(e) => onChange({ pitch: e.target.value })}
             rows={3}
-            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+            className={cx(inputClass, 'text-sm')}
           />
         </label>
         <label>
-          <span className="mb-1 block text-xs font-medium text-muted">
+          <span className="mb-1.5 block text-sm font-medium text-ink">
             Website
           </span>
           <input
             type="text"
             value={form.website}
             onChange={(e) => onChange({ website: e.target.value })}
-            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+            className={cx(inputClass, 'text-sm')}
           />
         </label>
         <label>
-          <span className="mb-1 block text-xs font-medium text-muted">
+          <span className="mb-1.5 block text-sm font-medium text-ink">
             Twitter
           </span>
           <input
             type="text"
             value={form.twitter}
             onChange={(e) => onChange({ twitter: e.target.value })}
-            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+            className={cx(inputClass, 'text-sm')}
           />
         </label>
         <label className="sm:col-span-2">
-          <span className="mb-1 block text-xs font-medium text-muted">
+          <span className="mb-1.5 block text-sm font-medium text-ink">
             Logo
           </span>
           {form.logo_url && !selectedLogoFile && (
@@ -368,17 +333,17 @@ function MyStartupEditForm({
             type="file"
             accept="image/png,image/jpeg,image/webp"
             onChange={(e) => onLogoFileSelect(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-ink file:mr-3 file:rounded-lg file:border-0 file:bg-ink file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-ink-soft"
+            className="block w-full text-sm text-muted file:mr-3 file:h-9 file:rounded-lg file:border file:border-line-strong file:bg-surface file:px-3 file:text-sm file:font-medium file:text-ink hover:file:bg-subtle"
           />
         </label>
         <label>
-          <span className="mb-1 block text-xs font-medium text-muted">
+          <span className="mb-1.5 block text-sm font-medium text-ink">
             Stage
           </span>
           <select
             value={form.stage}
             onChange={(e) => onChange({ stage: e.target.value })}
-            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+            className={cx(inputClass, 'text-sm')}
           >
             <option value="">—</option>
             {STAGE_OPTIONS.map((s) => (
@@ -394,7 +359,7 @@ function MyStartupEditForm({
           type="button"
           onClick={onSave}
           disabled={saving}
-          className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
+          className={buttonClass('primary', 'md', 'h-10')}
         >
           {saving ? 'Saving...' : 'Save changes'}
         </button>
@@ -402,7 +367,7 @@ function MyStartupEditForm({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold text-muted transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
+          className={buttonClass('ghost', 'md', 'h-10')}
         >
           Cancel
         </button>
@@ -806,7 +771,7 @@ export default function ProfilePage() {
   }
 
   const depositLabels: Record<'devnet' | 'embedded' | 'card', string> = {
-    devnet: 'Devnet Faucet',
+    devnet: 'Devnet faucet',
     embedded: 'Wallet',
     card: 'Card',
   }
@@ -857,192 +822,148 @@ export default function ProfilePage() {
 
   if (!authenticated) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4">
-        <div className="w-full max-w-md rounded-xl border border-line bg-surface p-8 text-center">
-          <h1 className="mb-2 text-3xl font-semibold text-ink">Profile</h1>
-          <p className="mb-6 text-sm text-muted">
-            Sign in to view your balance, voting power, and token holdings.
-          </p>
-          <button
-            onClick={() => login()}
-            className="rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink-soft"
-          >
-            Sign In
-          </button>
-        </div>
-      </main>
+      <div className="mx-auto w-full max-w-xl px-4 py-24 sm:px-6">
+        <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">Your profile</h1>
+        <p className="mt-3 text-base leading-relaxed text-muted">
+          Sign in to see your balance, voting power and token holdings.
+        </p>
+        <button onClick={() => login()} className={buttonClass('primary', 'lg', 'mt-8')}>
+          Sign in to continue
+        </button>
+      </div>
     )
   }
 
+  const profileTabs: { key: typeof activeTab; label: string; count?: number }[] = [
+    { key: 'account', label: 'Account', count: (pendingPacks ?? []).length || undefined },
+    { key: 'activity', label: 'Activity' },
+    { key: 'startups', label: 'My startups', count: (myStartups ?? []).length || undefined },
+    { key: 'claims', label: 'Token claims' },
+  ]
+  const sectionClass = (tab: typeof activeTab) =>
+    cx('mb-4 rounded-xl border border-line bg-surface p-5 sm:p-6', activeTab === tab ? '' : 'hidden')
+
   return (
-    <main className="min-h-screen bg-canvas px-4 pb-24 pt-6 text-ink sm:pt-8">
-      <div className="mx-auto max-w-5xl">
-        {loading && (
-          <p className="mb-4 text-sm text-muted">Loading profile...</p>
-        )}
-        {error && (
-          <div className="mb-4 rounded-lg border border-no/25 bg-no-soft p-3 text-sm text-no">
-            {error}
-          </div>
-        )}
-        <div className="mb-6 rounded-xl border border-line bg-surface p-3" role="tablist" aria-label="Profile tabs">
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setActiveTab('account')}
-              aria-selected={activeTab === 'account'}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                activeTab === 'account'
-                  ? 'bg-ink text-white'
-                  : 'text-muted hover:bg-canvas'
-              }`}
-            >
-              Account
-              {(pendingPacks ?? []).length > 0 && (
-                <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
-                  {(pendingPacks ?? []).length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('activity')}
-              aria-selected={activeTab === 'activity'}
-              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                activeTab === 'activity'
-                  ? 'bg-ink text-white'
-                  : 'text-muted hover:bg-canvas'
-              }`}
-            >
-              Activity
-            </button>
-            <button
-              onClick={() => setActiveTab('startups')}
-              aria-selected={activeTab === 'startups'}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                activeTab === 'startups'
-                  ? 'bg-ink text-white'
-                  : 'text-muted hover:bg-canvas'
-              }`}
-            >
-              My startups
-              {(myStartups ?? []).length > 0 && (
-                <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
-                  {(myStartups ?? []).length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('claims')}
-              aria-selected={activeTab === 'claims'}
-              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                activeTab === 'claims'
-                  ? 'bg-ink text-white'
-                  : 'text-muted hover:bg-canvas'
-              }`}
-            >
-              Token claims
-            </button>
-          </div>
+    <div className="mx-auto w-full max-w-5xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">Your profile</h1>
+          {(dbUser?.email || dbUser?.wallet_address) && (
+            <p className="mt-2 truncate text-sm text-muted">{dbUser?.email ?? dbUser?.wallet_address}</p>
+          )}
         </div>
+        {loading && <p className="text-sm text-muted">Loading profile…</p>}
+      </header>
 
-        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'account' ? '' : 'hidden'}`}>
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-ink">Account</h1>
-              <p className="mt-1 text-sm text-muted">Your balance, credits, and investment packs</p>
-              {balance?.released && (balance.released.count > 0 || balance.released.usdc > 0) && (
-                <div className="mt-4 rounded-lg border border-yes/25 bg-yes-soft p-3 text-sm text-yes">
-                  Your funds have arrived: {formatUsd(balance.released.usdc)} from {balance.released.count} released investment pack{balance.released.count === 1 ? '' : 's'}.
-                </div>
+      {error && (
+        <Notice tone="no" className="mt-6">
+          {error}
+        </Notice>
+      )}
+
+      <div className="mb-8 mt-8 overflow-x-auto border-b border-line" role="tablist" aria-label="Profile tabs">
+        <div className="flex gap-6">
+          {profileTabs.map((t) => (
+            <button
+              key={t.key}
+              role="tab"
+              onClick={() => setActiveTab(t.key)}
+              aria-selected={activeTab === t.key}
+              className={cx(
+                '-mb-px flex shrink-0 items-center gap-1.5 border-b-2 pb-3 text-sm font-medium transition-colors',
+                activeTab === t.key ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink',
               )}
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('account')
-                  setTimeout(() => document.getElementById('deposit')?.scrollIntoView({ behavior: 'smooth' }), 0)
-                }}
-                className="rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink-soft"
-              >
-                Deposit
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('account')
-                  setTimeout(() => document.getElementById('withdraw')?.scrollIntoView({ behavior: 'smooth' }), 0)
-                }}
-                className="rounded-lg border border-accent bg-surface px-5 py-2.5 text-sm font-semibold text-accent transition-colors hover:bg-canvas"
-              >
-                Withdraw
-              </button>
-              <Link
-                href="/buy"
-                className="rounded-lg border border-accent bg-surface px-5 py-2.5 text-center text-sm font-semibold text-accent transition-colors hover:bg-canvas"
-              >
-                Buy packs
-              </Link>
-            </div>
-          </div>
+            >
+              {t.label}
+              {t.count !== undefined && <span className="num text-xs text-faint">{t.count}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-lg border border-line bg-canvas p-4">
-              <p className="text-xs font-medium text-muted">Available USDC</p>
-              <p className="mt-1 text-2xl font-semibold text-ink">{formatUsd(balance?.available_usdc)}</p>
-              <p className="mt-1 text-xs text-muted">Real money deposited on the platform. Withdrawable.</p>
+        <section className={cx('mb-4', activeTab === 'account' ? '' : 'hidden')}>
+          {balance?.released && (balance.released.count > 0 || balance.released.usdc > 0) && (
+            <Notice tone="yes" className="mb-4">
+              Your funds have arrived: {formatUsd(balance.released.usdc)} from {balance.released.count} released investment pack{balance.released.count === 1 ? '' : 's'}.
+            </Notice>
+          )}
+          <div className="grid overflow-hidden rounded-xl border border-line bg-surface sm:grid-cols-3 sm:divide-x sm:divide-line">
+            <div className="border-b border-line p-5 sm:border-b-0">
+              <p className="text-[13px] text-muted">Available USDC</p>
+              <p className="num mt-1 text-[26px] font-semibold tracking-tight">{formatUsd(balance?.available_usdc)}</p>
+              <p className="mt-1 text-[13px] text-muted">Deposited on the platform. Withdrawable.</p>
             </div>
-            <div className="rounded-lg border border-line bg-canvas p-4">
-              <p className="text-xs font-medium text-muted">Locked USDC</p>
-              <p className="mt-1 text-2xl font-semibold text-ink">{formatUsd(balance?.locked_usdc)}</p>
-              <p className="mt-1 text-xs text-muted">Held for pending votes and investment packs.</p>
+            <div className="border-b border-line p-5 sm:border-b-0">
+              <p className="text-[13px] text-muted">Locked USDC</p>
+              <p className="num mt-1 text-[26px] font-semibold tracking-tight">{formatUsd(balance?.locked_usdc)}</p>
+              <p className="mt-1 text-[13px] text-muted">Held for pending votes and investment packs.</p>
             </div>
-            <div className="rounded-lg border border-warn bg-warn-soft p-4">
-              <p className="text-xs font-medium text-warn">Listing credits</p>
-              <p className="mt-1 text-2xl font-semibold text-warn">
+            <div className="p-5">
+              <p className="text-[13px] text-muted">Listing credits</p>
+              <p className="num mt-1 text-[26px] font-semibold tracking-tight">
                 {listingCreditsLoading ? '—' : formatVoteCount(listingCredits ?? 0)}
               </p>
-              <p className="mt-1 text-xs text-warn">
-                Credits never expire and are spent when listing a startup.
-                <Link href="/buy" className="ml-1 font-semibold text-warn hover:text-warn">
+              <p className="mt-1 text-[13px] text-muted">
+                Never expire. Spent when you list a startup.{' '}
+                <Link href="/buy" className="font-medium text-accent hover:underline">
                   Buy more
                 </Link>
               </p>
             </div>
           </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('account')
+                setTimeout(() => document.getElementById('deposit')?.scrollIntoView({ behavior: 'smooth' }), 0)
+              }}
+              className={buttonClass('primary', 'md')}
+            >
+              Deposit
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('account')
+                setTimeout(() => document.getElementById('withdraw')?.scrollIntoView({ behavior: 'smooth' }), 0)
+              }}
+              className={buttonClass('secondary', 'md')}
+            >
+              Withdraw
+            </button>
+            <Link href="/buy" className={buttonClass('secondary', 'md')}>
+              Buy credits or USDC
+            </Link>
+          </div>
         </section>
 
         <div className={activeTab === 'account' ? '' : 'hidden'}>
-          <section className="mb-6 rounded-xl border border-line bg-surface p-5">
-            <h2 className="mb-1 text-lg font-semibold text-ink">Server signing</h2>
-            <p className="mb-4 text-sm text-muted">
+          <section className="mb-4 rounded-xl border border-line bg-surface p-5 sm:p-6">
+            <h2 className="text-[15px] font-semibold">Server signing</h2>
+            <p className="mb-4 mt-1 text-sm text-muted">
               Grant the backend a session signer so it can complete transactions from this embedded wallet.
             </p>
             {delegationMessage && (
-              <div
-                className={`mb-4 rounded-lg border p-3 text-sm ${
-                  delegationMessage.type === 'error'
-                    ? 'border-no/25 bg-no-soft text-no'
-                    : 'border-yes/25 bg-yes-soft text-yes'
-                }`}
-              >
+              <Notice tone={delegationMessage.type === 'error' ? 'no' : 'yes'} className="mb-4">
                 {delegationMessage.text}
-              </div>
+              </Notice>
             )}
             <button
               type="button"
               onClick={handleEnableServerSigning}
               disabled={delegating || !depositAddress}
-              className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
+              className={buttonClass('primary', 'md', 'h-10')}
             >
-              {delegating ? 'Enabling...' : 'Enable server signing'}
+              {delegating ? 'Enabling…' : 'Enable server signing'}
             </button>
           </section>
           <WalletLinkingSection />
         </div>
 
-        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'account' ? '' : 'hidden'}`}>
+        <section className={sectionClass('account')}>
           <div className="mb-4 flex flex-col gap-1">
-            <h2 className="text-lg font-semibold text-ink">Pending investment packs</h2>
+            <h2 className="text-[15px] font-semibold">Pending investment packs</h2>
             <p className="text-sm text-muted">
               Money you&apos;ve paid that is still settling. Funds become spendable on the date shown.
             </p>
@@ -1058,8 +979,8 @@ export default function ProfilePage() {
                   key={pack.id}
                   className="rounded-lg border border-line bg-canvas p-4"
                 >
-                  <p className="text-sm font-semibold text-ink">{formatUsd(pack.usdc_granted)}</p>
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="num text-[15px] font-semibold">{formatUsd(pack.usdc_granted)}</p>
+                  <p className="mt-1 text-[13px] text-muted">
                     Available {new Date(pack.release_after).toLocaleDateString(undefined, {
                       year: 'numeric',
                       month: 'short',
@@ -1072,32 +993,32 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'activity' ? '' : 'hidden'}`}>
-          <h2 className="mb-1 text-lg font-semibold text-ink">Voting power</h2>
-          <p className="mb-4 text-sm text-muted">
+        <section className={sectionClass('activity')}>
+          <h2 className="text-[15px] font-semibold">Voting power</h2>
+          <p className="mb-4 mt-1 text-sm text-muted">
             Votes are free tokens, not USDC. The daily grant resets each day if unused,
             while the pool holds votes you previously withdrew and never expires.
           </p>
           {voteState ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-lg border border-line bg-canvas p-4">
-                <p className="text-xs font-medium text-muted">Today&apos;s grant</p>
-                <p className="mt-1 text-2xl font-semibold text-ink">
+              <div className="rounded-lg bg-canvas p-4">
+                <p className="text-[13px] text-muted">Today&apos;s grant</p>
+                <p className="num mt-1 text-2xl font-semibold tracking-tight">
                   {formatVoteCount(voteState.balance.remaining_today)}
                   <span className="ml-1 text-sm font-normal text-muted">
                     / {formatVoteCount(voteState.balance.granted_today)}
                   </span>
                 </p>
-                <p className="mt-1 text-xs text-muted">
+                <p className="mt-1 text-[13px] text-muted">
                   100 free tokens added each day. Use them or lose them by end of day.
                 </p>
               </div>
-              <div className="rounded-lg border border-line bg-canvas p-4">
-                <p className="text-xs font-medium text-muted">Pool balance</p>
-                <p className="mt-1 text-2xl font-semibold text-ink">
+              <div className="rounded-lg bg-canvas p-4">
+                <p className="text-[13px] text-muted">Pool balance</p>
+                <p className="num mt-1 text-2xl font-semibold tracking-tight">
                   {formatVoteCount(voteState.balance.pool_balance)}
                 </p>
-                <p className="mt-1 text-xs text-muted">
+                <p className="mt-1 text-[13px] text-muted">
                   Votes withdrawn from startups. They never expire and can be redeployed any time.
                 </p>
               </div>
@@ -1107,54 +1028,40 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'activity' ? '' : 'hidden'}`}>
-          <h2 className="mb-4 text-lg font-semibold text-ink">Active votes</h2>
+        <section className={sectionClass('activity')}>
+          <h2 className="mb-4 text-[15px] font-semibold">Active votes</h2>
           {voteState === null ? (
             <p className="text-sm text-muted">Loading active votes...</p>
           ) : voteState.active.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-line bg-canvas p-6 text-center">
+            <div className="rounded-lg border border-dashed border-line-strong px-6 py-10 text-center">
               <p className="text-sm text-muted">
                 You are not currently backing any startups.
               </p>
               <Link
                 href="/"
-                className="mt-3 inline-block text-sm font-semibold text-accent hover:text-accent-hover"
+                className={buttonClass('secondary', 'sm', 'mt-4')}
               >
                 Browse startups to start voting
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {voteState.active.map((pos) => (
                 <Link
                   key={pos.startup_id}
                   href={`/startup/${pos.slug}`}
-                  className="flex flex-col gap-4 rounded-lg border border-line p-4 transition-colors hover:bg-canvas sm:flex-row sm:items-center"
+                  className="flex gap-4 rounded-lg border border-line p-4 transition-colors hover:border-line-strong hover:bg-canvas sm:items-center"
                 >
                   <Avatar name={pos.name} src={pos.logo_url} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate font-medium text-ink">{pos.name}</p>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold  ${
-                          pos.direction === 'yes'
-                            ? 'bg-yes-soft text-yes'
-                            : 'bg-no-soft text-no'
-                        }`}
-                      >
-                        {pos.direction}
-                      </span>
+                      <Badge tone={pos.direction === 'yes' ? 'yes' : 'no'}>{pos.direction === 'yes' ? 'Yes' : 'No'}</Badge>
                     </div>
-                    <p className="mt-1 text-xs text-muted">
-                      {formatVoteCount(pos.votes)} votes · net {formatVoteCount(pos.net)} /{' '}
-                      {formatVoteCount(pos.vote_threshold)}
+                    <p className="num mt-1 text-[13px] text-muted">
+                      {formatVoteCount(pos.votes)} of your votes, {formatVoteCount(pos.net)} / {formatVoteCount(pos.vote_threshold)} net
                     </p>
-                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-subtle">
-                      <div
-                        className="h-full bg-ink"
-                        style={{ width: `${Math.min(100, Math.max(0, pos.progress))}%` }}
-                      />
-                    </div>
+                    <Progress value={pos.progress} tone="neutral" className="mt-2" />
                   </div>
                 </Link>
               ))}
@@ -1162,9 +1069,9 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'activity' ? '' : 'hidden'}`}>
+        <section className={sectionClass('activity')}>
           <div className="mb-4 flex flex-col gap-1">
-            <h2 className="text-lg font-semibold text-ink">Token holdings</h2>
+            <h2 className="text-[15px] font-semibold">Token holdings</h2>
             <p className="text-sm text-muted">
               Startup tokens you bought with real money. These are positions in active or completed raises, not voting tokens.
             </p>
@@ -1173,17 +1080,17 @@ export default function ProfilePage() {
           {holdings === null || holdingsLoading ? (
             <p className="text-sm text-muted">Loading token holdings...</p>
           ) : holdings.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-line bg-canvas p-6 text-center">
+            <div className="rounded-lg border border-dashed border-line-strong px-6 py-10 text-center">
               <p className="text-sm text-muted">You don&apos;t hold any startup tokens yet.</p>
               <Link
                 href="/"
-                className="mt-3 inline-block text-sm font-semibold text-accent hover:text-accent-hover"
+                className={buttonClass('secondary', 'sm', 'mt-4')}
               >
                 Browse startups
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {holdings.map((h) => {
                 const zeroDecimal = new Decimal(BigInt(0), 0)
                 let cost = zeroDecimal
@@ -1218,21 +1125,17 @@ export default function ProfilePage() {
                   <Link
                     key={h.startup_id}
                     href={`/startup/${h.slug}`}
-                    className="flex flex-col gap-4 rounded-lg border border-line p-4 transition-colors hover:bg-canvas sm:flex-row sm:items-start"
+                    className="flex gap-4 rounded-lg border border-line p-4 transition-colors hover:border-line-strong hover:bg-canvas"
                   >
                     <Avatar name={h.name} src={h.logo_url} />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate font-medium text-ink">{h.name}</p>
                         {h.graduated && (
-                          <span className="inline-flex rounded-full bg-yes-soft px-2 py-0.5 text-xs font-semibold text-yes">
-                            Raise completed
-                          </span>
+                          <Badge tone="yes">Raise complete</Badge>
                         )}
                         {h.frozen && (
-                          <span className="inline-flex rounded-full bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn">
-                            Halted
-                          </span>
+                          <Badge tone="warn">Trading paused</Badge>
                         )}
                       </div>
 
@@ -1249,20 +1152,20 @@ export default function ProfilePage() {
 
                       <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                         <div>
-                          <p className="text-xs text-muted">Tokens</p>
-                          <p className="font-medium text-ink">{formatTokenAmount(h.tokens)}</p>
+                          <p className="text-[13px] text-muted">Tokens</p>
+                          <p className="num mt-0.5 font-medium text-ink">{formatTokenAmount(h.tokens)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted">Current price</p>
-                          <p className="font-medium text-ink">${formatPrice(h.current_price)}</p>
+                          <p className="text-[13px] text-muted">Current price</p>
+                          <p className="num mt-0.5 font-medium text-ink">${formatPrice(h.current_price)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted">Cost basis</p>
-                          <p className="font-medium text-ink">{formatUsd(h.cost_basis)}</p>
+                          <p className="text-[13px] text-muted">Cost basis</p>
+                          <p className="num mt-0.5 font-medium text-ink">{formatUsd(h.cost_basis)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted">Estimated value</p>
-                          <p className="font-medium text-ink">{formatUsd(h.spot_value_estimate)}</p>
+                          <p className="text-[13px] text-muted">Estimated value</p>
+                          <p className="num mt-0.5 font-medium text-ink">{formatUsd(h.spot_value_estimate)}</p>
                         </div>
                       </div>
 
@@ -1289,7 +1192,7 @@ export default function ProfilePage() {
                         )}
                       </div>
 
-                      <p className="mt-2 text-xs italic text-faint">
+                      <p className="mt-2 text-xs text-faint">
                         Estimated value is not a cash-out amount. Selling moves the price down the curve, so a large holding may realise less.
                       </p>
 
@@ -1298,12 +1201,7 @@ export default function ProfilePage() {
                           <span>Raise progress</span>
                           <span>{Math.round(h.progress * 100)}%</span>
                         </div>
-                        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-subtle">
-                          <div
-                            className="h-full bg-ink"
-                            style={{ width: `${Math.min(100, Math.max(0, h.progress * 100))}%` }}
-                          />
-                        </div>
+                        <Progress value={h.progress * 100} tone="accent" className="mt-1.5" />
                       </div>
                     </div>
                   </Link>
@@ -1313,39 +1211,39 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'startups' ? '' : 'hidden'}`}>
+        <section className={sectionClass('startups')}>
           <div className="mb-4 flex flex-col gap-1">
-            <h2 className="text-lg font-semibold text-ink">My startups</h2>
+            <h2 className="text-[15px] font-semibold">My startups</h2>
             <p className="text-sm text-muted">
               Startups you&apos;ve listed. Name, slug, vote threshold, and capital target cannot be
-              changed here — see each field&apos;s note below for why.
+              changed here. Each startup explains why below.
             </p>
           </div>
 
           {myStartupsError && (
-            <div className="mb-4 rounded-lg border border-no/25 bg-no-soft p-3 text-sm text-no">
+            <Notice tone="no" className="mb-4">
               {myStartupsError}
-            </div>
+            </Notice>
           )}
 
           {myStartups === null ? (
             <p className="text-sm text-muted">Loading your startups...</p>
           ) : myStartups.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-line bg-canvas p-6 text-center">
+            <div className="rounded-lg border border-dashed border-line-strong px-6 py-10 text-center">
               <p className="text-sm text-muted">
                 This is where startups you list will appear. Start building your founder page to get votes and raise capital.
               </p>
               <Link
                 href="/list"
-                className="mt-3 inline-block text-sm font-semibold text-accent hover:text-accent-hover"
+                className={buttonClass('secondary', 'sm', 'mt-4')}
               >
                 List a startup
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {myStartups.map((s) => (
-                <div key={s.id} className="rounded-lg border border-line p-4">
+                <div key={s.id} className="rounded-lg border border-line p-4 sm:p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1356,7 +1254,7 @@ export default function ProfilePage() {
                         href={`/startup/${s.slug}`}
                         className="mt-1 inline-block text-xs font-semibold text-accent hover:text-accent-hover"
                       >
-                        View public page →
+                        View public page
                       </Link>
 
                       <MyStartupStats startup={s} />
@@ -1366,14 +1264,14 @@ export default function ProfilePage() {
                       <button
                         type="button"
                         onClick={() => startEditingStartup(s)}
-                        className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-canvas"
+                        className={buttonClass('secondary', 'sm')}
                       >
                         Edit
                       </button>
                     )}
                   </div>
 
-                  <div className="mt-4 grid grid-cols-1 gap-2 rounded-lg bg-canvas p-3 text-xs text-muted sm:grid-cols-2">
+                  <div className="mt-4 grid grid-cols-1 gap-3 border-t border-line pt-4 text-[13px] leading-relaxed text-muted sm:grid-cols-2">
                     <p>
                       <span className="font-medium text-ink">Name & slug fixed:</span> the
                       slug is the public URL people have already shared, and renaming mid-raise
@@ -1406,9 +1304,9 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'activity' ? '' : 'hidden'}`}>
-          <h2 className="mb-1 text-lg font-semibold text-ink">Past votes</h2>
-          <p className="mb-4 text-sm text-muted">
+        <section className={sectionClass('activity')}>
+          <h2 className="text-[15px] font-semibold">Past votes</h2>
+          <p className="mb-4 mt-1 text-sm text-muted">
             Startups you backed that reached their vote threshold and moved on to raising capital.
             Those votes were consumed as part of the community validation.
           </p>
@@ -1417,32 +1315,22 @@ export default function ProfilePage() {
           ) : voteState.burned.length === 0 ? (
             <p className="text-sm text-muted">No startups have crossed the threshold with your support yet.</p>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {voteState.burned.map((pos) => (
                 <Link
                   key={pos.startup_id}
                   href={`/startup/${pos.slug}`}
-                  className="flex flex-col gap-4 rounded-lg border border-line p-4 transition-colors hover:bg-canvas sm:flex-row sm:items-center"
+                  className="flex gap-4 rounded-lg border border-line p-4 transition-colors hover:border-line-strong hover:bg-canvas sm:items-center"
                 >
                   <Avatar name={pos.name} src={pos.logo_url} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate font-medium text-ink">{pos.name}</p>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold  ${
-                          pos.direction === 'yes'
-                            ? 'bg-yes-soft text-yes'
-                            : 'bg-no-soft text-no'
-                        }`}
-                      >
-                        {pos.direction}
-                      </span>
-                      <span className="inline-flex rounded-full bg-yes-soft px-2 py-0.5 text-xs font-semibold text-yes">
-                        Validated
-                      </span>
+                      <Badge tone={pos.direction === 'yes' ? 'yes' : 'no'}>{pos.direction === 'yes' ? 'Yes' : 'No'}</Badge>
+                      <Badge tone="yes">Validated</Badge>
                     </div>
-                    <p className="mt-1 text-xs text-muted">
-                      {formatVoteCount(pos.votes)} votes contributed · threshold reached
+                    <p className="mt-1 text-[13px] text-muted">
+                      {formatVoteCount(pos.votes)} votes contributed before the threshold was reached
                     </p>
                   </div>
                 </Link>
@@ -1451,18 +1339,17 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section id="deposit" className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'account' ? '' : 'hidden'}`}>
-          <h2 className="mb-4 text-lg font-semibold text-ink">Deposit</h2>
-          <div className="mb-4 inline-flex rounded-lg border border-line bg-canvas p-1">
+        <section id="deposit" className={sectionClass('account')}>
+          <h2 className="mb-4 text-[15px] font-semibold">Deposit</h2>
+          <div className="mb-5 inline-flex rounded-lg bg-subtle p-0.5">
             {(['devnet', 'embedded', 'card'] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setDepositMode(m)}
-                className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
-                  depositMode === m
-                    ? 'bg-surface text-ink '
-                    : 'text-muted hover:text-ink'
-                }`}
+                className={cx(
+                  'h-8 rounded-md px-3 text-sm font-medium transition-colors',
+                  depositMode === m ? 'bg-surface text-ink shadow-[0_1px_2px_rgb(0_0_0/0.06)]' : 'text-muted hover:text-ink',
+                )}
               >
                 {depositLabels[m]}
               </button>
@@ -1472,15 +1359,9 @@ export default function ProfilePage() {
           {depositMode === 'devnet' ? (
             <>
               {devnetMessage && (
-                <div
-                  className={`mb-4 rounded-lg border p-3 text-sm ${
-                    devnetMessage.type === 'error'
-                      ? 'border-no/25 bg-no-soft text-no'
-                      : 'border-yes/25 bg-yes-soft text-yes'
-                  }`}
-                >
+                <Notice tone={devnetMessage.type === 'error' ? 'no' : 'yes'} className="mb-4">
                   {devnetMessage.text}
-                </div>
+                </Notice>
               )}
               <form onSubmit={handleDevnetDeposit} className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <input
@@ -1490,14 +1371,14 @@ export default function ProfilePage() {
                   onChange={(e) => setDepositAmount(e.target.value)}
                   placeholder="Amount USDC"
                   disabled={devnetLoading}
-                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none focus:border-accent sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={cx(inputClass, 'h-10 sm:w-48')}
                 />
                 <button
                   type="submit"
                   disabled={devnetLoading}
-                  className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
+                  className={buttonClass('primary', 'md', 'h-10')}
                 >
-                  {devnetLoading ? 'Depositing...' : 'Deposit Devnet'}
+                  {devnetLoading ? 'Depositing…' : 'Get devnet USDC'}
                 </button>
               </form>
             </>
@@ -1506,15 +1387,9 @@ export default function ProfilePage() {
           ) : (
             <div className="flex flex-col gap-3">
               {cardMessage && (
-                <div
-                  className={`mb-4 rounded-lg border p-3 text-sm ${
-                    cardMessage.type === 'error'
-                      ? 'border-no/25 bg-no-soft text-no'
-                      : 'border-yes/25 bg-yes-soft text-yes'
-                  }`}
-                >
+                <Notice tone={cardMessage.type === 'error' ? 'no' : 'yes'} className="mb-4">
                   {cardMessage.text}
-                </div>
+                </Notice>
               )}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <input
@@ -1524,7 +1399,7 @@ export default function ProfilePage() {
                   onChange={(e) => setCardAmount(e.target.value)}
                   placeholder="Amount USDC (optional)"
                   disabled={cardLoading}
-                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none focus:border-accent sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={cx(inputClass, 'h-10 sm:w-48')}
                 />
                 <button
                   onClick={async () => {
@@ -1551,30 +1426,24 @@ export default function ProfilePage() {
                     }
                   }}
                   disabled={!dbUser?.wallet_address || cardLoading}
-                  className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
+                  className={buttonClass('primary', 'md', 'h-10')}
                 >
-                  {cardLoading ? 'Opening...' : 'Buy USDC with Card'}
+                  {cardLoading ? 'Opening…' : 'Buy USDC with card'}
                 </button>
               </div>
-              <p className="text-xs text-muted">
-                Funds go to your embedded Solana wallet. After they arrive, use the Wallet Deposit flow to credit your platform balance.
+              <p className="text-[13px] text-muted">
+                Funds go to your embedded Solana wallet. Once they arrive, use the Wallet tab to credit your platform balance.
               </p>
             </div>
           )}
         </section>
 
-        <section id="withdraw" className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'account' ? '' : 'hidden'}`}>
-          <h2 className="mb-4 text-lg font-semibold text-ink">Withdraw</h2>
+        <section id="withdraw" className={sectionClass('account')}>
+          <h2 className="mb-4 text-[15px] font-semibold">Withdraw</h2>
           {withdrawMessage && (
-            <div
-              className={`mb-4 rounded-lg border p-3 text-sm ${
-                withdrawMessage.type === 'error'
-                  ? 'border-no/25 bg-no-soft text-no'
-                  : 'border-yes/25 bg-yes-soft text-yes'
-              }`}
-            >
+            <Notice tone={withdrawMessage.type === 'error' ? 'no' : 'yes'} className="mb-4">
               {withdrawMessage.text}
-            </div>
+            </Notice>
           )}
           <form onSubmit={handleWithdraw} className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
@@ -1584,7 +1453,7 @@ export default function ProfilePage() {
               onChange={(e) => setWithdrawAmount(e.target.value)}
               placeholder="Amount USDC"
               disabled={withdrawLoading}
-              className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none focus:border-accent sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
+              className={cx(inputClass, 'h-10 sm:w-48')}
             />
             <input
               type="text"
@@ -1592,28 +1461,27 @@ export default function ProfilePage() {
               onChange={(e) => setWithdrawWallet(e.target.value)}
               placeholder="Destination wallet address"
               disabled={withdrawLoading}
-              className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none focus:border-accent sm:flex-1 disabled:cursor-not-allowed disabled:opacity-50"
+              className={cx(inputClass, 'h-10 sm:flex-1')}
             />
             <button
               type="submit"
               disabled={withdrawLoading}
-              className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
+              className={buttonClass('primary', 'md', 'h-10')}
             >
               {withdrawLoading ? 'Withdrawing...' : 'Withdraw'}
             </button>
           </form>
         </section>
 
-        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'claims' ? '' : 'hidden'}`}>
+        <section className={sectionClass('claims')}>
           <div className="mb-4 flex flex-col gap-1">
-            <h2 className="text-lg font-semibold text-ink">Token claims</h2>
+            <h2 className="text-[15px] font-semibold">Token claims</h2>
             <p className="text-sm text-muted">
               Tokens you are owed from graduated startups. The platform pays the fee; you do not need gas or wallet approval.
             </p>
           </div>
           <ProfileGraduationClaims />
         </section>
-      </div>
-    </main>
+    </div>
   )
 }

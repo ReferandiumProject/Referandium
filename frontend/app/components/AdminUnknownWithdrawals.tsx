@@ -41,8 +41,8 @@ export function AdminUnknownWithdrawals({
   loading: boolean
 }) {
   return (
-    <section className="mb-8 rounded-xl border border-line bg-surface p-5">
-      <h2 className="mb-1 text-lg font-semibold text-ink">Unknown withdrawals</h2>
+    <section className="mb-8 rounded-xl border border-line bg-surface p-5 sm:p-6">
+      <h2 className="mb-1 text-[15px] font-semibold text-ink">Unknown withdrawals</h2>
       <p className="mb-4 text-sm text-muted">
         Withdrawals that reached the chain but could not be matched to a known internal request. This
         list is why the unknown status exists.
@@ -55,16 +55,16 @@ export function AdminUnknownWithdrawals({
       ) : (
         <div className="-mx-5 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-canvas text-muted">
+            <thead className="border-y border-line bg-canvas text-muted">
               <tr>
-                <th className="px-4 py-3 text-xs font-medium">ID</th>
-                <th className="px-4 py-3 text-xs font-medium">User</th>
-                <th className="px-4 py-3 text-right text-xs font-medium">
+                <th className="px-4 py-2.5 text-xs font-medium">ID</th>
+                <th className="px-4 py-2.5 text-xs font-medium">User</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium">
                   Amount
                 </th>
-                <th className="px-4 py-3 text-xs font-medium">Signature</th>
-                <th className="px-4 py-3 text-xs font-medium">Created</th>
-                <th className="px-4 py-3 text-xs font-medium">Age</th>
+                <th className="px-4 py-2.5 text-xs font-medium">Signature</th>
+                <th className="px-4 py-2.5 text-xs font-medium">Created</th>
+                <th className="px-4 py-2.5 text-xs font-medium">Age</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -76,7 +76,7 @@ export function AdminUnknownWithdrawals({
                   <td className="max-w-[160px] truncate px-4 py-3 text-ink" title={w.user_id}>
                     {w.user_id}
                   </td>
-                  <td className="px-4 py-3 text-right text-ink">{formatUsd(w.amount_usdc)}</td>
+                  <td className="num px-4 py-3 text-right text-ink">{formatUsd(w.amount_usdc)}</td>
                   <td className="max-w-[200px] truncate px-4 py-3 text-muted" title={w.signature ?? ''}>
                     {w.signature ? (
                       <a

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Instrument_Sans, IBM_Plex_Mono } from 'next/font/google'
+import '@solana/wallet-adapter-react-ui/styles.css'
 import './globals.css'
 import AppWalletProvider from './components/AppWalletProvider'
 import { UserProvider } from './context/UserContext'

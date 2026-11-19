@@ -61,8 +61,8 @@ export function AdminGraduationSections({
 
   return (
     <>
-      <section className="mb-8 rounded-xl border border-line bg-surface p-5">
-        <h2 className="mb-1 text-lg font-semibold text-ink">Graduations</h2>
+      <section className="mb-8 rounded-xl border border-line bg-surface p-5 sm:p-6">
+        <h2 className="mb-1 text-[15px] font-semibold text-ink">Graduations</h2>
         <p className="mb-4 text-sm text-muted">
           Every graduated startup and its current state. Graduations that are not complete and have
           not been updated in over an hour are stuck and need review.
@@ -94,13 +94,13 @@ export function AdminGraduationSections({
         ) : (
           <div className="-mx-5 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="bg-canvas text-muted">
+              <thead className="border-y border-line bg-canvas text-muted">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-medium">Startup</th>
-                  <th className="px-4 py-3 text-xs font-medium">Token</th>
-                  <th className="px-4 py-3 text-xs font-medium">Status</th>
-                  <th className="px-4 py-3 text-xs font-medium">Halted reason</th>
-                  <th className="px-4 py-3 text-xs font-medium">Created</th>
+                  <th className="px-4 py-2.5 text-xs font-medium">Startup</th>
+                  <th className="px-4 py-2.5 text-xs font-medium">Token</th>
+                  <th className="px-4 py-2.5 text-xs font-medium">Status</th>
+                  <th className="px-4 py-2.5 text-xs font-medium">Halted reason</th>
+                  <th className="px-4 py-2.5 text-xs font-medium">Created</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -136,8 +136,8 @@ export function AdminGraduationSections({
         )}
       </section>
 
-      <section className="mb-8 rounded-xl border border-line bg-surface p-5">
-        <h2 className="mb-1 text-lg font-semibold text-ink">Escrow reconciliation</h2>
+      <section className="mb-8 rounded-xl border border-line bg-surface p-5 sm:p-6">
+        <h2 className="mb-1 text-[15px] font-semibold text-ink">Escrow reconciliation</h2>
         <p className="mb-4 text-sm text-muted">
           Expected escrow, what is still owed to holders, and the counts that feed the comparison.{' '}
           <span className="font-medium text-warn">
@@ -153,23 +153,23 @@ export function AdminGraduationSections({
         ) : (
           <div className="-mx-5 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="bg-canvas text-muted">
+              <thead className="border-y border-line bg-canvas text-muted">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-medium">Startup</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium">
+                  <th className="px-4 py-2.5 text-xs font-medium">Startup</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-medium">
                     Escrow expected
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium">
+                  <th className="px-4 py-2.5 text-right text-xs font-medium">
                     Still owed
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium">
+                  <th className="px-4 py-2.5 text-right text-xs font-medium">
                     Claimable
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium">Failed</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium">
+                  <th className="px-4 py-2.5 text-right text-xs font-medium">Failed</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-medium">
                     Awaiting wallet
                   </th>
-                  <th className="px-4 py-3 text-xs font-medium">Comparable?</th>
+                  <th className="px-4 py-2.5 text-xs font-medium">Comparable?</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -184,7 +184,7 @@ export function AdminGraduationSections({
                       <div className="font-medium text-ink">{g.startup_name}</div>
                       <div className="text-xs text-muted">{g.startup_slug}</div>
                     </td>
-                    <td className="px-4 py-3 text-right text-ink">
+                    <td className="num px-4 py-3 text-right text-ink">
                       {g.comparable === false ? (
                         <span className="text-warn">Cannot interpret</span>
                       ) : g.escrow_expected ? (
@@ -193,7 +193,7 @@ export function AdminGraduationSections({
                         '—'
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right text-ink">
+                    <td className="num px-4 py-3 text-right text-ink">
                       {g.comparable === false ? (
                         <span className="text-warn">Cannot interpret</span>
                       ) : g.still_owed ? (
@@ -202,24 +202,24 @@ export function AdminGraduationSections({
                         '—'
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right text-ink">
+                    <td className="num px-4 py-3 text-right text-ink">
                       {g.holder_counts.claimable.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-right text-ink">
+                    <td className="num px-4 py-3 text-right text-ink">
                       {g.holder_counts.failed.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-right text-ink">
+                    <td className="num px-4 py-3 text-right text-ink">
                       {g.holder_counts.awaiting_wallet.toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-ink">
                       {g.comparable === null ? (
                         '—'
                       ) : g.comparable ? (
-                        <span className="inline-flex rounded bg-yes-soft px-2 py-0.5 text-xs font-semibold text-yes">
+                        <span className="inline-flex rounded-md bg-yes-soft px-1.5 py-0.5 text-xs font-medium text-yes">
                           Yes
                         </span>
                       ) : (
-                        <span className="inline-flex rounded bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn">
+                        <span className="inline-flex rounded-md bg-warn-soft px-1.5 py-0.5 text-xs font-medium text-warn">
                           No — mid-claim
                         </span>
                       )}

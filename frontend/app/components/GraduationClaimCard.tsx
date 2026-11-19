@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { formatTokenAmount } from '@/lib/format'
+import { Notice, buttonClass } from '@/app/components/ui'
 
 export type GraduationHolding = {
   id: string
@@ -77,7 +78,7 @@ export function GraduationClaimCard({
   }
 
   const cardClass =
-    'w-full min-w-0 rounded-xl border border-line bg-white p-5'
+    'w-full min-w-0 rounded-xl border border-line bg-surface p-5'
 
   const startupLink = showStartupLink && holding.startup_slug && (
     <div className="mb-2">
@@ -85,7 +86,7 @@ export function GraduationClaimCard({
         href={`/startup/${holding.startup_slug}`}
         className="text-sm font-semibold text-accent hover:underline"
       >
-        {holding.startup_name} →
+        {holding.startup_name}
       </Link>
     </div>
   )
@@ -94,12 +95,12 @@ export function GraduationClaimCard({
     return (
       <div className={cardClass}>
         {startupLink}
-        <p className="mb-1 text-sm text-muted">Your tokens</p>
-        <p className="text-2xl font-semibold text-ink">
+        <p className="mb-1 text-[13px] text-muted">Your tokens</p>
+        <p className="num text-2xl font-semibold tracking-tight">
           {amount} {tokenLabel}
         </p>
         <p className="mt-2 text-sm text-yes">
-          Claim completed — sent to {shortAddress(holding.wallet_address)}
+          Claimed. Sent to {shortAddress(holding.wallet_address)}
         </p>
         {holding.signature && (
           <a
@@ -122,7 +123,7 @@ export function GraduationClaimCard({
       <div className={cardClass}>
         {startupLink}
         <div className="rounded-lg border border-warn/25 bg-warn-soft p-3 text-sm text-warn">
-          <p className="">
+          <p>
             This share was below the smallest amount that can exist on-chain, so it could not be
             sent as a token. It went into the startup&apos;s liquidity pool instead.
           </p>
@@ -144,8 +145,8 @@ export function GraduationClaimCard({
     return (
       <div className={cardClass}>
         {startupLink}
-        <p className="mb-1 text-sm text-muted">Your tokens</p>
-        <p className="text-2xl font-semibold text-ink">
+        <p className="mb-1 text-[13px] text-muted">Your tokens</p>
+        <p className="num text-2xl font-semibold tracking-tight">
           {amount} {tokenLabel}
         </p>
         <p className="mt-3 text-sm text-accent">
@@ -160,13 +161,13 @@ export function GraduationClaimCard({
     return (
       <div className={cardClass}>
         {startupLink}
-        <p className="mb-1 text-sm text-muted">Your tokens</p>
-        <p className="text-2xl font-semibold text-ink">
+        <p className="mb-1 text-[13px] text-muted">Your tokens</p>
+        <p className="num text-2xl font-semibold tracking-tight">
           {amount} {tokenLabel}
         </p>
         <div className="mt-3 space-y-2 text-sm">
           <p className="text-ink">
-            You still own these tokens — they are held in escrow and nothing has been lost. The
+            You still own these tokens. They are held in escrow and nothing has been lost. The
             transfer did not go through and we will try again automatically. No action is needed from
             you.
           </p>
@@ -184,12 +185,12 @@ export function GraduationClaimCard({
     return (
       <div className={cardClass}>
         {startupLink}
-        <p className="mb-1 text-sm text-muted">Your tokens</p>
-        <p className="text-2xl font-semibold text-ink">
+        <p className="mb-1 text-[13px] text-muted">Your tokens</p>
+        <p className="num text-2xl font-semibold tracking-tight">
           {amount} {tokenLabel}
         </p>
         <div className="mt-3 rounded-lg border border-warn/25 bg-warn-soft p-3 text-sm text-warn">
-          <p className="">⚠️ You are still owed these tokens.</p>
+          <p className="font-medium">You are still owed these tokens.</p>
           <p className="mt-1.5">
             A wallet will be created for you the next time you sign in, and they will be sent there
             automatically. You do not need to pay a fee or approve anything.
@@ -204,20 +205,22 @@ export function GraduationClaimCard({
   return (
     <div className={cardClass}>
       {startupLink}
-      <p className="mb-1 text-sm text-muted">Your tokens</p>
-      <p className="text-2xl font-semibold text-ink">
+      <p className="mb-1 text-[13px] text-muted">Your tokens</p>
+      <p className="num text-2xl font-semibold tracking-tight">
         {amount} {tokenLabel}
       </p>
       <p className="mt-1 text-xs text-muted">
         Destination: {shortAddress(holding.wallet_address)}
       </p>
       {localError && (
-        <p className="mt-3 text-sm text-no">{localError}</p>
+        <Notice tone="no" className="mt-3">
+          {localError}
+        </Notice>
       )}
       <button
         onClick={handleClaim}
         disabled={submitting}
-        className="mt-4 w-full rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
+        className={buttonClass('primary', 'lg', 'mt-4 w-full')}
       >
         {submitting ? 'Claiming…' : 'Claim tokens'}
       </button>

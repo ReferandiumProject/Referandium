@@ -52,16 +52,16 @@ export function StartupGraduationClaim({
   if (!graduated || !authenticated) return null
   if (loading) {
     return (
-      <div className="rounded-xl border border-line bg-surface p-6">
+      <div className="rounded-xl border border-line bg-surface p-5">
         <div className="h-20 animate-pulse rounded-lg bg-subtle" />
       </div>
     )
   }
   if (error) {
     return (
-      <div className="rounded-xl border border-line bg-surface p-5">
-        <p className="text-sm text-no">{error}</p>
-      </div>
+      <p role="alert" className="rounded-lg border border-no/20 bg-no-soft px-4 py-3 text-sm text-no">
+        {error}
+      </p>
     )
   }
   if (!holding) return null

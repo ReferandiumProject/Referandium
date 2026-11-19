@@ -49,7 +49,7 @@ export function ProfileGraduationClaims() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {[1, 2].map((i) => (
           <div key={i} className="h-32 animate-pulse rounded-xl bg-subtle" />
         ))}
@@ -59,17 +59,17 @@ export function ProfileGraduationClaims() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-line bg-surface p-5">
-        <p className="text-sm text-no">{error}</p>
-      </div>
+      <p role="alert" className="rounded-lg border border-no/20 bg-no-soft px-4 py-3 text-sm text-no">
+        {error}
+      </p>
     )
   }
 
   if (!holdings || holdings.length === 0) {
     return (
-      <div className="rounded-xl border border-line bg-surface p-8 text-center">
-        <h3 className="text-lg font-semibold text-ink">No token claims</h3>
-        <p className="mt-1 text-sm text-muted">
+      <div className="rounded-lg border border-dashed border-line-strong px-6 py-10 text-center">
+        <h3 className="font-medium">No tokens to claim</h3>
+        <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted">
           When a startup you voted for completes its graduation, the tokens you are owed will appear
           here.
         </p>
@@ -78,7 +78,7 @@ export function ProfileGraduationClaims() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {holdings.map((holding) => (
         <GraduationClaimCard
           key={holding.id}

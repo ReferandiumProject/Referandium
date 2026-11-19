@@ -8,6 +8,7 @@ import { getFreezeActionBody } from '@/lib/admin-freeze'
 import { AdminGraduationSections, GraduationAdmin } from '@/app/components/AdminGraduationSections'
 import { AdminUnknownWithdrawals, UnknownWithdrawal } from '@/app/components/AdminUnknownWithdrawals'
 import { AdminLedger, LedgerLiability } from '@/app/components/AdminLedger'
+import { buttonClass, cx, inputClass as baseInputClass } from '@/app/components/ui'
 
 type Startup = {
   id: string
@@ -120,17 +121,12 @@ const formatDate = (d: string | null) => {
   }
 }
 
-const inputClass =
-  'w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-faint outline-none focus:border-accent focus:ring-1 focus:ring-accent/30'
-const labelClass = 'mb-1 block text-sm font-medium text-ink-soft'
-const buttonPrimary =
-  'rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50'
-const buttonSecondary =
-  'rounded-lg border border-line bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-canvas'
-const buttonDanger =
-  'rounded-lg bg-no px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-no/90'
-const buttonWarning =
-  'rounded-lg bg-warn px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-warn/90'
+const inputClass = cx(baseInputClass, 'text-sm')
+const labelClass = 'mb-1.5 block text-sm font-medium text-ink'
+const buttonPrimary = buttonClass('primary', 'md')
+const buttonSecondary = buttonClass('secondary', 'md')
+const buttonDanger = buttonClass('no', 'md')
+const buttonWarning = cx(buttonClass('primary', 'md'), 'bg-warn hover:bg-warn/90')
 
 export default function AdminPage() {
   const { getAccessToken, login, authenticated, ready } = usePrivy()
@@ -890,45 +886,39 @@ export default function AdminPage() {
 
   if (!ready || status === 'loading') {
     return (
-      <main className="min-h-screen bg-canvas px-4 py-12 text-ink">
-        <div className="mx-auto max-w-6xl text-center">
-          <p className="text-sm text-muted">Loading...</p>
-        </div>
-      </main>
+      <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
+        <p className="text-sm text-muted">Loading admin…</p>
+      </div>
     )
   }
 
   if (status === 'signed-out') {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4 text-ink">
-        <div className="w-full max-w-md rounded-xl border border-line bg-surface p-8 text-center">
-          <h1 className="mb-2 text-2xl font-semibold text-ink">Admin</h1>
-          <p className="mb-6 text-sm text-muted">Sign in to access the admin panel.</p>
-          <button type="button" onClick={() => login()} className={buttonPrimary}>
-            Sign In
-          </button>
-        </div>
-      </main>
+      <div className="mx-auto w-full max-w-xl px-4 py-24 sm:px-6">
+        <h1 className="text-[28px] font-semibold leading-tight">Admin</h1>
+        <p className="mt-3 text-base text-muted">Sign in to access the admin panel.</p>
+        <button type="button" onClick={() => login()} className={buttonClass('primary', 'lg', 'mt-8')}>
+          Sign in to continue
+        </button>
+      </div>
     )
   }
 
   if (status === 'not-authorized') {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4 text-ink">
-        <div className="w-full max-w-md rounded-xl border border-line bg-surface p-8 text-center">
-          <h1 className="mb-2 text-2xl font-semibold text-ink">Not authorised</h1>
-          <p className="text-sm text-muted">You do not have permission to view this page.</p>
-        </div>
-      </main>
+      <div className="mx-auto w-full max-w-xl px-4 py-24 sm:px-6">
+        <h1 className="text-[28px] font-semibold leading-tight">Not authorised</h1>
+        <p className="mt-3 text-base text-muted">This account doesn&apos;t have admin access.</p>
+      </div>
     )
   }
 
   const filteredStartups = (startups || []).filter((s) => showDeleted || !s.deleted_at)
 
   return (
-    <main className="min-h-screen bg-canvas px-4 py-8 text-ink">
-      <div className="mx-auto max-w-6xl">
-        <h1 className="mb-6 text-2xl font-bold text-ink sm:text-3xl">Admin</h1>
+    <div className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10 sm:px-6">
+      <div>
+        <h1 className="mb-8 text-[28px] font-semibold leading-tight sm:text-[34px]">Admin</h1>
 
         {error && (
           <div className="mb-4 rounded-lg border border-no/25 bg-no-soft p-3 text-sm text-no">
@@ -945,9 +935,9 @@ export default function AdminPage() {
           </div>
         )}
 
-        <section className="mb-8 rounded-xl border border-line bg-surface p-5">
+        <section className="mb-6 rounded-xl border border-line bg-surface p-5 sm:p-6">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-semibold text-ink">Startups</h2>
+            <h2 className="text-[15px] font-semibold text-ink">Startups</h2>
             <label className="flex items-center gap-2 text-sm text-muted">
               <input
                 type="checkbox"
@@ -966,17 +956,17 @@ export default function AdminPage() {
           ) : (
             <div className="-mx-5 overflow-x-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="bg-canvas text-muted">
+                <thead className="border-y border-line bg-canvas text-muted">
                   <tr>
-                    <th className="px-4 py-3 text-xs font-medium">Startup</th>
-                    <th className="px-4 py-3 text-xs font-medium">Phase</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium">Threshold</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium">Capital</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium">YES</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium">NO</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium">Net</th>
-                    <th className="px-4 py-3 text-xs font-medium">Created</th>
-                    <th className="px-4 py-3 text-xs font-medium">Actions</th>
+                    <th className="px-4 py-2.5 text-xs font-medium">Startup</th>
+                    <th className="px-4 py-2.5 text-xs font-medium">Phase</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium">Threshold</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium">Capital</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium">YES</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium">NO</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium">Net</th>
+                    <th className="px-4 py-2.5 text-xs font-medium">Created</th>
+                    <th className="px-4 py-2.5 text-xs font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -993,23 +983,23 @@ export default function AdminPage() {
                           <div className="text-xs text-muted">{s.slug}</div>
                           <div className="mt-1 flex flex-wrap gap-1">
                             {isDeleted && (
-                              <span className="inline-flex rounded bg-no-soft px-2 py-0.5 text-xs font-semibold text-no">
+                              <span className="inline-flex rounded-md bg-no-soft px-1.5 py-0.5 text-xs font-medium text-no">
                                 Deleted
                               </span>
                             )}
                             {s.phase === 2 && s.frozen && (
-                              <span className="inline-flex rounded bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn">
+                              <span className="inline-flex rounded-md bg-warn-soft px-1.5 py-0.5 text-xs font-medium text-warn">
                                 Frozen
                               </span>
                             )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-ink">{s.phase}</td>
-                        <td className="px-4 py-3 text-right text-ink">{formatVoteCount(s.vote_threshold)}</td>
-                        <td className="px-4 py-3 text-right text-ink">{formatUsd(s.capital_target)}</td>
-                        <td className="px-4 py-3 text-right text-ink">{formatVoteCount(s.total_yes_votes)}</td>
-                        <td className="px-4 py-3 text-right text-ink">{formatVoteCount(s.total_no_votes)}</td>
-                        <td className="px-4 py-3 text-right text-ink">{formatVoteCount(net)}</td>
+                        <td className="num px-4 py-3 text-right text-ink">{formatVoteCount(s.vote_threshold)}</td>
+                        <td className="num px-4 py-3 text-right text-ink">{formatUsd(s.capital_target)}</td>
+                        <td className="num px-4 py-3 text-right text-ink">{formatVoteCount(s.total_yes_votes)}</td>
+                        <td className="num px-4 py-3 text-right text-ink">{formatVoteCount(s.total_no_votes)}</td>
+                        <td className="num px-4 py-3 text-right text-ink">{formatVoteCount(net)}</td>
                         <td className="px-4 py-3 text-muted">{formatDate(s.created_at)}</td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-2">
@@ -1053,13 +1043,13 @@ export default function AdminPage() {
         </section>
 
         <section
-          className={`mb-8 rounded-xl border p-5  ${
+          className={`mb-6 rounded-xl border p-5  ${
             (systemErrors || []).length > 0
               ? 'border-no/40 bg-no-soft'
               : 'border-line bg-surface'
           }`}
         >
-          <h2 className="mb-1 text-lg font-semibold text-ink">System errors</h2>
+          <h2 className="mb-1 text-[15px] font-semibold text-ink">System errors</h2>
           <p className="mb-4 text-sm text-muted">
             Unresolved server/client/swallowed errors grouped by fingerprint. High occurrence counts mean a
             widespread or repeating problem.
@@ -1070,7 +1060,7 @@ export default function AdminPage() {
           ) : (
             <>
               <div className="mb-4">
-                <span className="text-3xl font-bold text-ink">{(systemErrors || []).length}</span>
+                <span className="num text-3xl font-semibold tracking-tight text-ink">{(systemErrors || []).length}</span>
                 <span className="ml-2 text-sm text-muted">unresolved groups</span>
               </div>
 
@@ -1079,13 +1069,13 @@ export default function AdminPage() {
               ) : (
                 <div className="-mx-5 overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="bg-canvas text-muted">
+                    <thead className="border-y border-line bg-canvas text-muted">
                       <tr>
-                        <th className="px-4 py-3 text-xs font-medium">Name</th>
-                        <th className="px-4 py-3 text-xs font-medium">Source</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium">Occurrences</th>
-                        <th className="px-4 py-3 text-xs font-medium">Last seen</th>
-                        <th className="px-4 py-3 text-xs font-medium">Message</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Name</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Source</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-medium">Occurrences</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Last seen</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Message</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
@@ -1103,7 +1093,7 @@ export default function AdminPage() {
                                   {err.source}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-right font-semibold text-ink">
+                              <td className="num px-4 py-3 text-right font-semibold text-ink">
                                 {err.occurrences}
                               </td>
                               <td className="px-4 py-3 text-muted">{formatDate(err.last_seen)}</td>
@@ -1156,13 +1146,13 @@ export default function AdminPage() {
         </section>
 
         <section
-          className={`mb-8 rounded-xl border p-5  ${
+          className={`mb-6 rounded-xl border p-5  ${
             (stuckPacks || []).length > 0
               ? 'border-warn/25 bg-warn-soft'
               : 'border-line bg-surface'
           }`}
         >
-          <h2 className="mb-1 text-lg font-semibold text-ink">Stuck investment packs</h2>
+          <h2 className="mb-1 text-[15px] font-semibold text-ink">Stuck investment packs</h2>
           <p className="mb-4 text-sm text-muted">
             Paid investment packs with no net amount. This should always be zero.
           </p>
@@ -1172,7 +1162,7 @@ export default function AdminPage() {
           ) : (
             <>
               <div className="mb-4">
-                <span className="text-3xl font-bold text-ink">{(stuckPacks || []).length}</span>
+                <span className="num text-3xl font-semibold tracking-tight text-ink">{(stuckPacks || []).length}</span>
                 <span className="ml-2 text-sm text-muted">stuck</span>
               </div>
 
@@ -1181,19 +1171,19 @@ export default function AdminPage() {
               ) : (
                 <div className="-mx-5 overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="bg-canvas text-muted">
+                    <thead className="border-y border-line bg-canvas text-muted">
                       <tr>
-                        <th className="px-4 py-3 text-xs font-medium">Email</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium">Amount</th>
-                        <th className="px-4 py-3 text-xs font-medium">Created</th>
-                        <th className="px-4 py-3 text-xs font-medium">Stuck for</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Email</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-medium">Amount</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Created</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Stuck for</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
                       {(stuckPacks || []).map((p) => (
                         <tr key={p.id} className="hover:bg-canvas">
                           <td className="px-4 py-3 text-ink">{p.email}</td>
-                          <td className="px-4 py-3 text-right text-ink">{formatUsd(p.amount_charged)}</td>
+                          <td className="num px-4 py-3 text-right text-ink">{formatUsd(p.amount_charged)}</td>
                           <td className="px-4 py-3 text-muted">{formatDate(p.created_at)}</td>
                           <td className="px-4 py-3 text-warn font-medium">{p.stuck_for}</td>
                         </tr>
@@ -1207,13 +1197,13 @@ export default function AdminPage() {
         </section>
 
         <section
-          className={`mb-8 rounded-xl border p-5  ${
+          className={`mb-6 rounded-xl border p-5  ${
             (stuckWithdrawals || []).length > 0
               ? 'border-no/40 bg-no-soft'
               : 'border-line bg-surface'
           }`}
         >
-          <h2 className="mb-1 text-lg font-semibold text-ink">Stuck withdrawals</h2>
+          <h2 className="mb-1 text-[15px] font-semibold text-ink">Stuck withdrawals</h2>
           <p className="mb-4 text-sm text-muted">
             Pending withdrawals older than 15 minutes. This should always be zero.
           </p>
@@ -1223,7 +1213,7 @@ export default function AdminPage() {
           ) : (
             <>
               <div className="mb-4">
-                <span className="text-3xl font-bold text-ink">
+                <span className="num text-3xl font-semibold tracking-tight text-ink">
                   {(stuckWithdrawals || []).length}
                 </span>
                 <span className="ml-2 text-sm text-muted">stuck</span>
@@ -1234,20 +1224,20 @@ export default function AdminPage() {
               ) : (
                 <div className="-mx-5 overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="bg-canvas text-muted">
+                    <thead className="border-y border-line bg-canvas text-muted">
                       <tr>
-                        <th className="px-4 py-3 text-xs font-medium">Email</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium">Amount</th>
-                        <th className="px-4 py-3 text-xs font-medium">Wallet</th>
-                        <th className="px-4 py-3 text-xs font-medium">Created</th>
-                        <th className="px-4 py-3 text-xs font-medium">Pending for</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Email</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-medium">Amount</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Wallet</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Created</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Pending for</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
                       {(stuckWithdrawals || []).map((w) => (
                         <tr key={w.id} className="hover:bg-canvas">
                           <td className="px-4 py-3 text-ink">{w.email}</td>
-                          <td className="px-4 py-3 text-right text-ink">{w.amount_usdc}</td>
+                          <td className="num px-4 py-3 text-right text-ink">{w.amount_usdc}</td>
                           <td className="max-w-[200px] truncate px-4 py-3 text-muted" title={w.wallet_address}>
                             {w.wallet_address}
                           </td>
@@ -1264,13 +1254,13 @@ export default function AdminPage() {
         </section>
 
         <section
-          className={`mb-8 rounded-xl border p-5  ${
+          className={`mb-6 rounded-xl border p-5  ${
             (depositsNeedingAttention || []).length > 0
               ? 'border-no/40 bg-no-soft'
               : 'border-line bg-surface'
           }`}
         >
-          <h2 className="mb-1 text-lg font-semibold text-ink">Deposits needing attention</h2>
+          <h2 className="mb-1 text-[15px] font-semibold text-ink">Deposits needing attention</h2>
           <p className="mb-4 text-sm text-muted">
             Deposits that arrived in a user's wallet but have not become balance. This should always be zero.
           </p>
@@ -1280,7 +1270,7 @@ export default function AdminPage() {
           ) : (
             <>
               <div className="mb-4">
-                <span className="text-3xl font-bold text-ink">
+                <span className="num text-3xl font-semibold tracking-tight text-ink">
                   {(depositsNeedingAttention || []).length}
                 </span>
                 <span className="ml-2 text-sm text-muted">needing attention</span>
@@ -1291,22 +1281,22 @@ export default function AdminPage() {
               ) : (
                 <div className="-mx-5 overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="bg-canvas text-muted">
+                    <thead className="border-y border-line bg-canvas text-muted">
                       <tr>
-                        <th className="px-4 py-3 text-xs font-medium">Email</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium">Amount</th>
-                        <th className="px-4 py-3 text-xs font-medium">Status</th>
-                        <th className="px-4 py-3 text-xs font-medium">Waiting for</th>
-                        <th className="px-4 py-3 text-xs font-medium">Why</th>
-                        <th className="px-4 py-3 text-xs font-medium">Signature</th>
-                        <th className="px-4 py-3 text-xs font-medium">Created</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Email</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-medium">Amount</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Status</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Waiting for</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Why</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Signature</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Created</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
                       {(depositsNeedingAttention || []).map((d) => (
                         <tr key={d.id} className="hover:bg-canvas">
                           <td className="px-4 py-3 text-ink">{d.email}</td>
-                          <td className="px-4 py-3 text-right text-ink">{formatUsd(d.amount_usdc)}</td>
+                          <td className="num px-4 py-3 text-right text-ink">{formatUsd(d.amount_usdc)}</td>
                           <td className="px-4 py-3 text-muted">{d.status}</td>
                           <td className="px-4 py-3 text-warn font-medium">{d.waiting_for}</td>
                           <td className="max-w-[300px] whitespace-normal px-4 py-3 text-muted">{d.why}</td>
@@ -1324,8 +1314,8 @@ export default function AdminPage() {
           )}
         </section>
 
-        <section className="mb-8 rounded-xl border border-line bg-surface p-5">
-          <h2 className="mb-1 text-lg font-semibold text-ink">Treasury</h2>
+        <section className="mb-6 rounded-xl border border-line bg-surface p-5 sm:p-6">
+          <h2 className="mb-1 text-[15px] font-semibold text-ink">Treasury</h2>
           <p className="mb-4 text-sm text-muted">
             On-chain state of the platform wallet. SOL is a live operational signal; USDC is
             informational only.
@@ -1387,7 +1377,7 @@ export default function AdminPage() {
         <AdminLedger ledger={ledger} loading={loadingLedger} />
 
         <section
-          className={`mb-8 rounded-xl border p-5  ${
+          className={`mb-6 rounded-xl border p-5  ${
             integrity?.overall === 'fail'
               ? 'border-no/40 bg-no-soft'
               : integrity?.overall === 'warn'
@@ -1395,7 +1385,7 @@ export default function AdminPage() {
               : 'border-line bg-surface'
           }`}
         >
-          <h2 className="mb-1 text-lg font-semibold text-ink">Integrity checks</h2>
+          <h2 className="mb-1 text-[15px] font-semibold text-ink">Integrity checks</h2>
           <p className="mb-4 text-sm text-muted">
             Hourly invariant checks. A stale run is itself a problem — old green results are not passing results.
           </p>
@@ -1408,18 +1398,18 @@ export default function AdminPage() {
             <>
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-3xl font-bold text-ink">
+                  <p className="num text-3xl font-semibold tracking-tight text-ink">
                     {integrity.checks.filter((c) => c.status === 'fail').length}
                     <span className="ml-2 text-sm font-normal text-muted">failing</span>
                   </p>
-                  <p className="text-3xl font-bold text-ink">
+                  <p className="num text-3xl font-semibold tracking-tight text-ink">
                     {integrity.checks.filter((c) => c.status === 'warn').length}
                     <span className="ml-2 text-sm font-normal text-muted">warnings</span>
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs font-medium text-muted">Last checked</p>
-                  <p className="text-lg font-semibold text-ink">
+                  <p className="text-[15px] font-semibold text-ink">
                     {integrity.ran_at ? formatDate(integrity.ran_at) : 'Never'}
                   </p>
                   {integrity.stale ? (
@@ -1437,12 +1427,12 @@ export default function AdminPage() {
               ) : (
                 <div className="-mx-5 overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="bg-canvas text-muted">
+                    <thead className="border-y border-line bg-canvas text-muted">
                       <tr>
-                        <th className="px-4 py-3 text-xs font-medium">Check</th>
-                        <th className="px-4 py-3 text-xs font-medium">Status</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium">Value</th>
-                        <th className="px-4 py-3 text-xs font-medium">Detail</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Check</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Status</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-medium">Value</th>
+                        <th className="px-4 py-2.5 text-xs font-medium">Detail</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
@@ -1462,7 +1452,7 @@ export default function AdminPage() {
                               {c.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right text-ink">{c.value}</td>
+                          <td className="num px-4 py-3 text-right text-ink">{c.value}</td>
                           <td className="px-4 py-3 text-muted">{c.detail}</td>
                         </tr>
                       ))}
@@ -1474,8 +1464,8 @@ export default function AdminPage() {
           )}
         </section>
 
-        <section className="rounded-xl border border-line bg-surface p-5">
-          <h2 className="mb-1 text-lg font-semibold text-ink">Audit log</h2>
+        <section className="rounded-xl border border-line bg-surface p-5 sm:p-6">
+          <h2 className="mb-1 text-[15px] font-semibold text-ink">Audit log</h2>
           <p className="mb-4 text-sm text-muted">Every admin action is recorded.</p>
           {loadingActions ? (
             <p className="text-sm text-muted">Loading audit log...</p>
@@ -1490,7 +1480,7 @@ export default function AdminPage() {
                 >
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <p className="font-medium text-ink">
-                      {a.admin_email || 'Unknown'} · <span className="text-accent">{a.action}</span>
+                      {a.admin_email || 'Unknown'} <span className="text-accent">{a.action}</span>
                     </p>
                     <p className="text-xs text-muted">{formatDate(a.created_at)}</p>
                   </div>
@@ -1504,11 +1494,11 @@ export default function AdminPage() {
           )}
         </section>
 
-        <section className="mb-8 rounded-xl border border-no/40 bg-no-soft p-5">
+        <section className="mb-6 rounded-xl border border-no/40 bg-no-soft p-5">
           <div className="mb-4 rounded-lg border border-no/25 bg-no-soft p-3 text-sm text-no">
-            <strong>Diagnostic — moves real funds.</strong> This control signs a Solana transaction that transfers actual USDC out of a user&apos;s Privy embedded wallet. It is the only write action on this page and does not credit any balance or create a deposit row.
+            <strong>Diagnostic: moves real funds.</strong> This control signs a Solana transaction that transfers actual USDC out of a user&apos;s Privy embedded wallet. It is the only write action on this page and does not credit any balance or create a deposit row.
           </div>
-          <h2 className="mb-1 text-lg font-semibold text-ink">Embedded wallet sweep diagnostic</h2>
+          <h2 className="mb-1 text-[15px] font-semibold text-ink">Embedded wallet sweep diagnostic</h2>
           <p className="mb-4 text-sm text-muted">
             Test delegated signing and the transfer-destination policy manually. Leave the destination empty to sweep to the treasury.
           </p>
@@ -1573,13 +1563,13 @@ export default function AdminPage() {
           </div>
         </section>
 
-        <section className="mb-8 rounded-xl border border-warn/40 bg-warn-soft p-5">
+        <section className="mb-6 rounded-xl border border-warn/40 bg-warn-soft p-5">
           <div className="mb-4 rounded-lg border border-warn/25 bg-warn-soft p-3 text-sm text-warn">
-            <strong>Diagnostic — runs the real deposit scanner.</strong> This calls the production scan
+            <strong>Diagnostic: runs the real deposit scanner.</strong> This calls the production scan
             for one user: it records deposits, sweeps USDC to the treasury, and credits balances. Use
             this only when you need to see which rule each transfer hit.
           </div>
-          <h2 className="mb-1 text-lg font-semibold text-ink">Deposit scan diagnostic</h2>
+          <h2 className="mb-1 text-[15px] font-semibold text-ink">Deposit scan diagnostic</h2>
           <p className="mb-4 text-sm text-muted">
             Returns the scan result counts plus a per-candidate breakdown: source, destination, amount,
             block time, and the exact rejection reason (already recorded, before cutoff, treasury source,
@@ -1621,7 +1611,7 @@ export default function AdminPage() {
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-line bg-surface p-6 shadow-xl">
             {modal.type === 'edit' && (
               <>
-                <h3 className="mb-4 text-lg font-semibold text-ink">Edit {modal.startup.name}</h3>
+                <h3 className="mb-4 text-[15px] font-semibold text-ink">Edit {modal.startup.name}</h3>
                 <div className="space-y-4">
                   <div>
                     <label className={labelClass}>Name</label>
@@ -1732,7 +1722,7 @@ export default function AdminPage() {
 
             {modal.type === 'delete' && (
               <>
-                <h3 className="mb-2 text-lg font-semibold text-ink">Delete {modal.startup.name}?</h3>
+                <h3 className="mb-2 text-[15px] font-semibold text-ink">Delete {modal.startup.name}?</h3>
                 <p className="mb-4 text-sm text-muted">
                   This will hide the startup from the platform and return every deployed vote to its voter&apos;s pool. This is reversible. Only available for phase 1 startups.
                 </p>
@@ -1757,7 +1747,7 @@ export default function AdminPage() {
 
             {modal.type === 'restore' && (
               <>
-                <h3 className="mb-2 text-lg font-semibold text-ink">Restore {modal.startup.name}?</h3>
+                <h3 className="mb-2 text-[15px] font-semibold text-ink">Restore {modal.startup.name}?</h3>
                 <p className="mb-4 text-sm text-muted">
                   This will make the startup visible again. Votes that were previously returned to users are not reclaimed.
                 </p>
@@ -1778,7 +1768,7 @@ export default function AdminPage() {
                 <div className="mb-4 rounded-lg border border-warn/25 bg-warn-soft p-3 text-sm text-warn">
                   <strong>Warning:</strong> This is the most consequential action on this page. It permanently closes voting, burns every vote deployed on this startup, and opens the startup for real-money fundraising without it having reached its threshold.
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-ink">Force {modal.startup.name} to phase 2?</h3>
+                <h3 className="mb-2 text-[15px] font-semibold text-ink">Force {modal.startup.name} to phase 2?</h3>
                 <p className="mb-4 text-sm text-muted">
                   Only use this with clear reason. The change cannot be undone.
                 </p>
@@ -1803,7 +1793,7 @@ export default function AdminPage() {
 
             {modal.type === 'freeze' && (
               <>
-                <h3 className="mb-2 text-lg font-semibold text-ink">
+                <h3 className="mb-2 text-[15px] font-semibold text-ink">
                   {modal.intendedFrozen ? 'Halt new purchases' : 'Resume new purchases'} on {modal.startup.name}?
                 </h3>
                 {modal.intendedFrozen ? (
@@ -1848,6 +1838,6 @@ export default function AdminPage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   )
 }

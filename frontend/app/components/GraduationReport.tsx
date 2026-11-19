@@ -130,7 +130,7 @@ export function GraduationReport({
       : 100
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="rounded-lg border border-yes/25 bg-yes-soft p-4 text-sm text-yes">
         <p className="font-semibold">
           {report.status === 'complete' ? 'Graduation complete' : 'Graduation in progress'}
@@ -138,8 +138,8 @@ export function GraduationReport({
         <p className="mt-1">{statusMessage(report.status)}</p>
       </div>
 
-      <div className="rounded-xl border border-line bg-surface p-6">
-        <h3 className="mb-1 text-lg font-semibold text-ink">Raise outcome</h3>
+      <div className="rounded-xl border border-line bg-surface p-5">
+        <h3 className="mb-1 text-[15px] font-semibold">Raise outcome</h3>
         <p className="mb-4 text-sm text-muted">
           {report.pool_address
             ? `${startupName} completed its capital raise and moved to a Raydium liquidity pool.`
@@ -147,7 +147,7 @@ export function GraduationReport({
         </p>
 
         <div className="mb-4">
-          <div className="mb-2 flex items-center justify-between text-xs text-muted">
+          <div className="num mb-2 flex items-center justify-between text-[13px] text-muted">
             <span className="font-semibold text-yes">
               {Math.round(progress)}% raised
             </span>
@@ -155,9 +155,9 @@ export function GraduationReport({
               {formatUsd(report.pool_usdc, 6)} / {formatUsd(report.capital_target, 6)}
             </span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-subtle">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-subtle">
             <div
-              className="h-full bg-yes"
+              className="h-full rounded-full bg-yes"
               style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
             />
           </div>
@@ -166,7 +166,7 @@ export function GraduationReport({
         <div className="mt-3 space-y-2 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-muted">Final raise price</span>
-            <span className="font-medium text-ink">
+            <span className="num font-medium text-ink">
               ${formatPrice(report.final_price, 12)}
             </span>
           </div>
@@ -174,14 +174,14 @@ export function GraduationReport({
             <>
               <div className="flex items-center justify-between">
                 <span className="text-muted">Opening pool price</span>
-                <span className="font-medium text-ink">
+                <span className="num font-medium text-ink">
                   ${report.opening_pool_price ? formatPrice(report.opening_pool_price, 12) : '—'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted">Current price</span>
                 {report.pool_price ? (
-                  <span className="font-medium text-ink">
+                  <span className="num font-medium text-ink">
                     ${formatPrice(report.pool_price, 12)}
                   </span>
                 ) : (
@@ -211,18 +211,18 @@ export function GraduationReport({
         )}
       </div>
 
-      <div className="rounded-xl border border-line bg-surface p-6">
-        <h3 className="mb-1 text-lg font-semibold text-ink">Token at a glance</h3>
+      <div className="rounded-xl border border-line bg-surface p-5">
+        <h3 className="mb-1 text-[15px] font-semibold">Token at a glance</h3>
         <p className="mb-4 text-sm text-muted">
           {report.token_name || startupName}{' '}
           {report.token_symbol ? `(${report.token_symbol})` : ''}
         </p>
 
         <div className="mb-4">
-          <p className="text-xs font-medium text-muted">
+          <p className="text-[13px] text-muted">
             Total supply
           </p>
-          <p className="text-2xl font-semibold text-ink">
+          <p className="num text-2xl font-semibold tracking-tight">
             {formatTokenAmount(report.total_supply)} {tokenLabel}
           </p>
         </div>
@@ -230,13 +230,13 @@ export function GraduationReport({
         <div className="space-y-2 text-sm">
           <div className="flex items-center justify-between rounded-lg bg-canvas p-3">
             <span className="text-muted">To holders</span>
-            <span className="font-medium text-ink">
+            <span className="num font-medium text-ink">
               {formatTokenAmount(report.tokens_to_holders)} {tokenLabel}
             </span>
           </div>
           <div className="flex items-center justify-between rounded-lg bg-canvas p-3">
             <span className="text-muted">Allocated to liquidity pool</span>
-            <span className="font-medium text-ink">
+            <span className="num font-medium text-ink">
               {formatTokenAmount(report.tokens_to_lp)} {tokenLabel}
             </span>
           </div>
@@ -258,7 +258,7 @@ export function GraduationReport({
         )}
 
         {report.founder_payout_signature && (
-          <div className="mt-6 rounded-lg border-l-4 border-accent bg-accent-soft p-4">
+          <div className="mt-5 rounded-lg bg-canvas p-4 text-sm">
             <p className="text-ink">
               <span className="font-semibold">
                 The founder received {formatUsdc(report.founder_usdc)} USDC.
@@ -280,13 +280,13 @@ export function GraduationReport({
       </div>
 
       {(report.lp_burn_signature || report.authority_revoke_signature) && (
-        <div className="rounded-xl border border-line bg-surface p-6">
-          <h3 className="mb-4 text-sm font-semibold text-muted">
-            Verifiable trust claims
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <h3 className="mb-3 text-[15px] font-semibold">
+            Verify on-chain
           </h3>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3">
             {report.lp_burn_signature && (
-              <div className="rounded-lg border border-yes/25 bg-yes-soft p-4 text-sm">
+              <div className="rounded-lg bg-canvas p-4 text-sm">
                 <p className="font-semibold text-yes">LP tokens burned</p>
                 <p className="mt-1 text-muted">
                   The platform burned its liquidity-provider tokens. No one can withdraw this
@@ -300,7 +300,7 @@ export function GraduationReport({
               </div>
             )}
             {report.authority_revoke_signature && (
-              <div className="rounded-lg border border-yes/25 bg-yes-soft p-4 text-sm">
+              <div className="rounded-lg bg-canvas p-4 text-sm">
                 <p className="font-semibold text-yes">Mint authority revoked</p>
                 <p className="mt-1 text-muted">
                   The token&apos;s mint authority has been revoked. No more tokens can ever be
