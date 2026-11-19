@@ -188,7 +188,7 @@ export default function ListStartupPage() {
 
   const SignInPrompt = () => (
     <div className="mx-auto w-full max-w-xl px-4 py-24 sm:px-6">
-      <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">List your startup</h1>
+      <h1 className="text-[34px] font-bold leading-tight tracking-[-0.03em] sm:text-[44px]">List your startup</h1>
       <p className="mt-3 text-base leading-relaxed text-muted">
         Sign in to create a listing, set your vote threshold and start raising capital.
       </p>
@@ -227,7 +227,7 @@ export default function ListStartupPage() {
   return (
     <div className="mx-auto w-full max-w-page px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
       <header className="mb-10 max-w-2xl">
-        <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">List your startup</h1>
+        <h1 className="text-[34px] font-bold leading-tight tracking-[-0.03em] sm:text-[44px]">List your startup</h1>
         <p className="mt-3 text-[15px] leading-relaxed text-muted">
           Create a public listing and set the terms under which it becomes eligible to raise capital.
         </p>

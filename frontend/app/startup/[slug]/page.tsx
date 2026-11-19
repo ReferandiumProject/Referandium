@@ -12,7 +12,7 @@ import { Decimal } from '@/lib/decimal'
 import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
 import { CurvePriceChart } from '@/app/components/CurvePriceChart'
 import type { CurveOHLCPoint } from '@/lib/curve-time-series'
-import { Badge, Button, Card, Logo, Notice, Progress, Skeleton, SplitBar, buttonClass, cx, inputClass } from '@/app/components/ui'
+import { Badge, Button, Card, CountUp, Logo, Notice, Progress, Skeleton, SplitBar, buttonClass, cx, inputClass } from '@/app/components/ui'
 
 type CurveState = {
   startup_id: string
@@ -115,14 +115,14 @@ function Tally({ yes, no }: { yes: number; no: number }) {
       <div className="mb-3 flex items-end justify-between gap-4">
         <div>
           <p className="text-[13px] text-muted">Yes</p>
-          <p className="num text-[28px] font-semibold leading-none tracking-tight text-yes">{formatVoteCount(yes)}</p>
+          <CountUp value={yes} format={formatVoteCount} className="font-display text-[36px] font-semibold leading-none tracking-tight text-yes" />
         </div>
         <p className="num hidden pb-0.5 sm:block text-[13px] text-muted">
           {total > 0 ? `${yesPct}% yes of ${formatVoteCount(total)} votes` : 'No votes yet'}
         </p>
         <div className="text-right">
           <p className="text-[13px] text-muted">No</p>
-          <p className="num text-[28px] font-semibold leading-none tracking-tight text-no">{formatVoteCount(no)}</p>
+          <CountUp value={no} format={formatVoteCount} className="font-display text-[36px] font-semibold leading-none tracking-tight text-no" />
         </div>
       </div>
       <SplitBar yes={yes} no={no} className="h-3" />
@@ -293,15 +293,22 @@ function NewPositionForm({
         from other startups stay in your pool and can be used here.
       </p>
 
-      <div className="mt-5 grid grid-cols-2 gap-1 rounded-lg bg-subtle p-1" role="radiogroup" aria-label="Vote direction">
+      <div className="relative mt-5 grid grid-cols-2 gap-1 rounded-xl bg-subtle p-1" role="radiogroup" aria-label="Vote direction">
+        <span
+          aria-hidden="true"
+          className={cx(
+            'absolute bottom-1 left-1 top-1 w-[calc(50%-6px)] rounded-lg transition-all duration-300 ease-[cubic-bezier(0.2,0.7,0.2,1)]',
+            direction === 'yes' ? 'translate-x-0 bg-yes shadow-[0_6px_18px_-6px_rgb(14_159_110/0.7)]' : 'translate-x-[calc(100%+8px)] bg-no shadow-[0_6px_18px_-6px_rgb(240_68_97/0.7)]',
+          )}
+        />
         <button
           type="button"
           role="radio"
           aria-checked={direction === 'yes'}
           onClick={() => setDirection('yes')}
           className={cx(
-            'h-10 rounded-md text-sm font-semibold transition-colors',
-            direction === 'yes' ? 'bg-yes text-white' : 'text-muted hover:text-ink',
+            'relative z-10 h-10 rounded-lg text-sm font-semibold transition-colors duration-300',
+            direction === 'yes' ? 'text-white' : 'text-muted hover:text-ink',
           )}
         >
           Yes, back it
@@ -312,8 +319,8 @@ function NewPositionForm({
           aria-checked={direction === 'no'}
           onClick={() => setDirection('no')}
           className={cx(
-            'h-10 rounded-md text-sm font-semibold transition-colors',
-            direction === 'no' ? 'bg-no text-white' : 'text-muted hover:text-ink',
+            'relative z-10 h-10 rounded-lg text-sm font-semibold transition-colors duration-300',
+            direction === 'no' ? 'text-white' : 'text-muted hover:text-ink',
           )}
         >
           No, reject it
@@ -677,7 +684,7 @@ function CurvePanel({
   }
 
   const pillClass =
-    'h-7 flex-1 rounded-md border border-line bg-surface px-2 text-[13px] font-medium text-ink-soft transition-colors hover:border-line-strong hover:text-ink disabled:cursor-not-allowed disabled:opacity-45'
+    'h-8 flex-1 rounded-lg border border-line bg-surface px-2 text-[13px] font-semibold text-ink-soft transition-all duration-150 hover:-translate-y-px hover:border-accent/40 hover:text-accent active:scale-95 disabled:cursor-not-allowed disabled:opacity-45'
 
   return (
     <Card className="p-5">
@@ -760,7 +767,7 @@ function CurvePanel({
 
       {authenticated && !curve.graduated && (
         <div className="mt-5 border-t border-line pt-5">
-          <div className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-subtle p-1" role="tablist">
+          <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-subtle p-1" role="tablist">
             <button
               type="button"
               role="tab"
@@ -768,7 +775,7 @@ function CurvePanel({
               onClick={() => setMode('buy')}
               disabled={curve.frozen}
               className={cx(
-                'h-8 rounded-md text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45',
+                'h-8 rounded-lg text-sm font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-45',
                 mode === 'buy' ? 'bg-surface text-ink shadow-[0_1px_2px_rgb(0_0_0/0.06)]' : 'text-muted hover:text-ink',
               )}
             >
@@ -781,7 +788,7 @@ function CurvePanel({
               onClick={() => setMode('sell')}
               disabled={!hasHolding}
               className={cx(
-                'h-8 rounded-md text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45',
+                'h-8 rounded-lg text-sm font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-45',
                 mode === 'sell' ? 'bg-surface text-ink shadow-[0_1px_2px_rgb(0_0_0/0.06)]' : 'text-muted hover:text-ink',
               )}
             >
@@ -1340,10 +1347,10 @@ export default function StartupDetailPage() {
       </Link>
 
       <header className="mt-6 flex items-start gap-4 sm:gap-5">
-        <Logo name={startup.name} src={startup.logo_url} size={60} className="rounded-xl" />
+        <Logo name={startup.name} src={startup.logo_url} size={64} className="animate-scale-in rounded-2xl" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.02em] sm:text-[32px]">{startup.name}</h1>
+            <h1 className="text-[30px] font-bold leading-tight tracking-[-0.03em] sm:text-[40px]">{startup.name}</h1>
             {phaseBadge}
           </div>
           {startup.description && (
@@ -1352,8 +1359,8 @@ export default function StartupDetailPage() {
         </div>
       </header>
 
-      <div className="mt-8 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0 space-y-6">
+      <div className="mt-10 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="stagger min-w-0 space-y-6">
           {thresholdNotice && (
             <Notice tone="yes">
               <div className="flex items-start justify-between gap-4">
@@ -1426,7 +1433,7 @@ export default function StartupDetailPage() {
           </Card>
         </div>
 
-        <aside className="min-w-0 lg:sticky lg:top-20">
+        <aside className="min-w-0 animate-[fade-up_0.55s_0.15s_cubic-bezier(0.2,0.7,0.2,1)_backwards] lg:sticky lg:top-24">
             {startup.phase === 1 ? (
               <VotePanel
                 startup={startup}

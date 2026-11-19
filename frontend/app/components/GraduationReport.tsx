@@ -138,7 +138,7 @@ export function GraduationReport({
         <p className="mt-1">{statusMessage(report.status)}</p>
       </div>
 
-      <div className="rounded-xl border border-line bg-surface p-5">
+      <div className="rounded-2xl border border-line bg-surface p-5">
         <h3 className="mb-1 text-[15px] font-semibold">Raise outcome</h3>
         <p className="mb-4 text-sm text-muted">
           {report.pool_address
@@ -211,7 +211,7 @@ export function GraduationReport({
         )}
       </div>
 
-      <div className="rounded-xl border border-line bg-surface p-5">
+      <div className="rounded-2xl border border-line bg-surface p-5">
         <h3 className="mb-1 text-[15px] font-semibold">Token at a glance</h3>
         <p className="mb-4 text-sm text-muted">
           {report.token_name || startupName}{' '}
@@ -280,7 +280,7 @@ export function GraduationReport({
       </div>
 
       {(report.lp_burn_signature || report.authority_revoke_signature) && (
-        <div className="rounded-xl border border-line bg-surface p-5">
+        <div className="rounded-2xl border border-line bg-surface p-5">
           <h3 className="mb-3 text-[15px] font-semibold">
             Verify on-chain
           </h3>

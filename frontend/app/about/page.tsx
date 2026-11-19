@@ -20,7 +20,7 @@ export default function AboutPage() {
   return (
     <div className="mx-auto w-full max-w-4xl px-4 pb-24 pt-10 sm:px-6 sm:pt-16">
       <header className="mb-12 max-w-2xl">
-        <h1 className="text-[32px] font-semibold leading-[1.1] tracking-[-0.025em] sm:text-[42px]">
+        <h1 className="text-[36px] font-bold leading-[1.05] tracking-[-0.035em] sm:text-[52px]">
           About Referandium
         </h1>
         <p className="mt-5 text-lg leading-relaxed text-muted">

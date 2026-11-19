@@ -2,28 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Palette — cool paper white, graphite ink, jade/brick for YES/NO,
-   ink-blue for capital raising.
+/* Palette — lilac-mist paper, midnight-indigo ink, ballot violet as the
+   brand colour, mint for YES, coral for NO, sun yellow for highlights.
    Values are space-separated RGB so Tailwind opacity modifiers work. */
 :root {
-  --canvas: 246 247 248;
+  --canvas: 245 243 255;
   --surface: 255 255 255;
-  --subtle: 239 240 242;
-  --line: 228 229 233;
-  --line-strong: 208 210 216;
-  --ink: 27 29 34;
-  --ink-soft: 64 67 76;
-  --muted: 104 108 120;
-  --faint: 150 154 165;
-  --accent: 59 76 202;
-  --accent-hover: 47 61 170;
-  --accent-soft: 237 239 252;
-  --yes: 19 121 91;
-  --yes-soft: 231 244 239;
-  --no: 194 65 45;
-  --no-soft: 251 237 234;
-  --warn: 154 98 10;
-  --warn-soft: 251 244 228;
+  --subtle: 237 234 251;
+  --line: 227 223 245;
+  --line-strong: 207 201 236;
+  --ink: 27 24 56;
+  --ink-soft: 61 57 99;
+  --muted: 110 106 143;
+  --faint: 161 157 191;
+  --accent: 109 74 255;
+  --accent-hover: 89 52 240;
+  --accent-soft: 238 233 255;
+  --yes: 14 159 110;
+  --yes-soft: 221 246 236;
+  --no: 240 68 97;
+  --no-soft: 255 229 234;
+  --warn: 184 110 0;
+  --warn-soft: 255 242 214;
+  --sun: 255 212 59;
 
   color-scheme: light;
 }
@@ -55,6 +56,12 @@
     letter-spacing: -0.015em;
   }
 
+  h1,
+  h2 {
+    @apply font-display;
+    letter-spacing: -0.02em;
+  }
+
   input[type='number']::-webkit-inner-spin-button,
   input[type='number']::-webkit-outer-spin-button {
     -webkit-appearance: none;
@@ -68,6 +75,61 @@
 @layer utilities {
   .num {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Children fade up one after another. */
+  .stagger > * {
+    animation: fade-up 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 40ms; }
+  .stagger > *:nth-child(2) { animation-delay: 100ms; }
+  .stagger > *:nth-child(3) { animation-delay: 160ms; }
+  .stagger > *:nth-child(4) { animation-delay: 220ms; }
+  .stagger > *:nth-child(5) { animation-delay: 280ms; }
+  .stagger > *:nth-child(6) { animation-delay: 340ms; }
+  .stagger > *:nth-child(7) { animation-delay: 400ms; }
+  .stagger > *:nth-child(8) { animation-delay: 460ms; }
+  .stagger > *:nth-child(n + 9) { animation-delay: 520ms; }
+
+  .shimmer {
+    background-image: linear-gradient(
+      100deg,
+      rgb(var(--subtle)) 30%,
+      rgb(var(--surface)) 50%,
+      rgb(var(--subtle)) 70%
+    );
+    background-size: 300% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  /* Accent rail that slides in on hover for list rows. */
+  .row-rail {
+    position: relative;
+  }
+  .row-rail::before {
+    content: '';
+    position: absolute;
+    inset: 12px auto 12px 0;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: rgb(var(--accent));
+    transform: scaleY(0);
+    transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .row-rail:hover::before {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

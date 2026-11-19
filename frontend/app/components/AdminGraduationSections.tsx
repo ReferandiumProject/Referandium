@@ -61,7 +61,7 @@ export function AdminGraduationSections({
 
   return (
     <>
-      <section className="mb-8 rounded-xl border border-line bg-surface p-5 sm:p-6">
+      <section className="mb-8 rounded-2xl border border-line bg-surface p-5 sm:p-6">
         <h2 className="mb-1 text-[15px] font-semibold text-ink">Graduations</h2>
         <p className="mb-4 text-sm text-muted">
           Every graduated startup and its current state. Graduations that are not complete and have
@@ -136,7 +136,7 @@ export function AdminGraduationSections({
         )}
       </section>
 
-      <section className="mb-8 rounded-xl border border-line bg-surface p-5 sm:p-6">
+      <section className="mb-8 rounded-2xl border border-line bg-surface p-5 sm:p-6">
         <h2 className="mb-1 text-[15px] font-semibold text-ink">Escrow reconciliation</h2>
         <p className="mb-4 text-sm text-muted">
           Expected escrow, what is still owed to holders, and the counts that feed the comparison.{' '}

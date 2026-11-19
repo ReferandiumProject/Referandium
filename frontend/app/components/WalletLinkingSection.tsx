@@ -107,7 +107,7 @@ export default function WalletLinkingSection() {
   }
 
   return (
-    <section className="mb-4 rounded-xl border border-line bg-surface p-5 sm:p-6">
+    <section className="mb-4 rounded-2xl border border-line bg-surface p-5 sm:p-6">
       <h2 className="text-[15px] font-semibold">Linked wallets</h2>
       <p className="mb-4 mt-1 text-sm text-muted">
         Connect an external Solana wallet so deposits from it are credited to your account.

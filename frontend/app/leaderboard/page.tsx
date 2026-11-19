@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { EmptyState, Logo, Notice, Progress, Segmented, Skeleton } from '../components/ui'
+import { CountUp, EmptyState, Logo, Notice, Progress, Segmented, Skeleton } from '../components/ui'
 import Link from 'next/link'
 import { formatUsd, formatVoteCount } from '@/lib/format'
 
@@ -155,7 +155,7 @@ export default function LeaderboardPage() {
   return (
     <div className="mx-auto w-full max-w-page px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
       <header className="mb-8 max-w-2xl">
-        <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">Leaderboard</h1>
+        <h1 className="text-[34px] font-bold leading-tight tracking-[-0.03em] sm:text-[44px]">Leaderboard</h1>
         <p className="mt-3 text-[15px] leading-relaxed text-muted">
           {phase === 3 ? tabDescription[tab] : `${windowHeading[activeWindow]}.`}
         </p>
@@ -184,7 +184,7 @@ export default function LeaderboardPage() {
       )}
 
       {loading ? (
-        <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+        <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="flex items-center gap-4 px-5 py-4">
               <Skeleton className="h-4 w-6" />
@@ -197,14 +197,14 @@ export default function LeaderboardPage() {
       ) : data?.leaderboard.length === 0 ? (
         <EmptyState title={emptyCopy[tab].title} description={emptyCopy[tab].body} />
       ) : phase === 3 ? (
-        <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+        <div key={tab} className="stagger divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
           {data?.leaderboard.map((item) => {
             const g = item as GraduatedItem
             return (
               <Link
                 key={g.startup_id}
                 href={`/startup/${g.slug}`}
-                className="flex items-center gap-4 px-4 py-4 transition-colors hover:bg-canvas sm:px-5"
+                className="row-rail group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-accent-soft/40 sm:px-5"
               >
                 <Logo name={g.name} size={40} />
                 <div className="min-w-0 flex-1">
@@ -220,30 +220,38 @@ export default function LeaderboardPage() {
           })}
         </div>
       ) : (
-        <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+        <div key={`${tab}-${activeWindow}`} className="stagger divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
           {data?.leaderboard.map((item, index) => {
             const row = item as LeaderboardItem
             return (
               <Link
                 key={row.startup_id}
                 href={`/startup/${row.slug}`}
-                className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-canvas sm:gap-4 sm:px-5"
+                className="row-rail group flex items-center gap-3 px-4 py-4 transition-colors hover:bg-accent-soft/40 sm:gap-4 sm:px-5"
               >
                 <span
-                  className={`num w-6 shrink-0 text-right text-sm font-semibold ${index < 3 ? 'text-ink' : 'text-faint'}`}
+                  className={`num flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-display text-sm font-bold ${
+                    index === 0
+                      ? 'bg-sun text-ink shadow-[0_4px_14px_-4px_rgb(255_212_59/0.9)]'
+                      : index === 1
+                      ? 'bg-accent-soft text-accent'
+                      : index === 2
+                      ? 'bg-no-soft text-no'
+                      : 'text-faint'
+                  }`}
                 >
                   {index + 1}
                 </span>
-                <Logo name={row.name} size={40} />
+                <Logo name={row.name} size={40} className="transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{row.name}</p>
+                  <p className="truncate font-semibold transition-colors group-hover:text-accent">{row.name}</p>
                   {activeWindow !== 'all' && (
                     <p className="num text-[13px] text-muted">{formatVoteCount(row.events)} events</p>
                   )}
                 </div>
                 <div className="text-right">
                   <p className={`num text-[15px] font-semibold ${phase === 1 ? 'text-ink' : 'text-accent'}`}>
-                    {formatScore(phase, row.score)}
+                    {phase === 1 ? <CountUp value={row.score} format={(n) => formatScore(phase, n)} /> : formatScore(phase, row.score)}
                   </p>
                   <p className="num text-xs text-muted">
                     {activeWindow === 'all'
@@ -263,12 +271,12 @@ export default function LeaderboardPage() {
         <section className="mt-14">
           <h2 className="text-[15px] font-semibold">Closest to the raise threshold</h2>
           <p className="mt-0.5 text-[13px] text-muted">Shown for context. Not part of the ranking.</p>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="stagger mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {data.closestToCrossing.map((s) => (
               <Link
                 key={s.id}
                 href={`/startup/${s.slug}`}
-                className="rounded-xl border border-line bg-surface p-4 transition-colors hover:border-line-strong"
+                className="rounded-2xl border border-line bg-surface p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-lift"
               >
                 <p className="truncate font-medium">{s.name}</p>
                 <div className="num mb-2 mt-3 flex items-baseline justify-between text-[13px] text-muted">
@@ -277,7 +285,7 @@ export default function LeaderboardPage() {
                   </span>
                   <span className="font-semibold text-ink">{Math.round(s.progress * 100)}%</span>
                 </div>
-                <Progress value={s.progress * 100} tone="neutral" />
+                <Progress value={s.progress * 100} tone="accent" />
               </Link>
             ))}
           </div>

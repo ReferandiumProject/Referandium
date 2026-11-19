@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
 import { formatUsd, formatPrice, formatVoteCount } from '@/lib/format'
-import { Badge, EmptyState, Logo, Notice, Progress, Segmented, Skeleton, SplitBar } from './components/ui'
+import { Badge, CountUp, EmptyState, LiveDot, Logo, Notice, Progress, Segmented, Skeleton, SplitBar, buttonClass } from './components/ui'
 
 type UserPosition = {
   direction: 'yes' | 'no'
@@ -52,13 +52,13 @@ function Row({
   return (
     <Link
       href={`/startup/${startup.slug}`}
-      className="grid gap-4 px-4 py-5 transition-colors hover:bg-canvas sm:px-5 md:grid-cols-[minmax(0,1fr)_260px_170px] md:items-center md:gap-8"
+      className="row-rail group grid gap-4 px-4 py-5 transition-colors duration-200 hover:bg-accent-soft/40 sm:px-5 md:grid-cols-[minmax(0,1fr)_260px_170px] md:items-center md:gap-8"
     >
       <div className="flex min-w-0 items-start gap-3.5">
-        <Logo name={startup.name} src={startup.logo_url} size={44} />
+        <Logo name={startup.name} src={startup.logo_url} size={44} className="transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105" />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-[15px] font-semibold">{startup.name}</h3>
+            <h3 className="truncate text-[15px] font-semibold transition-colors group-hover:text-accent">{startup.name}</h3>
             {badge}
           </div>
           {startup.description && (
@@ -93,8 +93,12 @@ function VotingRow({ startup }: { startup: Startup }) {
       middle={
         <div>
           <div className="num mb-2 flex items-baseline justify-between text-[13px]">
-            <span className="font-medium text-yes">Yes {formatVoteCount(totalYes)}</span>
-            <span className="font-medium text-no">No {formatVoteCount(totalNo)}</span>
+            <span className="font-semibold text-yes">
+              Yes <CountUp value={totalYes} format={formatVoteCount} />
+            </span>
+            <span className="font-semibold text-no">
+              No <CountUp value={totalNo} format={formatVoteCount} />
+            </span>
           </div>
           <SplitBar yes={totalYes} no={totalNo} className="h-2" />
         </div>
@@ -188,6 +192,98 @@ function SkeletonRow() {
       </div>
       <Skeleton className="h-2 w-full" />
       <Skeleton className="h-2 w-full" />
+    </div>
+  )
+}
+
+function LiveTally({ startups, loading }: { startups: Startup[]; loading: boolean }) {
+  const pool = useMemo(
+    () =>
+      startups
+        .filter((s) => s.phase === 1)
+        .sort(
+          (a, b) =>
+            (b.total_yes_votes ?? 0) + (b.total_no_votes ?? 0) - ((a.total_yes_votes ?? 0) + (a.total_no_votes ?? 0)),
+        )
+        .slice(0, 5),
+    [startups],
+  )
+  const [i, setI] = useState(0)
+
+  useEffect(() => {
+    if (pool.length < 2) return
+    const id = setInterval(() => setI((n) => (n + 1) % pool.length), 4200)
+    return () => clearInterval(id)
+  }, [pool.length])
+
+  const s = pool.length ? pool[i % pool.length] : null
+  const yes = s?.total_yes_votes ?? 0
+  const no = s?.total_no_votes ?? 0
+  const total = yes + no
+  const yesPct = total > 0 ? Math.round((yes / total) * 100) : 0
+
+  return (
+    <div className="relative">
+      <div aria-hidden="true" className="pointer-events-none absolute -inset-y-10 inset-x-0 -z-10 sm:-inset-10">
+        <div className="absolute left-0 top-4 h-56 w-56 animate-drift rounded-full bg-accent/25 blur-3xl" />
+        <div className="absolute bottom-0 right-2 h-48 w-48 animate-drift-alt rounded-full bg-yes/20 blur-3xl" />
+        <div className="absolute right-16 top-0 h-28 w-28 animate-drift rounded-full bg-sun/40 blur-2xl" />
+      </div>
+
+      <div className="rounded-3xl border border-white/70 bg-surface/80 p-6 shadow-lift backdrop-blur-xl sm:p-7">
+        <div className="flex items-center justify-between">
+          <p className="flex items-center gap-2 text-[13px] font-semibold text-yes">
+            <LiveDot />
+            Live tally
+          </p>
+          {pool.length > 1 && (
+            <div className="flex gap-1.5" aria-hidden="true">
+              {pool.map((p, n) => (
+                <span
+                  key={p.id}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${n === i % pool.length ? 'w-5 bg-accent' : 'w-1.5 bg-line-strong'}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="mt-6 space-y-4">
+            <Skeleton className="h-6 w-1/2" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-3 w-full rounded-full" />
+          </div>
+        ) : !s ? (
+          <p className="mt-6 text-sm text-muted">No startups are in voting right now. New listings appear here first.</p>
+        ) : (
+          <Link key={s.id} href={`/startup/${s.slug}`} className="group mt-5 block animate-fade-up">
+            <div className="flex items-center gap-3">
+              <Logo name={s.name} src={s.logo_url} size={40} />
+              <p className="min-w-0 truncate font-display text-xl font-semibold tracking-tight transition-colors group-hover:text-accent">
+                {s.name}
+              </p>
+            </div>
+            <div className="mt-6 flex items-end justify-between">
+              <div>
+                <p className="text-[13px] font-medium text-muted">Yes</p>
+                <CountUp value={yes} format={formatVoteCount} className="font-display text-[34px] font-semibold leading-none text-yes" />
+              </div>
+              <p className="num pb-1 text-[13px] font-medium text-muted">{yesPct}% yes</p>
+              <div className="text-right">
+                <p className="text-[13px] font-medium text-muted">No</p>
+                <CountUp value={no} format={formatVoteCount} className="font-display text-[34px] font-semibold leading-none text-no" />
+              </div>
+            </div>
+            <SplitBar yes={yes} no={no} className="mt-4 h-3" />
+            <div className="mt-5 flex items-center justify-between border-t border-line pt-4 text-[13px]">
+              <span className="text-muted">Toward the raise threshold</span>
+              <span className="num font-semibold text-ink">{Math.round(s.progress ?? 0)}%</span>
+            </div>
+            <Progress value={s.progress ?? 0} tone="accent" className="mt-2" />
+          </Link>
+        )}
+      </div>
     </div>
   )
 }
@@ -287,18 +383,34 @@ export default function HomePage() {
   }, [authState, authenticated, getAccessToken])
 
   return (
-    <div className="mx-auto w-full max-w-page px-4 pb-20 pt-10 sm:px-6 sm:pt-16">
-      <header className="max-w-2xl">
-        <h1 className="text-[34px] font-semibold leading-[1.1] tracking-[-0.025em] sm:text-[44px]">
-          Vote on startups. The ones the crowd backs go on to raise.
-        </h1>
-        <p className="mt-4 max-w-xl text-base leading-relaxed text-muted">
-          You get free voting tokens every day. Vote yes on startups you believe in and no on the
-          ones you don&apos;t. A startup that reaches its net vote threshold opens a USDC raise.
-        </p>
+    <div className="mx-auto w-full max-w-page px-4 pb-24 pt-10 sm:px-6 sm:pt-20">
+      <header className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-16">
+        <div className="stagger">
+          <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-[13px] font-medium text-ink-soft">
+            <span className="h-1.5 w-1.5 rounded-full bg-sun ring-4 ring-sun/30" />
+            100 free votes every day
+          </p>
+          <h1 className="mt-5 text-[40px] font-bold leading-[1.02] tracking-[-0.035em] sm:text-[56px] lg:text-[64px]">
+            The crowd decides which startups get funded.
+          </h1>
+          <p className="mt-5 max-w-xl text-[17px] leading-relaxed text-muted">
+            Vote yes on startups you believe in and no on the ones you don&apos;t. When a startup
+            reaches its net vote threshold, it opens a USDC raise.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a href="#startups" className={buttonClass('primary', 'lg')}>
+              Start voting
+            </a>
+            <Link href="/how-it-works" className={buttonClass('secondary', 'lg')}>
+              How it works
+            </Link>
+          </div>
+        </div>
+        <LiveTally startups={startups ?? []} loading={loading} />
       </header>
 
-      <div className="mb-4 mt-10 flex flex-wrap items-center justify-between gap-3">
+      <h2 id="startups" className="mt-24 scroll-mt-24 text-[26px] font-semibold sm:text-[30px]">Browse startups</h2>
+      <div className="mb-4 mt-5 flex flex-wrap items-center justify-between gap-3">
         <Segmented<TabKey>
           value={tab}
           onChange={setTab}
@@ -321,7 +433,7 @@ export default function HomePage() {
       )}
 
       {loading ? (
-        <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+        <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
           {[...Array(6)].map((_, i) => (
             <SkeletonRow key={i} />
           ))}
@@ -329,7 +441,7 @@ export default function HomePage() {
       ) : filteredStartups.length === 0 ? (
         <EmptyState title={emptyCopy[tab].title} description={emptyCopy[tab].body} />
       ) : (
-        <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+        <div key={tab} className="stagger divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
           {filteredStartups.map((startup) => (
             <StartupRow key={startup.id} startup={startup} />
           ))}

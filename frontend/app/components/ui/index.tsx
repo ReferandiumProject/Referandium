@@ -12,6 +12,7 @@ import type {
 import { forwardRef } from 'react'
 
 export { Spinner } from './Spinner'
+export { CountUp, LiveDot, Segmented } from './motion'
 
 export function cx(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(' ')
@@ -25,22 +26,22 @@ export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'dang
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 const buttonBase =
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-45'
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl font-semibold transition-[transform,background-color,box-shadow,border-color,color] duration-200 ease-out active:scale-[0.97] disabled:pointer-events-none disabled:opacity-45'
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  primary: 'bg-ink text-white hover:bg-ink-soft',
-  accent: 'bg-accent text-white hover:bg-accent-hover',
-  secondary: 'border border-line-strong bg-surface text-ink hover:bg-subtle',
+  primary: 'bg-accent text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18)] hover:-translate-y-px hover:bg-accent-hover hover:shadow-glow',
+  accent: 'bg-accent text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18)] hover:-translate-y-px hover:bg-accent-hover hover:shadow-glow',
+  secondary: 'border border-line-strong bg-surface text-ink hover:-translate-y-px hover:border-accent/40 hover:text-accent',
   ghost: 'text-ink-soft hover:bg-subtle hover:text-ink',
   danger: 'border border-no/25 bg-surface text-no hover:bg-no-soft',
-  yes: 'bg-yes text-white hover:bg-yes/90',
-  no: 'bg-no text-white hover:bg-no/90',
+  yes: 'bg-yes text-white hover:-translate-y-px hover:bg-yes/90 hover:shadow-[0_8px_24px_-8px_rgb(14_159_110/0.6)]',
+  no: 'bg-no text-white hover:-translate-y-px hover:bg-no/90 hover:shadow-[0_8px_24px_-8px_rgb(240_68_97/0.6)]',
 }
 
 const buttonSizes: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-[13px]',
-  md: 'h-9 px-4 text-sm',
-  lg: 'h-11 px-5 text-[15px]',
+  sm: 'h-8 rounded-lg px-3 text-[13px]',
+  md: 'h-10 px-4 text-sm',
+  lg: 'h-12 px-5 text-[15px]',
 }
 
 export function buttonClass(
@@ -68,7 +69,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 /* ------------------------------------------------------------------ */
 
 export function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cx('rounded-xl border border-line bg-surface', className)} {...rest} />
+  return <div className={cx('rounded-2xl border border-line bg-surface', className)} {...rest} />
 }
 
 export function CardHeader({
@@ -189,7 +190,7 @@ export function Badge({
   return (
     <span
       className={cx(
-        'inline-flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs font-medium',
+        'inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold',
         badgeTones[tone],
         className,
       )}
@@ -220,7 +221,7 @@ export function Notice({
   children?: ReactNode
 }) {
   return (
-    <div role={tone === 'no' ? 'alert' : undefined} className={cx('rounded-lg border px-4 py-3 text-sm', noticeTones[tone], className)}>
+    <div role={tone === 'no' ? 'alert' : undefined} className={cx('animate-scale-in rounded-xl border px-4 py-3 text-sm', noticeTones[tone], className)}>
       {title && <p className="font-medium">{title}</p>}
       {children && <div className={cx(title ? 'mt-1 opacity-90' : '')}>{children}</div>}
     </div>
@@ -229,7 +230,7 @@ export function Notice({
 
 const barTones: Record<Tone, string> = {
   neutral: 'bg-ink',
-  accent: 'bg-accent',
+  accent: 'bg-gradient-to-r from-accent to-[#9B7BFF]',
   yes: 'bg-yes',
   no: 'bg-no',
   warn: 'bg-warn',
@@ -247,7 +248,10 @@ export function Progress({
   const pct = Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0))
   return (
     <div className={cx('h-1.5 w-full overflow-hidden rounded-full bg-subtle', className)}>
-      <div className={cx('h-full rounded-full transition-[width] duration-500', barTones[tone])} style={{ width: `${pct}%` }} />
+      <div
+        className={cx('h-full origin-left animate-grow-x rounded-full transition-[width] duration-700', barTones[tone])}
+        style={{ width: `${pct}%` }}
+      />
     </div>
   )
 }
@@ -260,8 +264,11 @@ export function SplitBar({ yes, no, className }: { yes: number; no: number; clas
     <div className={cx('flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full bg-subtle', className)}>
       {total > 0 && (
         <>
-          <div className="h-full rounded-l-full bg-yes" style={{ width: `${yesPct}%` }} />
-          <div className="h-full flex-1 rounded-r-full bg-no" />
+          <div
+            className="h-full origin-left animate-grow-x rounded-l-full bg-yes transition-[width] duration-700"
+            style={{ width: `${yesPct}%` }}
+          />
+          <div className="h-full flex-1 origin-right animate-grow-x rounded-r-full bg-no" />
         </>
       )}
     </div>
@@ -317,7 +324,7 @@ export function EmptyState({
   className?: string
 }) {
   return (
-    <div className={cx('rounded-xl border border-dashed border-line-strong px-6 py-14 text-center', className)}>
+    <div className={cx('rounded-2xl border border-dashed border-line-strong bg-surface/50 px-6 py-14 text-center', className)}>
       <p className="font-medium text-ink">{title}</p>
       {description && <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted">{description}</p>}
       {action && <div className="mt-5 flex justify-center">{action}</div>}
@@ -326,55 +333,7 @@ export function EmptyState({
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cx('animate-pulse rounded-md bg-subtle', className)} />
-}
-
-/* ------------------------------------------------------------------ */
-/* Segmented tabs                                                      */
-/* ------------------------------------------------------------------ */
-
-export function Segmented<K extends string>({
-  value,
-  onChange,
-  options,
-  className,
-  size = 'md',
-}: {
-  value: K
-  onChange: (key: K) => void
-  options: { key: K; label: ReactNode; count?: number }[]
-  className?: string
-  size?: 'sm' | 'md'
-}) {
-  return (
-    <div
-      role="tablist"
-      className={cx('inline-flex max-w-full gap-0.5 overflow-x-auto rounded-lg bg-subtle p-0.5', className)}
-    >
-      {options.map((o) => {
-        const active = o.key === value
-        return (
-          <button
-            key={o.key}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(o.key)}
-            className={cx(
-              'inline-flex shrink-0 items-center gap-1.5 rounded-md font-medium transition-colors',
-              size === 'sm' ? 'h-7 px-2.5 text-[13px]' : 'h-8 px-3 text-sm',
-              active ? 'bg-surface text-ink shadow-[0_1px_2px_rgb(0_0_0/0.06)]' : 'text-muted hover:text-ink',
-            )}
-          >
-            {o.label}
-            {o.count !== undefined && (
-              <span className={cx('num text-xs', active ? 'text-muted' : 'text-faint')}>{o.count}</span>
-            )}
-          </button>
-        )
-      })}
-    </div>
-  )
+  return <div className={cx('shimmer rounded-md', className)} />
 }
 
 /* ------------------------------------------------------------------ */
@@ -382,7 +341,7 @@ export function Segmented<K extends string>({
 /* ------------------------------------------------------------------ */
 
 export const inputClass =
-  'block w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-[15px] text-ink placeholder:text-faint transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted'
+  'block w-full rounded-xl border border-line-strong bg-surface px-3 py-2 text-[15px] text-ink placeholder:text-faint transition-colors focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/15 disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted'
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className, ...rest },
@@ -466,17 +425,22 @@ export function Logo({
         src={src}
         alt={name}
         style={style}
-        className={cx('shrink-0 rounded-lg border border-line object-cover', className)}
+        className={cx('shrink-0 rounded-xl border border-line object-cover', className)}
       />
     )
   }
+  const palette = [
+    'bg-accent-soft text-accent',
+    'bg-yes-soft text-yes',
+    'bg-no-soft text-no',
+    'bg-warn-soft text-warn',
+    'bg-[#E3F1FF] text-[#2368C4]',
+  ]
+  const hue = palette[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % palette.length]
   return (
     <div
       style={{ ...style, fontSize: Math.max(11, Math.round(size * 0.34)) }}
-      className={cx(
-        'flex shrink-0 items-center justify-center rounded-lg border border-line bg-subtle font-semibold text-ink-soft',
-        className,
-      )}
+      className={cx('flex shrink-0 items-center justify-center rounded-xl font-display font-semibold', hue, className)}
     >
       {initials(name) || '?'}
     </div>
@@ -486,12 +450,19 @@ export function Logo({
 /** Wordmark used in the navbar and footer. */
 export function Brand({ className }: { className?: string }) {
   return (
-    <span className={cx('inline-flex items-center gap-2', className)}>
-      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
-        <rect width="22" height="22" rx="6" className="fill-ink" />
-        <path d="M7 16V6h4.4a3 3 0 0 1 .6 5.95L15 16" fill="none" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+    <span className={cx('group inline-flex items-center gap-2', className)}>
+      <svg
+        width="26"
+        height="26"
+        viewBox="0 0 26 26"
+        aria-hidden="true"
+        className="transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105"
+      >
+        <rect width="26" height="26" rx="8" className="fill-accent" />
+        <path d="M8.5 19V7h5.2a3.6 3.6 0 0 1 .7 7.13L18 19" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="20.5" cy="6" r="2.5" className="fill-sun" />
       </svg>
-      <span className="text-[15px] font-semibold tracking-tight text-ink">Referandium</span>
+      <span className="font-display text-[17px] font-semibold tracking-tight text-ink">Referandium</span>
     </span>
   )
 }

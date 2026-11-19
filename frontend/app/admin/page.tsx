@@ -935,7 +935,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        <section className="mb-6 rounded-xl border border-line bg-surface p-5 sm:p-6">
+        <section className="mb-6 rounded-2xl border border-line bg-surface p-5 sm:p-6">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-[15px] font-semibold text-ink">Startups</h2>
             <label className="flex items-center gap-2 text-sm text-muted">
@@ -1314,7 +1314,7 @@ export default function AdminPage() {
           )}
         </section>
 
-        <section className="mb-6 rounded-xl border border-line bg-surface p-5 sm:p-6">
+        <section className="mb-6 rounded-2xl border border-line bg-surface p-5 sm:p-6">
           <h2 className="mb-1 text-[15px] font-semibold text-ink">Treasury</h2>
           <p className="mb-4 text-sm text-muted">
             On-chain state of the platform wallet. SOL is a live operational signal; USDC is
@@ -1464,7 +1464,7 @@ export default function AdminPage() {
           )}
         </section>
 
-        <section className="rounded-xl border border-line bg-surface p-5 sm:p-6">
+        <section className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
           <h2 className="mb-1 text-[15px] font-semibold text-ink">Audit log</h2>
           <p className="mb-4 text-sm text-muted">Every admin action is recorded.</p>
           {loadingActions ? (
@@ -1608,7 +1608,7 @@ export default function AdminPage() {
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-line bg-surface p-6 shadow-pop">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-line bg-surface p-6 shadow-pop">
             {modal.type === 'edit' && (
               <>
                 <h3 className="mb-4 text-[15px] font-semibold text-ink">Edit {modal.startup.name}</h3>

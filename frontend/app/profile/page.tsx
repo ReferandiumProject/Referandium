@@ -823,7 +823,7 @@ export default function ProfilePage() {
   if (!authenticated) {
     return (
       <div className="mx-auto w-full max-w-xl px-4 py-24 sm:px-6">
-        <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">Your profile</h1>
+        <h1 className="text-[34px] font-bold leading-tight tracking-[-0.03em] sm:text-[44px]">Your profile</h1>
         <p className="mt-3 text-base leading-relaxed text-muted">
           Sign in to see your balance, voting power and token holdings.
         </p>
@@ -841,7 +841,7 @@ export default function ProfilePage() {
     { key: 'claims', label: 'Token claims' },
   ]
   const sectionClass = (tab: typeof activeTab) =>
-    cx('mb-4 rounded-xl border border-line bg-surface p-5 sm:p-6', activeTab === tab ? '' : 'hidden')
+    cx('mb-4 animate-fade-up rounded-2xl border border-line bg-surface p-5 sm:p-6', activeTab === tab ? '' : 'hidden')
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
@@ -870,8 +870,8 @@ export default function ProfilePage() {
               onClick={() => setActiveTab(t.key)}
               aria-selected={activeTab === t.key}
               className={cx(
-                '-mb-px flex shrink-0 items-center gap-1.5 border-b-2 pb-3 text-sm font-medium transition-colors',
-                activeTab === t.key ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink',
+                '-mb-px flex shrink-0 items-center gap-1.5 border-b-2 pb-3 text-sm font-semibold transition-colors duration-200',
+                activeTab === t.key ? 'border-accent text-accent' : 'border-transparent text-muted hover:border-line-strong hover:text-ink',
               )}
             >
               {t.label}
@@ -881,26 +881,26 @@ export default function ProfilePage() {
         </div>
       </div>
 
-        <section className={cx('mb-4', activeTab === 'account' ? '' : 'hidden')}>
+        <section className={cx('mb-4 animate-fade-up', activeTab === 'account' ? '' : 'hidden')}>
           {balance?.released && (balance.released.count > 0 || balance.released.usdc > 0) && (
             <Notice tone="yes" className="mb-4">
               Your funds have arrived: {formatUsd(balance.released.usdc)} from {balance.released.count} released investment pack{balance.released.count === 1 ? '' : 's'}.
             </Notice>
           )}
-          <div className="grid overflow-hidden rounded-xl border border-line bg-surface sm:grid-cols-3 sm:divide-x sm:divide-line">
+          <div className="grid overflow-hidden rounded-2xl border border-line bg-surface sm:grid-cols-3 sm:divide-x sm:divide-line">
             <div className="border-b border-line p-5 sm:border-b-0">
               <p className="text-[13px] text-muted">Available USDC</p>
-              <p className="num mt-1 text-[26px] font-semibold tracking-tight">{formatUsd(balance?.available_usdc)}</p>
+              <p className="num mt-1 font-display text-[30px] font-bold tracking-tight">{formatUsd(balance?.available_usdc)}</p>
               <p className="mt-1 text-[13px] text-muted">Deposited on the platform. Withdrawable.</p>
             </div>
             <div className="border-b border-line p-5 sm:border-b-0">
               <p className="text-[13px] text-muted">Locked USDC</p>
-              <p className="num mt-1 text-[26px] font-semibold tracking-tight">{formatUsd(balance?.locked_usdc)}</p>
+              <p className="num mt-1 font-display text-[30px] font-bold tracking-tight">{formatUsd(balance?.locked_usdc)}</p>
               <p className="mt-1 text-[13px] text-muted">Held for pending votes and investment packs.</p>
             </div>
             <div className="p-5">
               <p className="text-[13px] text-muted">Listing credits</p>
-              <p className="num mt-1 text-[26px] font-semibold tracking-tight">
+              <p className="num mt-1 font-display text-[30px] font-bold tracking-tight">
                 {listingCreditsLoading ? '—' : formatVoteCount(listingCredits ?? 0)}
               </p>
               <p className="mt-1 text-[13px] text-muted">
@@ -939,7 +939,7 @@ export default function ProfilePage() {
         </section>
 
         <div className={activeTab === 'account' ? '' : 'hidden'}>
-          <section className="mb-4 rounded-xl border border-line bg-surface p-5 sm:p-6">
+          <section className="mb-4 rounded-2xl border border-line bg-surface p-5 sm:p-6">
             <h2 className="text-[15px] font-semibold">Server signing</h2>
             <p className="mb-4 mt-1 text-sm text-muted">
               Grant the backend a session signer so it can complete transactions from this embedded wallet.

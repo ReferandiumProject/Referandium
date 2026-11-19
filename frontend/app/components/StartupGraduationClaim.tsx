@@ -52,7 +52,7 @@ export function StartupGraduationClaim({
   if (!graduated || !authenticated) return null
   if (loading) {
     return (
-      <div className="rounded-xl border border-line bg-surface p-5">
+      <div className="rounded-2xl border border-line bg-surface p-5">
         <div className="h-20 animate-pulse rounded-lg bg-subtle" />
       </div>
     )

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { usePrivy } from '@privy-io/react-auth'
 import { useUser } from '../context/UserContext'
-import { Brand, buttonClass, cx } from './ui'
+import { Brand, LiveDot, buttonClass, cx } from './ui'
 
 const navLinks = [
   { href: '/', label: 'Startups' },
@@ -61,8 +61,8 @@ export default function Navbar() {
   const isActive = (href: string) => pathname === href
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-line bg-canvas/85 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-page items-center gap-8 px-4 sm:px-6">
+    <nav className="sticky top-0 z-50 border-b border-line/70 bg-canvas/75 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-page items-center gap-8 px-4 sm:px-6">
         <Link href="/" aria-label="Referandium home" className="shrink-0">
           <Brand />
         </Link>
@@ -74,8 +74,8 @@ export default function Navbar() {
               href={link.href}
               aria-current={isActive(link.href) ? 'page' : undefined}
               className={cx(
-                'rounded-md px-2.5 py-1.5 text-sm transition-colors',
-                isActive(link.href) ? 'font-medium text-ink' : 'text-muted hover:text-ink',
+                'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-200',
+                isActive(link.href) ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-subtle hover:text-ink',
               )}
             >
               {link.label}
@@ -94,9 +94,9 @@ export default function Navbar() {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 aria-expanded={dropdownOpen}
                 aria-haspopup="menu"
-                className="flex h-8 max-w-[220px] items-center gap-2 rounded-lg border border-line-strong bg-surface pl-2 pr-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-subtle"
+                className="flex h-8 max-w-[220px] items-center gap-2 rounded-lg border border-line-strong bg-surface pl-2.5 pr-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-subtle"
               >
-                <span className="h-2 w-2 shrink-0 rounded-full bg-yes" aria-hidden="true" />
+                <LiveDot />
                 <span className="truncate">{displayLabel || 'Account'}</span>
                 <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" className="shrink-0 text-faint">
                   <path d="M3 4.5 6 7.5l3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -106,7 +106,7 @@ export default function Navbar() {
               {dropdownOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-10 w-52 overflow-hidden rounded-xl border border-line bg-surface p-1 shadow-pop"
+                  className="absolute right-0 top-11 w-52 origin-top-right animate-scale-in overflow-hidden rounded-2xl border border-line bg-surface p-1 shadow-pop"
                 >
                   <Link
                     href="/profile"
@@ -150,7 +150,7 @@ export default function Navbar() {
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-line bg-surface px-4 pb-5 pt-2 md:hidden">
+        <div className="animate-fade-up border-t border-line bg-surface px-4 pb-5 pt-2 md:hidden">
           <div className="flex flex-col">
             {navLinks.map((link) => (
               <Link

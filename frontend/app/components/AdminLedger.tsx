@@ -6,7 +6,7 @@ export type LedgerLiability = {
 
 export function AdminLedger({ ledger, loading }: { ledger: LedgerLiability | null; loading: boolean }) {
   return (
-    <section className="mb-8 rounded-xl border border-line bg-surface p-5 sm:p-6">
+    <section className="mb-8 rounded-2xl border border-line bg-surface p-5 sm:p-6">
       <h2 className="mb-1 text-[15px] font-semibold text-ink">Ledger liability</h2>
       <p className="mb-4 text-sm text-muted">
         The exact backed-liability figure that halts withdrawals on mainnet. It is kept as a string

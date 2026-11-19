@@ -144,7 +144,7 @@ export default function BuyPage() {
   if (!authenticated) {
     return (
       <div className="mx-auto w-full max-w-xl px-4 py-24 sm:px-6">
-        <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">Buy credits and USDC</h1>
+        <h1 className="text-[34px] font-bold leading-tight tracking-[-0.03em] sm:text-[44px]">Buy credits and USDC</h1>
         <p className="mt-3 text-base leading-relaxed text-muted">
           Sign in to buy listing credits or add USDC to your balance.
         </p>
@@ -162,14 +162,14 @@ export default function BuyPage() {
   return (
     <div className="mx-auto w-full max-w-4xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
       <header>
-        <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">Buy credits and USDC</h1>
+        <h1 className="text-[34px] font-bold leading-tight tracking-[-0.03em] sm:text-[44px]">Buy credits and USDC</h1>
         <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">
           Listing credits let you put startups up for a vote. USDC is the balance you use to back
           startups that are raising.
         </p>
       </header>
 
-      <dl className="mt-8 grid grid-cols-3 divide-x divide-line rounded-xl border border-line bg-surface">
+      <dl className="mt-8 grid grid-cols-3 divide-x divide-line rounded-2xl border border-line bg-surface">
         {[
           { label: 'Available USDC', value: formatUsd(balance?.available_usdc) },
           { label: 'Locked USDC', value: formatUsd(balance?.locked_usdc) },
@@ -200,16 +200,16 @@ export default function BuyPage() {
           into USDC.
         </p>
 
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="stagger mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {LISTING_PACKAGES.map((pack) => (
             <button
               key={pack.id}
               onClick={() => handleBuy(pack.id)}
               disabled={buying === pack.id}
-              className="group flex flex-col rounded-xl border border-line bg-surface p-5 text-left transition-colors hover:border-ink/40 disabled:cursor-wait disabled:opacity-60"
+              className="group flex flex-col rounded-2xl border border-line bg-surface p-5 text-left transition-all duration-200 hover:-translate-y-1 hover:border-accent/40 hover:shadow-lift disabled:cursor-wait disabled:opacity-60"
             >
               <span className="text-sm font-medium text-muted">{pack.label}</span>
-              <span className="num mt-2 text-[28px] font-semibold leading-none tracking-tight">{formatPrice(pack.amount)}</span>
+              <span className="num mt-2 font-display text-[32px] font-bold leading-none tracking-tight">{formatPrice(pack.amount)}</span>
               <span className="num mt-2 text-sm text-ink-soft">
                 {pack.credits === 1 ? '1 credit' : `${pack.credits} credits`}
               </span>
@@ -230,16 +230,16 @@ export default function BuyPage() {
           convert card money, not an arbitrary hold.
         </Notice>
 
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="stagger mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {INVESTMENT_PACKAGES.map((pack) => (
             <button
               key={pack.id}
               onClick={() => handleBuy(pack.id)}
               disabled={buying === pack.id}
-              className="flex flex-col rounded-xl border border-line bg-surface p-5 text-left transition-colors hover:border-ink/40 disabled:cursor-wait disabled:opacity-60"
+              className="flex flex-col rounded-2xl border border-line bg-surface p-5 text-left transition-all duration-200 hover:-translate-y-1 hover:border-accent/40 hover:shadow-lift disabled:cursor-wait disabled:opacity-60"
             >
               <span className="text-sm font-medium text-muted">Add to balance</span>
-              <span className="num mt-2 text-[28px] font-semibold leading-none tracking-tight">{formatPrice(pack.amount)}</span>
+              <span className="num mt-2 font-display text-[32px] font-bold leading-none tracking-tight">{formatPrice(pack.amount)}</span>
               <span className="mt-2 text-sm text-ink-soft">Minus card fees</span>
               {packButton(pack.id)}
             </button>

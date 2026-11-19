@@ -78,7 +78,7 @@ export function GraduationClaimCard({
   }
 
   const cardClass =
-    'w-full min-w-0 rounded-xl border border-line bg-surface p-5'
+    'w-full min-w-0 rounded-2xl border border-line bg-surface p-5'
 
   const startupLink = showStartupLink && holding.startup_slug && (
     <div className="mb-2">

@@ -16,12 +16,17 @@ function Stage({
   children: ReactNode
 }) {
   return (
-    <li className="relative grid grid-cols-[32px_minmax(0,1fr)] gap-x-5 sm:gap-x-7">
+    <li className="relative grid grid-cols-[36px_minmax(0,1fr)] gap-x-5 sm:gap-x-7">
       <div className="flex flex-col items-center">
-        <span className="num flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-sm font-semibold">
+        <span className="num flex h-9 w-9 shrink-0 animate-scale-in items-center justify-center rounded-full bg-accent font-display text-sm font-bold text-white shadow-glow">
           {n}
         </span>
-        {!last && <span className="mt-2 w-px flex-1 bg-line-strong" aria-hidden="true" />}
+        {!last && (
+          <span
+            className="mt-2 w-0.5 flex-1 origin-top animate-grow-y rounded-full bg-gradient-to-b from-accent/60 to-line-strong"
+            aria-hidden="true"
+          />
+        )}
       </div>
       <div className={cx('min-w-0', last ? 'pb-0' : 'pb-14')}>
         <div className="flex flex-wrap items-center gap-2 pt-0.5">
@@ -38,7 +43,7 @@ export default function HowItWorksPage() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-24 pt-10 sm:px-6 sm:pt-16">
       <header className="mb-14 max-w-2xl">
-        <h1 className="text-[32px] font-semibold leading-[1.1] tracking-[-0.025em] sm:text-[42px]">
+        <h1 className="text-[36px] font-bold leading-[1.05] tracking-[-0.035em] sm:text-[52px]">
           How Referandium works
         </h1>
         <p className="mt-4 text-base leading-relaxed text-muted">
@@ -47,7 +52,7 @@ export default function HowItWorksPage() {
         </p>
       </header>
 
-      <ol>
+      <ol className="stagger">
         <Stage n={1} title="Validation" status={<Badge tone="yes" dot>Live</Badge>}>
           <p>
             Founders list a startup and set a vote threshold: the net number of votes the community
