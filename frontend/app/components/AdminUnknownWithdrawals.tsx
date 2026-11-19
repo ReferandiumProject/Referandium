@@ -41,49 +41,49 @@ export function AdminUnknownWithdrawals({
   loading: boolean
 }) {
   return (
-    <section className="mb-8 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-      <h2 className="mb-1 text-lg font-semibold text-[#111827]">Unknown withdrawals</h2>
-      <p className="mb-4 text-sm text-[#6B7280]">
+    <section className="mb-8 rounded-xl border border-line bg-surface p-5">
+      <h2 className="mb-1 text-lg font-semibold text-ink">Unknown withdrawals</h2>
+      <p className="mb-4 text-sm text-muted">
         Withdrawals that reached the chain but could not be matched to a known internal request. This
         list is why the unknown status exists.
       </p>
 
       {loading ? (
-        <p className="text-sm text-[#6B7280]">Loading unknown withdrawals...</p>
+        <p className="text-sm text-muted">Loading unknown withdrawals...</p>
       ) : withdrawals.length === 0 ? (
-        <p className="text-sm text-[#6B7280]">No unknown withdrawals. The ledger is clean.</p>
+        <p className="text-sm text-muted">No unknown withdrawals. The ledger is clean.</p>
       ) : (
         <div className="-mx-5 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-[#F9FAFB] text-[#6B7280]">
+            <thead className="bg-canvas text-muted">
               <tr>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">ID</th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">User</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">
+                <th className="px-4 py-3 text-xs font-medium">ID</th>
+                <th className="px-4 py-3 text-xs font-medium">User</th>
+                <th className="px-4 py-3 text-right text-xs font-medium">
                   Amount
                 </th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Signature</th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Created</th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Age</th>
+                <th className="px-4 py-3 text-xs font-medium">Signature</th>
+                <th className="px-4 py-3 text-xs font-medium">Created</th>
+                <th className="px-4 py-3 text-xs font-medium">Age</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E7EB]">
+            <tbody className="divide-y divide-line">
               {withdrawals.map((w) => (
-                <tr key={w.id} className="hover:bg-[#F9FAFB]">
-                  <td className="max-w-[120px] truncate px-4 py-3 text-[#111827]" title={w.id}>
+                <tr key={w.id} className="hover:bg-canvas">
+                  <td className="max-w-[120px] truncate px-4 py-3 text-ink" title={w.id}>
                     {w.id}
                   </td>
-                  <td className="max-w-[160px] truncate px-4 py-3 text-[#111827]" title={w.user_id}>
+                  <td className="max-w-[160px] truncate px-4 py-3 text-ink" title={w.user_id}>
                     {w.user_id}
                   </td>
-                  <td className="px-4 py-3 text-right text-[#111827]">{formatUsd(w.amount_usdc)}</td>
-                  <td className="max-w-[200px] truncate px-4 py-3 text-[#6B7280]" title={w.signature ?? ''}>
+                  <td className="px-4 py-3 text-right text-ink">{formatUsd(w.amount_usdc)}</td>
+                  <td className="max-w-[200px] truncate px-4 py-3 text-muted" title={w.signature ?? ''}>
                     {w.signature ? (
                       <a
                         href={`https://solscan.io/tx/${w.signature}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#3B82F6] hover:underline"
+                        className="text-accent hover:underline"
                       >
                         {w.signature}
                       </a>
@@ -91,8 +91,8 @@ export function AdminUnknownWithdrawals({
                       '—'
                     )}
                   </td>
-                  <td className="px-4 py-3 text-[#6B7280]">{formatDate(w.created_at)}</td>
-                  <td className="px-4 py-3 font-medium text-[#B45309]">{formatAge(w.created_at)}</td>
+                  <td className="px-4 py-3 text-muted">{formatDate(w.created_at)}</td>
+                  <td className="px-4 py-3 font-medium text-warn">{formatAge(w.created_at)}</td>
                 </tr>
               ))}
             </tbody>

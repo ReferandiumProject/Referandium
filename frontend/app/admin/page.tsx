@@ -121,16 +121,16 @@ const formatDate = (d: string | null) => {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]'
-const labelClass = 'mb-1 block text-sm font-medium text-[#374151]'
+  'w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-faint outline-none focus:border-accent focus:ring-1 focus:ring-accent/30'
+const labelClass = 'mb-1 block text-sm font-medium text-ink-soft'
 const buttonPrimary =
-  'rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50'
+  'rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50'
 const buttonSecondary =
-  'rounded-lg border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB]'
+  'rounded-lg border border-line bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-canvas'
 const buttonDanger =
-  'rounded-lg bg-[#EF4444] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-600'
+  'rounded-lg bg-no px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-no/90'
 const buttonWarning =
-  'rounded-lg bg-[#F59E0B] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600'
+  'rounded-lg bg-warn px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-warn/90'
 
 export default function AdminPage() {
   const { getAccessToken, login, authenticated, ready } = usePrivy()
@@ -890,9 +890,9 @@ export default function AdminPage() {
 
   if (!ready || status === 'loading') {
     return (
-      <main className="min-h-screen bg-[#F9FAFB] px-4 py-12 text-[#111827]">
+      <main className="min-h-screen bg-canvas px-4 py-12 text-ink">
         <div className="mx-auto max-w-6xl text-center">
-          <p className="text-sm text-[#6B7280]">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         </div>
       </main>
     )
@@ -900,10 +900,10 @@ export default function AdminPage() {
 
   if (status === 'signed-out') {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-4 text-[#111827]">
-        <div className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
-          <h1 className="mb-2 text-2xl font-semibold text-[#111827]">Admin</h1>
-          <p className="mb-6 text-sm text-[#6B7280]">Sign in to access the admin panel.</p>
+      <main className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4 text-ink">
+        <div className="w-full max-w-md rounded-xl border border-line bg-surface p-8 text-center">
+          <h1 className="mb-2 text-2xl font-semibold text-ink">Admin</h1>
+          <p className="mb-6 text-sm text-muted">Sign in to access the admin panel.</p>
           <button type="button" onClick={() => login()} className={buttonPrimary}>
             Sign In
           </button>
@@ -914,10 +914,10 @@ export default function AdminPage() {
 
   if (status === 'not-authorized') {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-4 text-[#111827]">
-        <div className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
-          <h1 className="mb-2 text-2xl font-semibold text-[#111827]">Not authorised</h1>
-          <p className="text-sm text-[#6B7280]">You do not have permission to view this page.</p>
+      <main className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4 text-ink">
+        <div className="w-full max-w-md rounded-xl border border-line bg-surface p-8 text-center">
+          <h1 className="mb-2 text-2xl font-semibold text-ink">Not authorised</h1>
+          <p className="text-sm text-muted">You do not have permission to view this page.</p>
         </div>
       </main>
     )
@@ -926,18 +926,18 @@ export default function AdminPage() {
   const filteredStartups = (startups || []).filter((s) => showDeleted || !s.deleted_at)
 
   return (
-    <main className="min-h-screen bg-[#F9FAFB] px-4 py-8 text-[#111827]">
+    <main className="min-h-screen bg-canvas px-4 py-8 text-ink">
       <div className="mx-auto max-w-6xl">
-        <h1 className="mb-6 text-2xl font-bold text-[#111827] sm:text-3xl">Admin</h1>
+        <h1 className="mb-6 text-2xl font-bold text-ink sm:text-3xl">Admin</h1>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
+          <div className="mb-4 rounded-lg border border-no/25 bg-no-soft p-3 text-sm text-no">
             {error}
           </div>
         )}
 
         {successMessage && (
-          <div className="mb-4 flex items-center justify-between gap-4 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-3 text-sm text-[#10B981]">
+          <div className="mb-4 flex items-center justify-between gap-4 rounded-lg border border-yes/25 bg-yes-soft p-3 text-sm text-yes">
             <span>{successMessage}</span>
             <button type="button" onClick={() => setSuccessMessage(null)} className="font-semibold hover:underline">
               Dismiss
@@ -945,88 +945,88 @@ export default function AdminPage() {
           </div>
         )}
 
-        <section className="mb-8 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+        <section className="mb-8 rounded-xl border border-line bg-surface p-5">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-semibold text-[#111827]">Startups</h2>
-            <label className="flex items-center gap-2 text-sm text-[#6B7280]">
+            <h2 className="text-lg font-semibold text-ink">Startups</h2>
+            <label className="flex items-center gap-2 text-sm text-muted">
               <input
                 type="checkbox"
                 checked={showDeleted}
                 onChange={(e) => setShowDeleted(e.target.checked)}
-                className="h-4 w-4 rounded border-[#E5E7EB] text-[#3B82F6] focus:ring-[#3B82F6]"
+                className="h-4 w-4 rounded border-line text-accent focus:ring-accent/30"
               />
               Show deleted startups
             </label>
           </div>
 
           {loadingStartups ? (
-            <p className="text-sm text-[#6B7280]">Loading startups...</p>
+            <p className="text-sm text-muted">Loading startups...</p>
           ) : filteredStartups.length === 0 ? (
-            <p className="text-sm text-[#6B7280]">No startups to show.</p>
+            <p className="text-sm text-muted">No startups to show.</p>
           ) : (
             <div className="-mx-5 overflow-x-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="bg-[#F9FAFB] text-[#6B7280]">
+                <thead className="bg-canvas text-muted">
                   <tr>
-                    <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Startup</th>
-                    <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Phase</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Threshold</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Capital</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">YES</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">NO</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Net</th>
-                    <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Created</th>
-                    <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Actions</th>
+                    <th className="px-4 py-3 text-xs font-medium">Startup</th>
+                    <th className="px-4 py-3 text-xs font-medium">Phase</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium">Threshold</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium">Capital</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium">YES</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium">NO</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium">Net</th>
+                    <th className="px-4 py-3 text-xs font-medium">Created</th>
+                    <th className="px-4 py-3 text-xs font-medium">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E5E7EB]">
+                <tbody className="divide-y divide-line">
                   {filteredStartups.map((s) => {
                     const net = (s.total_yes_votes ?? 0) - (s.total_no_votes ?? 0)
                     const isDeleted = !!s.deleted_at
                     return (
                       <tr
                         key={s.id}
-                        className={`${isDeleted ? 'bg-[#FEF2F2]' : 'hover:bg-[#F9FAFB]'}`}
+                        className={`${isDeleted ? 'bg-no-soft' : 'hover:bg-canvas'}`}
                       >
                         <td className="px-4 py-3">
-                          <div className="font-medium text-[#111827]">{s.name}</div>
-                          <div className="text-xs text-[#6B7280]">{s.slug}</div>
+                          <div className="font-medium text-ink">{s.name}</div>
+                          <div className="text-xs text-muted">{s.slug}</div>
                           <div className="mt-1 flex flex-wrap gap-1">
                             {isDeleted && (
-                              <span className="inline-flex rounded bg-[#EF4444]/10 px-2 py-0.5 text-xs font-semibold text-[#EF4444]">
+                              <span className="inline-flex rounded bg-no-soft px-2 py-0.5 text-xs font-semibold text-no">
                                 Deleted
                               </span>
                             )}
                             {s.phase === 2 && s.frozen && (
-                              <span className="inline-flex rounded bg-[#F59E0B]/10 px-2 py-0.5 text-xs font-semibold text-[#B45309]">
+                              <span className="inline-flex rounded bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn">
                                 Frozen
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-[#111827]">{s.phase}</td>
-                        <td className="px-4 py-3 text-right text-[#111827]">{formatVoteCount(s.vote_threshold)}</td>
-                        <td className="px-4 py-3 text-right text-[#111827]">{formatUsd(s.capital_target)}</td>
-                        <td className="px-4 py-3 text-right text-[#111827]">{formatVoteCount(s.total_yes_votes)}</td>
-                        <td className="px-4 py-3 text-right text-[#111827]">{formatVoteCount(s.total_no_votes)}</td>
-                        <td className="px-4 py-3 text-right text-[#111827]">{formatVoteCount(net)}</td>
-                        <td className="px-4 py-3 text-[#6B7280]">{formatDate(s.created_at)}</td>
+                        <td className="px-4 py-3 text-ink">{s.phase}</td>
+                        <td className="px-4 py-3 text-right text-ink">{formatVoteCount(s.vote_threshold)}</td>
+                        <td className="px-4 py-3 text-right text-ink">{formatUsd(s.capital_target)}</td>
+                        <td className="px-4 py-3 text-right text-ink">{formatVoteCount(s.total_yes_votes)}</td>
+                        <td className="px-4 py-3 text-right text-ink">{formatVoteCount(s.total_no_votes)}</td>
+                        <td className="px-4 py-3 text-right text-ink">{formatVoteCount(net)}</td>
+                        <td className="px-4 py-3 text-muted">{formatDate(s.created_at)}</td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-2">
-                            <button type="button" onClick={() => openEdit(s)} className="text-xs font-semibold text-[#3B82F6] hover:text-blue-700">
+                            <button type="button" onClick={() => openEdit(s)} className="text-xs font-semibold text-accent hover:text-accent-hover">
                               Edit
                             </button>
                             {s.deleted_at ? (
-                              <button type="button" onClick={() => openRestore(s)} className="text-xs font-semibold text-[#10B981] hover:text-green-700">
+                              <button type="button" onClick={() => openRestore(s)} className="text-xs font-semibold text-yes hover:text-yes">
                                 Restore
                               </button>
                             ) : (
-                              <button type="button" onClick={() => openDelete(s)} className="text-xs font-semibold text-[#EF4444] hover:text-red-700">
+                              <button type="button" onClick={() => openDelete(s)} className="text-xs font-semibold text-no hover:text-no">
                                 Delete
                               </button>
                             )}
                             {s.phase === 1 && !s.deleted_at && (
-                              <button type="button" onClick={() => openForcePhase2(s)} className="text-xs font-semibold text-[#F59E0B] hover:text-amber-700">
+                              <button type="button" onClick={() => openForcePhase2(s)} className="text-xs font-semibold text-warn hover:text-warn">
                                 Force Phase 2
                               </button>
                             )}
@@ -1035,7 +1035,7 @@ export default function AdminPage() {
                                 type="button"
                                 onClick={() => openFreeze(s)}
                                 className={`text-xs font-semibold ${
-                                  s.frozen ? 'text-[#10B981] hover:text-green-700' : 'text-[#B45309] hover:text-amber-700'
+                                  s.frozen ? 'text-yes hover:text-yes' : 'text-warn hover:text-warn'
                                 }`}
                               >
                                 {s.frozen ? 'Resume purchases' : 'Halt purchases'}
@@ -1053,62 +1053,62 @@ export default function AdminPage() {
         </section>
 
         <section
-          className={`mb-8 rounded-xl border p-5 shadow-sm ${
+          className={`mb-8 rounded-xl border p-5  ${
             (systemErrors || []).length > 0
-              ? 'border-[#EF4444]/50 bg-[#FEF2F2]'
-              : 'border-[#E5E7EB] bg-white'
+              ? 'border-no/40 bg-no-soft'
+              : 'border-line bg-surface'
           }`}
         >
-          <h2 className="mb-1 text-lg font-semibold text-[#111827]">System errors</h2>
-          <p className="mb-4 text-sm text-[#6B7280]">
+          <h2 className="mb-1 text-lg font-semibold text-ink">System errors</h2>
+          <p className="mb-4 text-sm text-muted">
             Unresolved server/client/swallowed errors grouped by fingerprint. High occurrence counts mean a
             widespread or repeating problem.
           </p>
 
           {loadingSystemErrors ? (
-            <p className="text-sm text-[#6B7280]">Loading system errors...</p>
+            <p className="text-sm text-muted">Loading system errors...</p>
           ) : (
             <>
               <div className="mb-4">
-                <span className="text-3xl font-bold text-[#111827]">{(systemErrors || []).length}</span>
-                <span className="ml-2 text-sm text-[#6B7280]">unresolved groups</span>
+                <span className="text-3xl font-bold text-ink">{(systemErrors || []).length}</span>
+                <span className="ml-2 text-sm text-muted">unresolved groups</span>
               </div>
 
               {(systemErrors || []).length === 0 ? (
-                <p className="text-sm text-[#6B7280]">No unresolved system errors.</p>
+                <p className="text-sm text-muted">No unresolved system errors.</p>
               ) : (
                 <div className="-mx-5 overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="bg-[#F9FAFB] text-[#6B7280]">
+                    <thead className="bg-canvas text-muted">
                       <tr>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Name</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Source</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Occurrences</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Last seen</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Message</th>
+                        <th className="px-4 py-3 text-xs font-medium">Name</th>
+                        <th className="px-4 py-3 text-xs font-medium">Source</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium">Occurrences</th>
+                        <th className="px-4 py-3 text-xs font-medium">Last seen</th>
+                        <th className="px-4 py-3 text-xs font-medium">Message</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E5E7EB]">
+                    <tbody className="divide-y divide-line">
                       {(systemErrors || []).map((err) => {
                         const expanded = expandedSystemError === err.id
                         return (
                           <Fragment key={err.id}>
                             <tr
-                              className="cursor-pointer hover:bg-[#F9FAFB]"
+                              className="cursor-pointer hover:bg-canvas"
                               onClick={() => setExpandedSystemError(expanded ? null : err.id)}
                             >
-                              <td className="px-4 py-3 font-medium text-[#111827]">{err.name}</td>
-                              <td className="px-4 py-3 text-[#6B7280]">
-                                <span className="inline-flex rounded bg-[#E5E7EB] px-2 py-0.5 text-xs font-semibold text-[#374151]">
+                              <td className="px-4 py-3 font-medium text-ink">{err.name}</td>
+                              <td className="px-4 py-3 text-muted">
+                                <span className="inline-flex rounded bg-subtle px-2 py-0.5 text-xs font-semibold text-ink-soft">
                                   {err.source}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-right font-semibold text-[#111827]">
+                              <td className="px-4 py-3 text-right font-semibold text-ink">
                                 {err.occurrences}
                               </td>
-                              <td className="px-4 py-3 text-[#6B7280]">{formatDate(err.last_seen)}</td>
+                              <td className="px-4 py-3 text-muted">{formatDate(err.last_seen)}</td>
                               <td
-                                className="max-w-[300px] truncate px-4 py-3 text-[#111827]"
+                                className="max-w-[300px] truncate px-4 py-3 text-ink"
                                 title={err.message}
                               >
                                 {err.message}
@@ -1117,7 +1117,7 @@ export default function AdminPage() {
                             {expanded && (
                               <tr>
                                 <td colSpan={5} className="px-4 py-3">
-                                  <div className="space-y-2 text-xs text-[#374151]">
+                                  <div className="space-y-2 text-xs text-ink-soft">
                                     <p>
                                       <span className="font-semibold">Path:</span> {err.path ?? '—'}
                                     </p>
@@ -1131,12 +1131,12 @@ export default function AdminPage() {
                                       {formatDate(err.first_seen)}
                                     </p>
                                     {err.stack && (
-                                      <pre className="max-h-48 overflow-auto rounded-lg border border-[#E5E7EB] bg-white p-2 text-[10px] text-[#6B7280]">
+                                      <pre className="max-h-48 overflow-auto rounded-lg border border-line bg-surface p-2 text-[10px] text-muted">
                                         {err.stack}
                                       </pre>
                                     )}
                                     {err.context && (
-                                      <pre className="max-h-48 overflow-auto rounded-lg border border-[#E5E7EB] bg-white p-2 text-[10px] text-[#6B7280]">
+                                      <pre className="max-h-48 overflow-auto rounded-lg border border-line bg-surface p-2 text-[10px] text-muted">
                                         {JSON.stringify(err.context, null, 2)}
                                       </pre>
                                     )}
@@ -1156,46 +1156,46 @@ export default function AdminPage() {
         </section>
 
         <section
-          className={`mb-8 rounded-xl border p-5 shadow-sm ${
+          className={`mb-8 rounded-xl border p-5  ${
             (stuckPacks || []).length > 0
-              ? 'border-[#F59E0B]/30 bg-[#FEF3C7]'
-              : 'border-[#E5E7EB] bg-white'
+              ? 'border-warn/25 bg-warn-soft'
+              : 'border-line bg-surface'
           }`}
         >
-          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Stuck investment packs</h2>
-          <p className="mb-4 text-sm text-[#6B7280]">
+          <h2 className="mb-1 text-lg font-semibold text-ink">Stuck investment packs</h2>
+          <p className="mb-4 text-sm text-muted">
             Paid investment packs with no net amount. This should always be zero.
           </p>
 
           {loadingStuck ? (
-            <p className="text-sm text-[#6B7280]">Loading stuck packs...</p>
+            <p className="text-sm text-muted">Loading stuck packs...</p>
           ) : (
             <>
               <div className="mb-4">
-                <span className="text-3xl font-bold text-[#111827]">{(stuckPacks || []).length}</span>
-                <span className="ml-2 text-sm text-[#6B7280]">stuck</span>
+                <span className="text-3xl font-bold text-ink">{(stuckPacks || []).length}</span>
+                <span className="ml-2 text-sm text-muted">stuck</span>
               </div>
 
               {(stuckPacks || []).length === 0 ? (
-                <p className="text-sm text-[#6B7280]">No stuck investment packs. The view ran successfully.</p>
+                <p className="text-sm text-muted">No stuck investment packs. The view ran successfully.</p>
               ) : (
                 <div className="-mx-5 overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="bg-[#F9FAFB] text-[#6B7280]">
+                    <thead className="bg-canvas text-muted">
                       <tr>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Email</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Amount</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Created</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Stuck for</th>
+                        <th className="px-4 py-3 text-xs font-medium">Email</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium">Amount</th>
+                        <th className="px-4 py-3 text-xs font-medium">Created</th>
+                        <th className="px-4 py-3 text-xs font-medium">Stuck for</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E5E7EB]">
+                    <tbody className="divide-y divide-line">
                       {(stuckPacks || []).map((p) => (
-                        <tr key={p.id} className="hover:bg-[#F9FAFB]">
-                          <td className="px-4 py-3 text-[#111827]">{p.email}</td>
-                          <td className="px-4 py-3 text-right text-[#111827]">{formatUsd(p.amount_charged)}</td>
-                          <td className="px-4 py-3 text-[#6B7280]">{formatDate(p.created_at)}</td>
-                          <td className="px-4 py-3 text-[#B45309] font-medium">{p.stuck_for}</td>
+                        <tr key={p.id} className="hover:bg-canvas">
+                          <td className="px-4 py-3 text-ink">{p.email}</td>
+                          <td className="px-4 py-3 text-right text-ink">{formatUsd(p.amount_charged)}</td>
+                          <td className="px-4 py-3 text-muted">{formatDate(p.created_at)}</td>
+                          <td className="px-4 py-3 text-warn font-medium">{p.stuck_for}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1207,52 +1207,52 @@ export default function AdminPage() {
         </section>
 
         <section
-          className={`mb-8 rounded-xl border p-5 shadow-sm ${
+          className={`mb-8 rounded-xl border p-5  ${
             (stuckWithdrawals || []).length > 0
-              ? 'border-[#EF4444]/50 bg-[#FEF2F2]'
-              : 'border-[#E5E7EB] bg-white'
+              ? 'border-no/40 bg-no-soft'
+              : 'border-line bg-surface'
           }`}
         >
-          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Stuck withdrawals</h2>
-          <p className="mb-4 text-sm text-[#6B7280]">
+          <h2 className="mb-1 text-lg font-semibold text-ink">Stuck withdrawals</h2>
+          <p className="mb-4 text-sm text-muted">
             Pending withdrawals older than 15 minutes. This should always be zero.
           </p>
 
           {loadingStuckWithdrawals ? (
-            <p className="text-sm text-[#6B7280]">Loading stuck withdrawals...</p>
+            <p className="text-sm text-muted">Loading stuck withdrawals...</p>
           ) : (
             <>
               <div className="mb-4">
-                <span className="text-3xl font-bold text-[#111827]">
+                <span className="text-3xl font-bold text-ink">
                   {(stuckWithdrawals || []).length}
                 </span>
-                <span className="ml-2 text-sm text-[#6B7280]">stuck</span>
+                <span className="ml-2 text-sm text-muted">stuck</span>
               </div>
 
               {(stuckWithdrawals || []).length === 0 ? (
-                <p className="text-sm text-[#6B7280]">No stuck withdrawals. The view ran successfully.</p>
+                <p className="text-sm text-muted">No stuck withdrawals. The view ran successfully.</p>
               ) : (
                 <div className="-mx-5 overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="bg-[#F9FAFB] text-[#6B7280]">
+                    <thead className="bg-canvas text-muted">
                       <tr>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Email</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Amount</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Wallet</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Created</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Pending for</th>
+                        <th className="px-4 py-3 text-xs font-medium">Email</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium">Amount</th>
+                        <th className="px-4 py-3 text-xs font-medium">Wallet</th>
+                        <th className="px-4 py-3 text-xs font-medium">Created</th>
+                        <th className="px-4 py-3 text-xs font-medium">Pending for</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E5E7EB]">
+                    <tbody className="divide-y divide-line">
                       {(stuckWithdrawals || []).map((w) => (
-                        <tr key={w.id} className="hover:bg-[#F9FAFB]">
-                          <td className="px-4 py-3 text-[#111827]">{w.email}</td>
-                          <td className="px-4 py-3 text-right text-[#111827]">{w.amount_usdc}</td>
-                          <td className="max-w-[200px] truncate px-4 py-3 text-[#6B7280]" title={w.wallet_address}>
+                        <tr key={w.id} className="hover:bg-canvas">
+                          <td className="px-4 py-3 text-ink">{w.email}</td>
+                          <td className="px-4 py-3 text-right text-ink">{w.amount_usdc}</td>
+                          <td className="max-w-[200px] truncate px-4 py-3 text-muted" title={w.wallet_address}>
                             {w.wallet_address}
                           </td>
-                          <td className="px-4 py-3 text-[#6B7280]">{formatDate(w.created_at)}</td>
-                          <td className="px-4 py-3 text-[#B45309] font-medium">{w.pending_for}</td>
+                          <td className="px-4 py-3 text-muted">{formatDate(w.created_at)}</td>
+                          <td className="px-4 py-3 text-warn font-medium">{w.pending_for}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1264,56 +1264,56 @@ export default function AdminPage() {
         </section>
 
         <section
-          className={`mb-8 rounded-xl border p-5 shadow-sm ${
+          className={`mb-8 rounded-xl border p-5  ${
             (depositsNeedingAttention || []).length > 0
-              ? 'border-[#EF4444]/50 bg-[#FEF2F2]'
-              : 'border-[#E5E7EB] bg-white'
+              ? 'border-no/40 bg-no-soft'
+              : 'border-line bg-surface'
           }`}
         >
-          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Deposits needing attention</h2>
-          <p className="mb-4 text-sm text-[#6B7280]">
+          <h2 className="mb-1 text-lg font-semibold text-ink">Deposits needing attention</h2>
+          <p className="mb-4 text-sm text-muted">
             Deposits that arrived in a user's wallet but have not become balance. This should always be zero.
           </p>
 
           {loadingDepositsNeedingAttention ? (
-            <p className="text-sm text-[#6B7280]">Loading deposits needing attention...</p>
+            <p className="text-sm text-muted">Loading deposits needing attention...</p>
           ) : (
             <>
               <div className="mb-4">
-                <span className="text-3xl font-bold text-[#111827]">
+                <span className="text-3xl font-bold text-ink">
                   {(depositsNeedingAttention || []).length}
                 </span>
-                <span className="ml-2 text-sm text-[#6B7280]">needing attention</span>
+                <span className="ml-2 text-sm text-muted">needing attention</span>
               </div>
 
               {(depositsNeedingAttention || []).length === 0 ? (
-                <p className="text-sm text-[#6B7280]">No deposits needing attention. The view ran successfully.</p>
+                <p className="text-sm text-muted">No deposits needing attention. The view ran successfully.</p>
               ) : (
                 <div className="-mx-5 overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="bg-[#F9FAFB] text-[#6B7280]">
+                    <thead className="bg-canvas text-muted">
                       <tr>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Email</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Amount</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Status</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Waiting for</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Why</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Signature</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Created</th>
+                        <th className="px-4 py-3 text-xs font-medium">Email</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium">Amount</th>
+                        <th className="px-4 py-3 text-xs font-medium">Status</th>
+                        <th className="px-4 py-3 text-xs font-medium">Waiting for</th>
+                        <th className="px-4 py-3 text-xs font-medium">Why</th>
+                        <th className="px-4 py-3 text-xs font-medium">Signature</th>
+                        <th className="px-4 py-3 text-xs font-medium">Created</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E5E7EB]">
+                    <tbody className="divide-y divide-line">
                       {(depositsNeedingAttention || []).map((d) => (
-                        <tr key={d.id} className="hover:bg-[#F9FAFB]">
-                          <td className="px-4 py-3 text-[#111827]">{d.email}</td>
-                          <td className="px-4 py-3 text-right text-[#111827]">{formatUsd(d.amount_usdc)}</td>
-                          <td className="px-4 py-3 text-[#6B7280]">{d.status}</td>
-                          <td className="px-4 py-3 text-[#B45309] font-medium">{d.waiting_for}</td>
-                          <td className="max-w-[300px] whitespace-normal px-4 py-3 text-[#6B7280]">{d.why}</td>
-                          <td className="max-w-[200px] truncate px-4 py-3 text-[#6B7280]" title={d.signature}>
+                        <tr key={d.id} className="hover:bg-canvas">
+                          <td className="px-4 py-3 text-ink">{d.email}</td>
+                          <td className="px-4 py-3 text-right text-ink">{formatUsd(d.amount_usdc)}</td>
+                          <td className="px-4 py-3 text-muted">{d.status}</td>
+                          <td className="px-4 py-3 text-warn font-medium">{d.waiting_for}</td>
+                          <td className="max-w-[300px] whitespace-normal px-4 py-3 text-muted">{d.why}</td>
+                          <td className="max-w-[200px] truncate px-4 py-3 text-muted" title={d.signature}>
                             {d.signature}
                           </td>
-                          <td className="px-4 py-3 text-[#6B7280]">{formatDate(d.created_at)}</td>
+                          <td className="px-4 py-3 text-muted">{formatDate(d.created_at)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1324,47 +1324,47 @@ export default function AdminPage() {
           )}
         </section>
 
-        <section className="mb-8 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Treasury</h2>
-          <p className="mb-4 text-sm text-[#6B7280]">
+        <section className="mb-8 rounded-xl border border-line bg-surface p-5">
+          <h2 className="mb-1 text-lg font-semibold text-ink">Treasury</h2>
+          <p className="mb-4 text-sm text-muted">
             On-chain state of the platform wallet. SOL is a live operational signal; USDC is
             informational only.
           </p>
 
           {loadingTreasury ? (
-            <p className="text-sm text-[#6B7280]">Loading treasury...</p>
+            <p className="text-sm text-muted">Loading treasury...</p>
           ) : !treasury ? (
-            <p className="text-sm text-[#6B7280]">Treasury state not available.</p>
+            <p className="text-sm text-muted">Treasury state not available.</p>
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">SOL</p>
-                  <p className="text-xl font-semibold text-[#111827]">{treasury.sol.toFixed(4)} SOL</p>
-                  <p className="text-sm text-[#6B7280]">
+                <div className="rounded-lg border border-line bg-canvas p-3">
+                  <p className="text-xs font-medium text-muted">SOL</p>
+                  <p className="text-xl font-semibold text-ink">{treasury.sol.toFixed(4)} SOL</p>
+                  <p className="text-sm text-muted">
                     About {treasury.cheap_transfers.toLocaleString()} simple transfers
                   </p>
-                  <p className="text-sm text-[#6B7280]">
+                  <p className="text-sm text-muted">
                     About {treasury.expensive_transfers.toLocaleString()} first-time withdrawals
                   </p>
                   {treasury.low && (
-                    <p className="mt-2 text-sm font-semibold text-[#EF4444]">
+                    <p className="mt-2 text-sm font-semibold text-no">
                       Low: fewer than 50 first-time withdrawals remaining
                     </p>
                   )}
                 </div>
 
-                <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+                <div className="rounded-lg border border-line bg-canvas p-3">
+                  <p className="text-xs font-medium text-muted">
                     USDC (informational)
                   </p>
-                  <p className="text-xl font-semibold text-[#111827]">
+                  <p className="text-xl font-semibold text-ink">
                     {formatUsd(treasury.usdc)} in treasury
                   </p>
-                  <p className="text-sm text-[#6B7280]">
+                  <p className="text-sm text-muted">
                     Backed liability: {formatUsd(treasury.backed_liability)}
                   </p>
-                  <p className="text-xs text-[#6B7280]">
+                  <p className="text-xs text-muted">
                     backed_liability can be negative on devnet; this is expected while phantom
                     balances have been paid out. It is not a solvency alarm here.
                   </p>
@@ -1387,83 +1387,83 @@ export default function AdminPage() {
         <AdminLedger ledger={ledger} loading={loadingLedger} />
 
         <section
-          className={`mb-8 rounded-xl border p-5 shadow-sm ${
+          className={`mb-8 rounded-xl border p-5  ${
             integrity?.overall === 'fail'
-              ? 'border-[#EF4444]/50 bg-[#FEF2F2]'
+              ? 'border-no/40 bg-no-soft'
               : integrity?.overall === 'warn'
-              ? 'border-[#F59E0B]/30 bg-[#FEF3C7]'
-              : 'border-[#E5E7EB] bg-white'
+              ? 'border-warn/25 bg-warn-soft'
+              : 'border-line bg-surface'
           }`}
         >
-          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Integrity checks</h2>
-          <p className="mb-4 text-sm text-[#6B7280]">
+          <h2 className="mb-1 text-lg font-semibold text-ink">Integrity checks</h2>
+          <p className="mb-4 text-sm text-muted">
             Hourly invariant checks. A stale run is itself a problem — old green results are not passing results.
           </p>
 
           {loadingIntegrity ? (
-            <p className="text-sm text-[#6B7280]">Loading integrity checks...</p>
+            <p className="text-sm text-muted">Loading integrity checks...</p>
           ) : !integrity ? (
-            <p className="text-sm text-[#6B7280]">Integrity state not available.</p>
+            <p className="text-sm text-muted">Integrity state not available.</p>
           ) : (
             <>
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-3xl font-bold text-[#111827]">
+                  <p className="text-3xl font-bold text-ink">
                     {integrity.checks.filter((c) => c.status === 'fail').length}
-                    <span className="ml-2 text-sm font-normal text-[#6B7280]">failing</span>
+                    <span className="ml-2 text-sm font-normal text-muted">failing</span>
                   </p>
-                  <p className="text-3xl font-bold text-[#111827]">
+                  <p className="text-3xl font-bold text-ink">
                     {integrity.checks.filter((c) => c.status === 'warn').length}
-                    <span className="ml-2 text-sm font-normal text-[#6B7280]">warnings</span>
+                    <span className="ml-2 text-sm font-normal text-muted">warnings</span>
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Last checked</p>
-                  <p className="text-lg font-semibold text-[#111827]">
+                  <p className="text-xs font-medium text-muted">Last checked</p>
+                  <p className="text-lg font-semibold text-ink">
                     {integrity.ran_at ? formatDate(integrity.ran_at) : 'Never'}
                   </p>
                   {integrity.stale ? (
-                    <p className="text-sm font-semibold text-[#B45309]">
+                    <p className="text-sm font-semibold text-warn">
                       Stale — last checked {integrity.stale_for} ago
                     </p>
                   ) : (
-                    <p className="text-sm text-[#6B7280]">up to date</p>
+                    <p className="text-sm text-muted">up to date</p>
                   )}
                 </div>
               </div>
 
               {integrity.checks.length === 0 ? (
-                <p className="text-sm text-[#6B7280]">No checks recorded yet.</p>
+                <p className="text-sm text-muted">No checks recorded yet.</p>
               ) : (
                 <div className="-mx-5 overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="bg-[#F9FAFB] text-[#6B7280]">
+                    <thead className="bg-canvas text-muted">
                       <tr>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Check</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Status</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Value</th>
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Detail</th>
+                        <th className="px-4 py-3 text-xs font-medium">Check</th>
+                        <th className="px-4 py-3 text-xs font-medium">Status</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium">Value</th>
+                        <th className="px-4 py-3 text-xs font-medium">Detail</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E5E7EB]">
+                    <tbody className="divide-y divide-line">
                       {integrity.checks.map((c) => (
-                        <tr key={c.check_name} className="hover:bg-[#F9FAFB]">
-                          <td className="px-4 py-3 font-medium text-[#111827]">{c.check_name}</td>
+                        <tr key={c.check_name} className="hover:bg-canvas">
+                          <td className="px-4 py-3 font-medium text-ink">{c.check_name}</td>
                           <td className="px-4 py-3">
                             <span
                               className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${
                                 c.status === 'fail'
-                                  ? 'bg-[#EF4444]/10 text-[#EF4444]'
+                                  ? 'bg-no-soft text-no'
                                   : c.status === 'warn'
-                                  ? 'bg-[#F59E0B]/10 text-[#B45309]'
-                                  : 'bg-[#E5E7EB] text-[#374151]'
+                                  ? 'bg-warn-soft text-warn'
+                                  : 'bg-subtle text-ink-soft'
                               }`}
                             >
                               {c.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right text-[#111827]">{c.value}</td>
-                          <td className="px-4 py-3 text-[#6B7280]">{c.detail}</td>
+                          <td className="px-4 py-3 text-right text-ink">{c.value}</td>
+                          <td className="px-4 py-3 text-muted">{c.detail}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1474,28 +1474,28 @@ export default function AdminPage() {
           )}
         </section>
 
-        <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Audit log</h2>
-          <p className="mb-4 text-sm text-[#6B7280]">Every admin action is recorded.</p>
+        <section className="rounded-xl border border-line bg-surface p-5">
+          <h2 className="mb-1 text-lg font-semibold text-ink">Audit log</h2>
+          <p className="mb-4 text-sm text-muted">Every admin action is recorded.</p>
           {loadingActions ? (
-            <p className="text-sm text-[#6B7280]">Loading audit log...</p>
+            <p className="text-sm text-muted">Loading audit log...</p>
           ) : (actions || []).length === 0 ? (
-            <p className="text-sm text-[#6B7280]">No actions yet.</p>
+            <p className="text-sm text-muted">No actions yet.</p>
           ) : (
             <div className="space-y-3">
               {(actions || []).map((a) => (
                 <div
                   key={a.id}
-                  className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3 text-sm"
+                  className="rounded-lg border border-line bg-canvas p-3 text-sm"
                 >
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="font-medium text-[#111827]">
-                      {a.admin_email || 'Unknown'} · <span className="text-[#3B82F6]">{a.action}</span>
+                    <p className="font-medium text-ink">
+                      {a.admin_email || 'Unknown'} · <span className="text-accent">{a.action}</span>
                     </p>
-                    <p className="text-xs text-[#6B7280]">{formatDate(a.created_at)}</p>
+                    <p className="text-xs text-muted">{formatDate(a.created_at)}</p>
                   </div>
-                  {a.startup_id && <p className="text-xs text-[#6B7280]">Startup: {a.startup_id}</p>}
-                  <pre className="mt-2 overflow-x-auto rounded bg-white p-2 text-xs text-[#6B7280]">
+                  {a.startup_id && <p className="text-xs text-muted">Startup: {a.startup_id}</p>}
+                  <pre className="mt-2 overflow-x-auto rounded bg-surface p-2 text-xs text-muted">
                     {JSON.stringify(a.details, null, 2)}
                   </pre>
                 </div>
@@ -1504,12 +1504,12 @@ export default function AdminPage() {
           )}
         </section>
 
-        <section className="mb-8 rounded-xl border border-[#EF4444]/50 bg-[#FEF2F2] p-5 shadow-sm">
-          <div className="mb-4 rounded-lg border border-[#EF4444]/30 bg-[#FEF2F2] p-3 text-sm text-[#7F1D1D]">
+        <section className="mb-8 rounded-xl border border-no/40 bg-no-soft p-5">
+          <div className="mb-4 rounded-lg border border-no/25 bg-no-soft p-3 text-sm text-no">
             <strong>Diagnostic — moves real funds.</strong> This control signs a Solana transaction that transfers actual USDC out of a user&apos;s Privy embedded wallet. It is the only write action on this page and does not credit any balance or create a deposit row.
           </div>
-          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Embedded wallet sweep diagnostic</h2>
-          <p className="mb-4 text-sm text-[#6B7280]">
+          <h2 className="mb-1 text-lg font-semibold text-ink">Embedded wallet sweep diagnostic</h2>
+          <p className="mb-4 text-sm text-muted">
             Test delegated signing and the transfer-destination policy manually. Leave the destination empty to sweep to the treasury.
           </p>
 
@@ -1545,10 +1545,10 @@ export default function AdminPage() {
                 />
               </div>
             </div>
-            <label className="flex items-start gap-2 text-sm text-[#374151]">
+            <label className="flex items-start gap-2 text-sm text-ink-soft">
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-[#E5E7EB] text-[#EF4444] focus:ring-[#EF4444]"
+                className="mt-0.5 h-4 w-4 rounded border-line text-no focus:ring-no/30"
                 checked={sweepArmed}
                 onChange={(e) => setSweepArmed(e.target.checked)}
               />
@@ -1564,8 +1564,8 @@ export default function AdminPage() {
 
             {sweepRaw !== null && (
               <div className="mt-4">
-                <p className="mb-1 text-sm font-semibold text-[#111827]">Raw response</p>
-                <pre className="max-h-96 overflow-auto rounded-lg border border-[#E5E7EB] bg-white p-3 text-xs text-[#111827]">
+                <p className="mb-1 text-sm font-semibold text-ink">Raw response</p>
+                <pre className="max-h-96 overflow-auto rounded-lg border border-line bg-surface p-3 text-xs text-ink">
                   {sweepRaw}
                 </pre>
               </div>
@@ -1573,14 +1573,14 @@ export default function AdminPage() {
           </div>
         </section>
 
-        <section className="mb-8 rounded-xl border border-[#F59E0B]/50 bg-[#FEF3C7] p-5 shadow-sm">
-          <div className="mb-4 rounded-lg border border-[#F59E0B]/30 bg-[#FEF3C7] p-3 text-sm text-[#78350F]">
+        <section className="mb-8 rounded-xl border border-warn/40 bg-warn-soft p-5">
+          <div className="mb-4 rounded-lg border border-warn/25 bg-warn-soft p-3 text-sm text-warn">
             <strong>Diagnostic — runs the real deposit scanner.</strong> This calls the production scan
             for one user: it records deposits, sweeps USDC to the treasury, and credits balances. Use
             this only when you need to see which rule each transfer hit.
           </div>
-          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Deposit scan diagnostic</h2>
-          <p className="mb-4 text-sm text-[#6B7280]">
+          <h2 className="mb-1 text-lg font-semibold text-ink">Deposit scan diagnostic</h2>
+          <p className="mb-4 text-sm text-muted">
             Returns the scan result counts plus a per-candidate breakdown: source, destination, amount,
             block time, and the exact rejection reason (already recorded, before cutoff, treasury source,
             below minimum, or accepted).
@@ -1606,8 +1606,8 @@ export default function AdminPage() {
 
             {scanRaw !== null && (
               <div className="mt-4">
-                <p className="mb-1 text-sm font-semibold text-[#111827]">Raw response</p>
-                <pre className="max-h-96 overflow-auto rounded-lg border border-[#E5E7EB] bg-white p-3 text-xs text-[#111827]">
+                <p className="mb-1 text-sm font-semibold text-ink">Raw response</p>
+                <pre className="max-h-96 overflow-auto rounded-lg border border-line bg-surface p-3 text-xs text-ink">
                   {scanRaw}
                 </pre>
               </div>
@@ -1618,10 +1618,10 @@ export default function AdminPage() {
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-line bg-surface p-6 shadow-xl">
             {modal.type === 'edit' && (
               <>
-                <h3 className="mb-4 text-lg font-semibold text-[#111827]">Edit {modal.startup.name}</h3>
+                <h3 className="mb-4 text-lg font-semibold text-ink">Edit {modal.startup.name}</h3>
                 <div className="space-y-4">
                   <div>
                     <label className={labelClass}>Name</label>
@@ -1688,13 +1688,13 @@ export default function AdminPage() {
                       <label className={labelClass}>Vote threshold</label>
                       <input
                         type="number"
-                        className={`${inputClass} ${modal.startup.phase !== 1 ? 'cursor-not-allowed bg-[#F3F4F6]' : ''}`}
+                        className={`${inputClass} ${modal.startup.phase !== 1 ? 'cursor-not-allowed bg-subtle' : ''}`}
                         value={editForm.vote_threshold ?? modal.startup.vote_threshold}
                         disabled={modal.startup.phase !== 1}
                         onChange={(e) => setEditForm((f) => ({ ...f, vote_threshold: Number(e.target.value) }))}
                       />
                       {modal.startup.phase !== 1 && (
-                        <p className="mt-1 text-xs text-[#6B7280]">
+                        <p className="mt-1 text-xs text-muted">
                           Locked: a raise has already started; changing terms would alter commitments.
                         </p>
                       )}
@@ -1703,13 +1703,13 @@ export default function AdminPage() {
                       <label className={labelClass}>Capital target</label>
                       <input
                         type="number"
-                        className={`${inputClass} ${modal.startup.phase !== 1 ? 'cursor-not-allowed bg-[#F3F4F6]' : ''}`}
+                        className={`${inputClass} ${modal.startup.phase !== 1 ? 'cursor-not-allowed bg-subtle' : ''}`}
                         value={editForm.capital_target ?? modal.startup.capital_target}
                         disabled={modal.startup.phase !== 1}
                         onChange={(e) => setEditForm((f) => ({ ...f, capital_target: Number(e.target.value) }))}
                       />
                       {modal.startup.phase !== 1 && (
-                        <p className="mt-1 text-xs text-[#6B7280]">
+                        <p className="mt-1 text-xs text-muted">
                           Locked: a raise has already started; changing terms would alter commitments.
                         </p>
                       )}
@@ -1717,7 +1717,7 @@ export default function AdminPage() {
                   </div>
                 </div>
                 {actionError && (
-                  <p className="mt-4 text-sm text-[#EF4444]">{actionError}</p>
+                  <p className="mt-4 text-sm text-no">{actionError}</p>
                 )}
                 <div className="mt-6 flex justify-end gap-3">
                   <button type="button" onClick={closeModal} className={buttonSecondary}>
@@ -1732,8 +1732,8 @@ export default function AdminPage() {
 
             {modal.type === 'delete' && (
               <>
-                <h3 className="mb-2 text-lg font-semibold text-[#111827]">Delete {modal.startup.name}?</h3>
-                <p className="mb-4 text-sm text-[#6B7280]">
+                <h3 className="mb-2 text-lg font-semibold text-ink">Delete {modal.startup.name}?</h3>
+                <p className="mb-4 text-sm text-muted">
                   This will hide the startup from the platform and return every deployed vote to its voter&apos;s pool. This is reversible. Only available for phase 1 startups.
                 </p>
                 <label className={labelClass}>Reason (optional)</label>
@@ -1743,7 +1743,7 @@ export default function AdminPage() {
                   onChange={(e) => setReason(e.target.value)}
                   placeholder="Reason for deletion"
                 />
-                {actionError && <p className="mt-4 text-sm text-[#EF4444]">{actionError}</p>}
+                {actionError && <p className="mt-4 text-sm text-no">{actionError}</p>}
                 <div className="mt-6 flex justify-end gap-3">
                   <button type="button" onClick={closeModal} className={buttonSecondary}>
                     Cancel
@@ -1757,11 +1757,11 @@ export default function AdminPage() {
 
             {modal.type === 'restore' && (
               <>
-                <h3 className="mb-2 text-lg font-semibold text-[#111827]">Restore {modal.startup.name}?</h3>
-                <p className="mb-4 text-sm text-[#6B7280]">
+                <h3 className="mb-2 text-lg font-semibold text-ink">Restore {modal.startup.name}?</h3>
+                <p className="mb-4 text-sm text-muted">
                   This will make the startup visible again. Votes that were previously returned to users are not reclaimed.
                 </p>
-                {actionError && <p className="mt-4 text-sm text-[#EF4444]">{actionError}</p>}
+                {actionError && <p className="mt-4 text-sm text-no">{actionError}</p>}
                 <div className="mt-6 flex justify-end gap-3">
                   <button type="button" onClick={closeModal} className={buttonSecondary}>
                     Cancel
@@ -1775,11 +1775,11 @@ export default function AdminPage() {
 
             {modal.type === 'force-phase2' && (
               <>
-                <div className="mb-4 rounded-lg border border-[#F59E0B]/30 bg-[#FEF3C7] p-3 text-sm text-[#92400E]">
+                <div className="mb-4 rounded-lg border border-warn/25 bg-warn-soft p-3 text-sm text-warn">
                   <strong>Warning:</strong> This is the most consequential action on this page. It permanently closes voting, burns every vote deployed on this startup, and opens the startup for real-money fundraising without it having reached its threshold.
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-[#111827]">Force {modal.startup.name} to phase 2?</h3>
-                <p className="mb-4 text-sm text-[#6B7280]">
+                <h3 className="mb-2 text-lg font-semibold text-ink">Force {modal.startup.name} to phase 2?</h3>
+                <p className="mb-4 text-sm text-muted">
                   Only use this with clear reason. The change cannot be undone.
                 </p>
                 <label className={labelClass}>Reason (optional)</label>
@@ -1789,7 +1789,7 @@ export default function AdminPage() {
                   onChange={(e) => setReason(e.target.value)}
                   placeholder="Reason for forcing phase 2"
                 />
-                {actionError && <p className="mt-4 text-sm text-[#EF4444]">{actionError}</p>}
+                {actionError && <p className="mt-4 text-sm text-no">{actionError}</p>}
                 <div className="mt-6 flex justify-end gap-3">
                   <button type="button" onClick={closeModal} className={buttonSecondary}>
                     Cancel
@@ -1803,17 +1803,17 @@ export default function AdminPage() {
 
             {modal.type === 'freeze' && (
               <>
-                <h3 className="mb-2 text-lg font-semibold text-[#111827]">
+                <h3 className="mb-2 text-lg font-semibold text-ink">
                   {modal.intendedFrozen ? 'Halt new purchases' : 'Resume new purchases'} on {modal.startup.name}?
                 </h3>
                 {modal.intendedFrozen ? (
-                  <div className="mb-4 rounded-lg border border-[#F59E0B]/30 bg-[#FEF3C7] p-3 text-sm text-[#92400E]">
+                  <div className="mb-4 rounded-lg border border-warn/25 bg-warn-soft p-3 text-sm text-warn">
                     This halts <strong>new purchases only</strong>. Selling stays open, so anyone already holding
                     tokens can still exit. This is deliberate: the correct response to a suspected problem is to
                     close the entrance, not to trap the people already inside.
                   </div>
                 ) : (
-                  <p className="mb-4 text-sm text-[#6B7280]">
+                  <p className="mb-4 text-sm text-muted">
                     This resumes new purchases on the raise. Selling was never blocked while halted, so nothing
                     changes for existing holders.
                   </p>
@@ -1825,7 +1825,7 @@ export default function AdminPage() {
                   onChange={(e) => setReason(e.target.value)}
                   placeholder={modal.intendedFrozen ? 'Reason for halting purchases' : 'Reason for resuming purchases'}
                 />
-                {actionError && <p className="mt-4 text-sm text-[#EF4444]">{actionError}</p>}
+                {actionError && <p className="mt-4 text-sm text-no">{actionError}</p>}
                 <div className="mt-6 flex justify-end gap-3">
                   <button type="button" onClick={closeModal} className={buttonSecondary}>
                     Cancel

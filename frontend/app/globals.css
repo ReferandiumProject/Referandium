@@ -2,27 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Palette — warm neutral light theme with a single cobalt accent.
+/* Palette — cool paper white, graphite ink, jade/brick for YES/NO,
+   ink-blue for capital raising.
    Values are space-separated RGB so Tailwind opacity modifiers work. */
 :root {
-  --canvas: 247 247 245;
+  --canvas: 246 247 248;
   --surface: 255 255 255;
-  --subtle: 241 241 238;
-  --line: 230 230 226;
-  --line-strong: 212 212 206;
-  --ink: 21 21 20;
-  --ink-soft: 63 63 60;
-  --muted: 110 110 105;
-  --faint: 156 156 150;
-  --accent: 45 79 224;
-  --accent-hover: 36 64 194;
-  --accent-soft: 238 241 253;
-  --yes: 21 127 61;
-  --yes-soft: 233 245 238;
-  --no: 200 50 43;
-  --no-soft: 251 236 234;
-  --warn: 161 92 7;
-  --warn-soft: 251 243 228;
+  --subtle: 239 240 242;
+  --line: 228 229 233;
+  --line-strong: 208 210 216;
+  --ink: 27 29 34;
+  --ink-soft: 64 67 76;
+  --muted: 104 108 120;
+  --faint: 150 154 165;
+  --accent: 59 76 202;
+  --accent-hover: 47 61 170;
+  --accent-soft: 237 239 252;
+  --yes: 19 121 91;
+  --yes-soft: 231 244 239;
+  --no: 194 65 45;
+  --no-soft: 251 237 234;
+  --warn: 154 98 10;
+  --warn-soft: 251 244 228;
 
   color-scheme: light;
 }

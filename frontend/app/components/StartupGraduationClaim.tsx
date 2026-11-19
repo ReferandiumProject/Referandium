@@ -52,15 +52,15 @@ export function StartupGraduationClaim({
   if (!graduated || !authenticated) return null
   if (loading) {
     return (
-      <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-        <div className="h-20 animate-pulse rounded-lg bg-[#E5E7EB]" />
+      <div className="rounded-xl border border-line bg-surface p-6">
+        <div className="h-20 animate-pulse rounded-lg bg-subtle" />
       </div>
     )
   }
   if (error) {
     return (
-      <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-        <p className="text-sm text-[#EF4444]">{error}</p>
+      <div className="rounded-xl border border-line bg-surface p-5">
+        <p className="text-sm text-no">{error}</p>
       </div>
     )
   }

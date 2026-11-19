@@ -48,11 +48,11 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         this.props.fallback ?? (
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="rounded-xl border border-[#EF4444]/30 bg-[#EF4444]/10 p-6 text-center">
-              <h1 className="text-lg font-semibold text-[#111827]">Something went wrong</h1>
-              <p className="mt-2 text-sm text-[#6B7280]">
-                We have been notified and are looking into it.
+          <div className="flex min-h-[60vh] items-center justify-center p-6">
+            <div className="max-w-sm text-center">
+              <h1 className="text-lg font-semibold">This page failed to load</h1>
+              <p className="mt-2 text-sm text-muted">
+                The error has been recorded. Reload the page to try again.
               </p>
             </div>
           </div>

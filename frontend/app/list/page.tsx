@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
 import { useUser } from '@/app/context/UserContext'
 import { formatUsd, formatVoteCount } from '@/lib/format'
+import { Card, Notice, Skeleton, buttonClass, cx, inputClass as baseInput } from '@/app/components/ui'
 
 const STAGE_OPTIONS = ['Idea', 'MVP', 'Seed', 'Series A+']
 
@@ -180,44 +181,33 @@ export default function ListStartupPage() {
     }
   }
 
-  const inputClass =
-    'w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]'
-  const labelClass = 'mb-1.5 block text-sm font-medium text-[#374151]'
-  const hintClass = 'mt-1 text-xs text-[#6B7280]'
+  const inputClass = baseInput
+  const labelClass = 'mb-1.5 block text-sm font-medium text-ink'
+  const hintClass = 'mt-1.5 text-[13px] leading-relaxed text-muted'
+  const errorClass = 'mt-1.5 text-[13px] text-no'
 
   const SignInPrompt = () => (
-    <main className="min-h-screen bg-white px-4 py-16 text-[#111827]">
-      <div className="mx-auto max-w-xl text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-[#111827] sm:text-4xl">
-          List your startup
-        </h1>
-        <p className="mt-4 text-base text-[#6B7280]">
-          Sign in to create a listing, set your vote threshold, and start
-          raising capital.
-        </p>
-        <button
-          onClick={login}
-          className="mt-8 inline-flex items-center justify-center rounded-lg bg-[#3B82F6] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-600"
-        >
-          Sign in
-        </button>
-      </div>
-    </main>
+    <div className="mx-auto w-full max-w-xl px-4 py-24 sm:px-6">
+      <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">List your startup</h1>
+      <p className="mt-3 text-base leading-relaxed text-muted">
+        Sign in to create a listing, set your vote threshold and start raising capital.
+      </p>
+      <button onClick={login} className={buttonClass('primary', 'lg', 'mt-8')}>
+        Sign in to continue
+      </button>
+    </div>
   )
 
   if (!ready) {
     if (authenticated) {
       return (
-        <main className="min-h-screen bg-white px-4 py-12 text-[#111827]">
-          <div className="mx-auto max-w-2xl">
-            <div className="h-8 w-48 animate-pulse rounded bg-[#E5E7EB]" />
-            <div className="mt-6 space-y-4">
-              <div className="h-24 animate-pulse rounded-lg bg-[#E5E7EB]" />
-              <div className="h-12 animate-pulse rounded-lg bg-[#E5E7EB]" />
-              <div className="h-12 animate-pulse rounded-lg bg-[#E5E7EB]" />
-            </div>
+        <div className="mx-auto w-full max-w-page px-4 pb-20 pt-12 sm:px-6">
+          <Skeleton className="h-9 w-64" />
+          <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <Skeleton className="h-96 rounded-xl" />
+            <Skeleton className="h-56 rounded-xl" />
           </div>
-        </main>
+        </div>
       )
     }
     return <SignInPrompt />
@@ -227,228 +217,222 @@ export default function ListStartupPage() {
     return <SignInPrompt />
   }
 
+  const section = (title: string, description: string) => (
+    <div className="mb-5">
+      <h2 className="text-[15px] font-semibold">{title}</h2>
+      <p className="mt-0.5 text-[13px] text-muted">{description}</p>
+    </div>
+  )
+
   return (
-    <main className="min-h-screen bg-white px-4 py-10 text-[#111827]">
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-[#111827] sm:text-3xl">
-            List your startup
-          </h1>
-          <p className="mt-2 text-sm text-[#6B7280]">
-            Create a public listing and set the terms under which it becomes
-            eligible to raise capital.
-          </p>
+    <div className="mx-auto w-full max-w-page px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+      <header className="mb-10 max-w-2xl">
+        <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">List your startup</h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-muted">
+          Create a public listing and set the terms under which it becomes eligible to raise capital.
+        </p>
+      </header>
+
+      <form onSubmit={handleSubmit} className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-6">
+          <Card className="p-5 sm:p-6">
+            {section('About the startup', 'Shown on the listing and in search.')}
+            <div className="space-y-5">
+              <div>
+                <label htmlFor="name" className={labelClass}>
+                  Startup name
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Acme Launchpad"
+                  className={cx(inputClass, 'h-10')}
+                />
+                {errors.name && <p className={errorClass}>{errors.name}</p>}
+              </div>
+
+              <div>
+                <label htmlFor="description" className={labelClass}>
+                  Short description
+                </label>
+                <textarea
+                  id="description"
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What does your startup do?"
+                  className={inputClass}
+                />
+                {errors.description && <p className={errorClass}>{errors.description}</p>}
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-3">
+                <div>
+                  <label htmlFor="stage" className={labelClass}>
+                    Stage
+                  </label>
+                  <select
+                    id="stage"
+                    value={stage}
+                    onChange={(e) => setStage(e.target.value)}
+                    className={cx(inputClass, 'h-10')}
+                  >
+                    <option value="">Select stage</option>
+                    {STAGE_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="website" className={labelClass}>
+                    Website
+                  </label>
+                  <input
+                    id="website"
+                    type="url"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                    placeholder="https://..."
+                    className={cx(inputClass, 'h-10')}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="twitter" className={labelClass}>
+                    Twitter / X
+                  </label>
+                  <input
+                    id="twitter"
+                    type="text"
+                    value={twitter}
+                    onChange={(e) => setTwitter(e.target.value)}
+                    placeholder="@handle"
+                    className={cx(inputClass, 'h-10')}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="pitch" className={labelClass}>
+                  Pitch
+                </label>
+                <textarea
+                  id="pitch"
+                  rows={4}
+                  value={pitch}
+                  onChange={(e) => setPitch(e.target.value)}
+                  placeholder="Tell supporters why they should vote for your startup..."
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-5 sm:p-6">
+            {section('Raise terms', 'These decide when the raise opens and how much it aims for.')}
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label htmlFor="vote_threshold" className={labelClass}>
+                  Vote threshold
+                </label>
+                <input
+                  id="vote_threshold"
+                  type="number"
+                  min={VOTE_THRESHOLD_MIN}
+                  max={VOTE_THRESHOLD_MAX}
+                  step={1}
+                  value={voteThreshold}
+                  onChange={(e) => setVoteThreshold(e.target.value)}
+                  placeholder="10000"
+                  className={cx(inputClass, 'num h-10')}
+                />
+                {errors.vote_threshold ? (
+                  <p className={errorClass}>{errors.vote_threshold}</p>
+                ) : (
+                  <p className={hintClass}>
+                    Net yes votes needed before the startup can raise. Each user gets 100 free votes a
+                    day, so 10,000 is roughly 100 user-days of support.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="capital_target" className={labelClass}>
+                  Capital target (USDC)
+                </label>
+                <input
+                  id="capital_target"
+                  type="number"
+                  min={CAPITAL_TARGET_MIN}
+                  max={CAPITAL_TARGET_MAX}
+                  step="1"
+                  value={capitalTarget}
+                  onChange={(e) => setCapitalTarget(e.target.value)}
+                  placeholder="50000"
+                  className={cx(inputClass, 'num h-10')}
+                />
+                {errors.capital_target ? (
+                  <p className={errorClass}>{errors.capital_target}</p>
+                ) : (
+                  <p className={hintClass}>
+                    The amount to raise once validated. It also sets market depth and can&apos;t be
+                    changed after the raise starts.
+                  </p>
+                )}
+              </div>
+            </div>
+          </Card>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6 rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8"
-        >
-          <div>
-            <label htmlFor="name" className={labelClass}>
-              Startup name
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Acme Launchpad"
-              className={inputClass}
-            />
-            {errors.name && (
-              <p className="mt-1.5 text-xs font-medium text-[#EF4444]">
-                {errors.name}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="description" className={labelClass}>
-              Short description
-            </label>
-            <textarea
-              id="description"
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What does your startup do?"
-              className={inputClass}
-            />
-            {errors.description && (
-              <p className="mt-1.5 text-xs font-medium text-[#EF4444]">
-                {errors.description}
-              </p>
-            )}
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <label htmlFor="vote_threshold" className={labelClass}>
-                Vote threshold
-              </label>
-              <input
-                id="vote_threshold"
-                type="number"
-                min={VOTE_THRESHOLD_MIN}
-                max={VOTE_THRESHOLD_MAX}
-                step={1}
-                value={voteThreshold}
-                onChange={(e) => setVoteThreshold(e.target.value)}
-                placeholder="10000"
-                className={inputClass}
-              />
-              <p className={hintClass}>
-                Net YES votes required before the startup can raise. A higher
-                threshold means a longer validation period but a stronger
-                signal. With 100 free voting tokens per user per day, a
-                threshold of 10,000 means roughly 100 user-days of support.
-              </p>
-              {errors.vote_threshold && (
-                <p className="mt-1.5 text-xs font-medium text-[#EF4444]">
-                  {errors.vote_threshold}
-                </p>
-              )}
+        <aside className="lg:sticky lg:top-20">
+          <Card className="p-5">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-[15px] font-semibold">Listing fee</h2>
+              <span className="num text-[15px] font-semibold">{LISTING_FEE_USDC} USDC</span>
             </div>
-
-            <div>
-              <label htmlFor="capital_target" className={labelClass}>
-                Capital target (USDC)
-              </label>
-              <input
-                id="capital_target"
-                type="number"
-                min={CAPITAL_TARGET_MIN}
-                max={CAPITAL_TARGET_MAX}
-                step="1"
-                value={capitalTarget}
-                onChange={(e) => setCapitalTarget(e.target.value)}
-                placeholder="50000"
-                className={inputClass}
-              />
-              <p className={hintClass}>
-                The amount the startup will attempt to raise once validated.
-                This also shapes market depth and cannot be changed after the
-                raise has started.
-              </p>
-              {errors.capital_target && (
-                <p className="mt-1.5 text-xs font-medium text-[#EF4444]">
-                  {errors.capital_target}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <label htmlFor="stage" className={labelClass}>
-                Stage
-              </label>
-              <select
-                id="stage"
-                value={stage}
-                onChange={(e) => setStage(e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Select stage</option>
-                {STAGE_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="website" className={labelClass}>
-                Website
-              </label>
-              <input
-                id="website"
-                type="url"
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                placeholder="https://..."
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="twitter" className={labelClass}>
-                Twitter / X
-              </label>
-              <input
-                id="twitter"
-                type="text"
-                value={twitter}
-                onChange={(e) => setTwitter(e.target.value)}
-                placeholder="@handle"
-                className={inputClass}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="pitch" className={labelClass}>
-              Pitch
-            </label>
-            <textarea
-              id="pitch"
-              rows={4}
-              value={pitch}
-              onChange={(e) => setPitch(e.target.value)}
-              placeholder="Tell supporters why they should vote for your startup..."
-              className={inputClass}
-            />
-          </div>
-
-          <div className="rounded-lg border border-[#DBEAFE] bg-[#EFF6FF] p-4 text-sm text-[#1E40AF]">
-            <p className="font-semibold">Listing fee: 8 USDC</p>
-            <p className="mt-1">
-              This fee is charged from your platform balance when you submit. It
-              is non-refundable and helps prevent spam listings.
+            <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
+              Charged from your balance when you submit. It&apos;s non-refundable and keeps spam
+              listings out.
             </p>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="font-medium">
-                {balanceLoading
-                  ? 'Loading balance...'
-                  : balance === null
-                  ? 'Balance unavailable'
-                  : `Available balance: ${formatUsd(balance)}`}
-              </p>
-              <Link
-                href="/profile"
-                className="text-sm font-semibold text-[#3B82F6] hover:text-blue-700"
-              >
-                Deposit funds
-              </Link>
-            </div>
-          </div>
 
-          {serverError && (
-            <div className="rounded-lg border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#B91C1C]">
-              {serverError}
+            <div className="mt-4 flex items-center justify-between border-t border-line pt-4 text-sm">
+              <span className="text-muted">Your balance</span>
+              <span className="num font-medium">
+                {balanceLoading ? 'Loading…' : balance === null ? 'Unavailable' : formatUsd(balance)}
+              </span>
             </div>
-          )}
+            <Link href="/profile" className="mt-2 inline-block text-[13px] font-medium text-accent hover:underline">
+              Deposit funds
+            </Link>
 
-          <div className="pt-2">
+            {serverError && (
+              <Notice tone="no" className="mt-4">
+                {serverError}
+              </Notice>
+            )}
+
             <button
               type="submit"
               disabled={submitting || balanceLoading || !canAfford}
-              className="w-full rounded-lg bg-[#3B82F6] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-[#9CA3AF]"
+              className={buttonClass('primary', 'lg', 'mt-5 w-full')}
             >
               {submitting
-                ? 'Submitting...'
+                ? 'Submitting…'
                 : canAfford
                 ? `List startup for ${LISTING_FEE_USDC} USDC`
                 : 'Insufficient balance'}
             </button>
-            <p className="mt-2 text-center text-xs text-[#6B7280]">
-              The slug may be adjusted if the name is already taken.
+            <p className="mt-2 text-center text-xs text-faint">
+              The URL may be adjusted if the name is already taken.
             </p>
-          </div>
-        </form>
-      </div>
-    </main>
+          </Card>
+        </aside>
+      </form>
+    </div>
   )
 }

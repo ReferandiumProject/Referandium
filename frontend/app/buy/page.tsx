@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { formatUsd } from '@/lib/format'
+import { Notice, buttonClass } from '../components/ui'
 import { PURCHASE_PACKAGES } from '@/lib/purchase-packages'
 
 type ListingCredits = { credits: number }
@@ -142,139 +143,109 @@ export default function BuyPage() {
 
   if (!authenticated) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-4">
-        <div className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
-          <h1 className="mb-2 text-3xl font-semibold text-[#111827]">Buy packs</h1>
-          <p className="mb-6 text-sm text-[#6B7280]">
-            Sign in to purchase listing credits and add funds to your balance.
-          </p>
-          <button
-            onClick={() => login()}
-            className="rounded-lg bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
-          >
-            Sign In
-          </button>
-        </div>
-      </main>
+      <div className="mx-auto w-full max-w-xl px-4 py-24 sm:px-6">
+        <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">Buy credits and USDC</h1>
+        <p className="mt-3 text-base leading-relaxed text-muted">
+          Sign in to buy listing credits or add USDC to your balance.
+        </p>
+        <button onClick={() => login()} className={buttonClass('primary', 'lg', 'mt-8')}>
+          Sign in to continue
+        </button>
+      </div>
     )
   }
 
+  const packButton = (id: string) => (
+    <span className={buttonClass('primary', 'md', 'mt-5 w-full')}>{buying === id ? 'Redirecting…' : 'Buy with card'}</span>
+  )
+
   return (
-    <main className="min-h-screen bg-[#F9FAFB] px-4 pb-24 pt-6 text-[#111827] sm:pt-8">
-      <div className="mx-auto max-w-4xl">
-        {loading && (
-          <p className="mb-4 text-sm text-[#6B7280]">Loading account...</p>
-        )}
-        {error && (
-          <div className="mb-4 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
-            {error}
-          </div>
-        )}
-        {releasedNotice && (
-          <div className="mb-4 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-3 text-sm text-[#10B981]">
-            Your funds have arrived: {formatUsd(releasedNotice.usdc)} from {releasedNotice.count} released investment pack{releasedNotice.count === 1 ? '' : 's'}.
-          </div>
-        )}
+    <div className="mx-auto w-full max-w-4xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+      <header>
+        <h1 className="text-[28px] font-semibold leading-tight sm:text-[34px]">Buy credits and USDC</h1>
+        <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">
+          Listing credits let you put startups up for a vote. USDC is the balance you use to back
+          startups that are raising.
+        </p>
+      </header>
 
-        <div className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-          <h1 className="text-2xl font-semibold text-[#111827]">Buy packs</h1>
-          <p className="mt-1 text-sm text-[#6B7280]">
-            Purchase listing credits or add USDC to your balance for backing startups.
-          </p>
-
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Available USDC</p>
-              <p className="mt-1 text-lg font-semibold text-[#111827]">{formatUsd(balance?.available_usdc)}</p>
-            </div>
-            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Locked USDC</p>
-              <p className="mt-1 text-lg font-semibold text-[#111827]">{formatUsd(balance?.locked_usdc)}</p>
-            </div>
-            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Listing credits</p>
-              <p className="mt-1 text-lg font-semibold text-[#111827]">{listingCredits?.credits ?? '—'}</p>
-            </div>
+      <dl className="mt-8 grid grid-cols-3 divide-x divide-line rounded-xl border border-line bg-surface">
+        {[
+          { label: 'Available USDC', value: formatUsd(balance?.available_usdc) },
+          { label: 'Locked USDC', value: formatUsd(balance?.locked_usdc) },
+          { label: 'Listing credits', value: listingCredits?.credits ?? '—' },
+        ].map((st) => (
+          <div key={st.label} className="min-w-0 px-4 py-4 sm:px-5">
+            <dt className="truncate text-[13px] text-muted">{st.label}</dt>
+            <dd className="num mt-1 truncate text-lg font-semibold sm:text-xl">{loading ? '…' : st.value}</dd>
           </div>
+        ))}
+      </dl>
+
+      {error && (
+        <Notice tone="no" className="mt-4">
+          {error}
+        </Notice>
+      )}
+      {releasedNotice && (
+        <Notice tone="yes" className="mt-4">
+          Your funds have arrived: {formatUsd(releasedNotice.usdc)} from {releasedNotice.count} released investment pack{releasedNotice.count === 1 ? '' : 's'}.
+        </Notice>
+      )}
+
+      <section className="mt-12">
+        <h2 className="text-lg font-semibold">Listing credits</h2>
+        <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted">
+          One credit lists one startup. Credits never expire. They can&apos;t be withdrawn or turned
+          into USDC.
+        </p>
+
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {LISTING_PACKAGES.map((pack) => (
+            <button
+              key={pack.id}
+              onClick={() => handleBuy(pack.id)}
+              disabled={buying === pack.id}
+              className="group flex flex-col rounded-xl border border-line bg-surface p-5 text-left transition-colors hover:border-ink/40 disabled:cursor-wait disabled:opacity-60"
+            >
+              <span className="text-sm font-medium text-muted">{pack.label}</span>
+              <span className="num mt-2 text-[28px] font-semibold leading-none tracking-tight">{formatPrice(pack.amount)}</span>
+              <span className="num mt-2 text-sm text-ink-soft">
+                {pack.credits === 1 ? '1 credit' : `${pack.credits} credits`}
+              </span>
+              {packButton(pack.id)}
+            </button>
+          ))}
         </div>
+      </section>
 
-        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-[#111827]">Listing packs</h2>
-          <p className="mt-1 text-sm text-[#6B7280]">
-            Buy the right to list startups. Credits never expire and can be used whenever you need them.
-          </p>
-          <p className="mt-2 text-xs text-[#6B7280]">
-            Listing credits are for listing startups only. They cannot be withdrawn or converted to your USDC balance.
-          </p>
+      <section className="mt-12">
+        <h2 className="text-lg font-semibold">Add USDC</h2>
+        <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted">
+          Card fees, including a fixed per-payment charge, come out of the amount you choose. The rest
+          is added to your balance once the payment settles, so larger amounts lose less to fees.
+        </p>
+        <Notice tone="warn" className="mt-4">
+          Funds stay locked until Stripe reports the payment as settled. This is the time it takes to
+          convert card money, not an arbitrary hold.
+        </Notice>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {LISTING_PACKAGES.map((pack) => (
-              <button
-                key={pack.id}
-                onClick={() => handleBuy(pack.id)}
-                disabled={buying === pack.id}
-                className="flex flex-col items-start rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-5 text-left transition-colors hover:border-[#3B82F6] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className="text-base font-semibold text-[#111827]">{pack.label}</span>
-                <span className="mt-1 text-2xl font-bold text-[#111827]">{formatPrice(pack.amount)}</span>
-                <span className="mt-2 text-sm text-[#6B7280]">
-                  {pack.credits === 1 ? '1 credit' : `${pack.credits} credits`}
-                </span>
-                {buying === pack.id ? (
-                  <span className="mt-4 inline-flex items-center rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white">
-                    Redirecting…
-                  </span>
-                ) : (
-                  <span className="mt-4 inline-flex items-center rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600">
-                    Buy
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-[#111827]">Investment packs</h2>
-          <p className="mt-1 text-sm text-[#6B7280]">
-            Add USDC to the balance you use for backing startups. Choose the amount you want to add.
-          </p>
-          <div className="mt-2 rounded-lg border border-[#F59E0B]/30 bg-[#F59E0B]/10 p-3 text-sm text-[#B45309]">
-            Funds are held until Stripe reports them as available. This is the settlement period
-            — real money being converted before it becomes spendable, not an arbitrary delay.
-          </div>
-
-          <p className="mt-2 text-xs text-[#6B7280]">
-            Card fees include a fixed charge, so smaller amounts lose a larger share to fees.
-          </p>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {INVESTMENT_PACKAGES.map((pack) => (
-              <button
-                key={pack.id}
-                onClick={() => handleBuy(pack.id)}
-                disabled={buying === pack.id}
-                className="flex flex-col items-start rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-5 text-left transition-colors hover:border-[#3B82F6] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className="text-2xl font-bold text-[#111827]">{formatPrice(pack.amount)}</span>
-                <span className="mt-2 text-sm text-[#6B7280]">
-                  Card fees are deducted from this — whatever remains is added to your balance
-                  once the payment settles.
-                </span>
-                {buying === pack.id ? (
-                  <span className="mt-4 inline-flex items-center rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white">
-                    Redirecting…
-                  </span>
-                ) : (
-                  <span className="mt-4 inline-flex items-center rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600">
-                    Buy
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </section>
-      </div>
-    </main>
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {INVESTMENT_PACKAGES.map((pack) => (
+            <button
+              key={pack.id}
+              onClick={() => handleBuy(pack.id)}
+              disabled={buying === pack.id}
+              className="flex flex-col rounded-xl border border-line bg-surface p-5 text-left transition-colors hover:border-ink/40 disabled:cursor-wait disabled:opacity-60"
+            >
+              <span className="text-sm font-medium text-muted">Add to balance</span>
+              <span className="num mt-2 text-[28px] font-semibold leading-none tracking-tight">{formatPrice(pack.amount)}</span>
+              <span className="mt-2 text-sm text-ink-soft">Minus card fees</span>
+              {packButton(pack.id)}
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
   )
 }

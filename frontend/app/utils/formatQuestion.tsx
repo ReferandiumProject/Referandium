@@ -14,8 +14,8 @@ export function formatQuestion(question: string): React.ReactNode {
   return (
     <>
       {parts[0]}
-      <span className="line-through decoration-red-500 decoration-2 text-gray-400">Bitcoin</span>{' '}
-      <span className="text-blue-600 font-bold">Referandium</span>
+      <span className="line-through decoration-red-500 decoration-2 text-faint">Bitcoin</span>{' '}
+      <span className="text-accent font-bold">Referandium</span>
       {parts[1]}
     </>
   );

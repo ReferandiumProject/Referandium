@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
 import { formatUsd, formatPrice, formatVoteCount } from '@/lib/format'
+import { Badge, EmptyState, Logo, Notice, Progress, Segmented, Skeleton, SplitBar } from './components/ui'
 
 type UserPosition = {
   direction: 'yes' | 'no'
@@ -37,131 +38,83 @@ type Startup = {
 
 type TabKey = 'voting' | 'raising' | 'completed' | 'all'
 
-function getInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-}
-
-function Avatar({ name, src }: { name: string; src: string | null }) {
-  if (src) {
-    return (
-      <img
-        src={src}
-        alt={name}
-        className="h-11 w-11 flex-shrink-0 rounded-lg object-cover"
-      />
-    )
-  }
-
-  return (
-    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-[#3B82F6] text-sm font-bold text-white">
-      {getInitials(name)}
-    </div>
-  )
-}
-
-function CardShell({
+function Row({
   startup,
   badge,
-  children,
+  middle,
+  right,
 }: {
   startup: Startup
   badge?: ReactNode
-  children: ReactNode
+  middle: ReactNode
+  right: ReactNode
 }) {
   return (
     <Link
       href={`/startup/${startup.slug}`}
-      className="group flex flex-col rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm transition-colors duration-200 hover:border-[#3B82F6]/50"
+      className="grid gap-4 px-4 py-5 transition-colors hover:bg-canvas sm:px-5 md:grid-cols-[minmax(0,1fr)_260px_170px] md:items-center md:gap-8"
     >
-      <div className="mb-4 flex items-start gap-3">
-        <Avatar name={startup.name} src={startup.logo_url} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="truncate text-base font-semibold text-[#111827]">
-              {startup.name}
-            </h3>
+      <div className="flex min-w-0 items-start gap-3.5">
+        <Logo name={startup.name} src={startup.logo_url} size={44} />
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-[15px] font-semibold">{startup.name}</h3>
             {badge}
           </div>
-          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-[#6B7280]">
-            {startup.description}
-          </p>
+          {startup.description && (
+            <p className="mt-0.5 line-clamp-2 text-sm leading-relaxed text-muted">{startup.description}</p>
+          )}
         </div>
       </div>
-
-      <div className="mt-auto space-y-5">{children}</div>
+      <div className="min-w-0">{middle}</div>
+      <div className="min-w-0">{right}</div>
     </Link>
   )
 }
 
-function PhaseOneCard({ startup }: { startup: Startup }) {
+function VotingRow({ startup }: { startup: Startup }) {
   const totalYes = startup.total_yes_votes ?? 0
   const totalNo = startup.total_no_votes ?? 0
   const net = startup.net ?? 0
   const threshold = startup.vote_threshold ?? 0
   const progress = startup.progress ?? 0
-  const totalVotes = totalYes + totalNo
-  const yesPct = totalVotes > 0 ? (totalYes / totalVotes) * 100 : 0
-  const noPct = totalVotes > 0 ? 100 - yesPct : 0
+  const pos = startup.user_position
 
   return (
-    <CardShell
+    <Row
       startup={startup}
       badge={
-        startup.user_position && (
-          <span
-            className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-              startup.user_position.direction === 'yes'
-                ? 'bg-[#10B981]/10 text-[#10B981]'
-                : 'bg-[#EF4444]/10 text-[#EF4444]'
-            }`}
-          >
-            You · {startup.user_position.direction === 'yes' ? 'YES' : 'NO'} ·{' '}
-            {formatVoteCount(startup.user_position.votes)}
-          </span>
+        pos && (
+          <Badge tone={pos.direction === 'yes' ? 'yes' : 'no'}>
+            You voted {pos.direction === 'yes' ? 'yes' : 'no'} with {formatVoteCount(pos.votes)}
+          </Badge>
         )
       }
-    >
-      <div>
-        <div className="mb-2 flex items-center justify-between text-xs font-medium">
-          <span className="text-[#10B981]">YES {formatVoteCount(totalYes)}</span>
-          <span className="text-[#EF4444]">NO {formatVoteCount(totalNo)}</span>
+      middle={
+        <div>
+          <div className="num mb-2 flex items-baseline justify-between text-[13px]">
+            <span className="font-medium text-yes">Yes {formatVoteCount(totalYes)}</span>
+            <span className="font-medium text-no">No {formatVoteCount(totalNo)}</span>
+          </div>
+          <SplitBar yes={totalYes} no={totalNo} className="h-2" />
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
-          {totalVotes > 0 ? (
-            <div className="flex h-full w-full">
-              <div className="h-full bg-[#10B981]" style={{ width: `${yesPct}%` }} />
-              <div className="h-full bg-[#EF4444]" style={{ width: `${noPct}%` }} />
-            </div>
-          ) : (
-            <div className="h-full w-full bg-[#E5E7EB]" />
-          )}
+      }
+      right={
+        <div>
+          <div className="num mb-2 flex items-baseline justify-between gap-2 text-[13px]">
+            <span className="font-semibold text-ink">{Math.round(progress)}%</span>
+            <span className="truncate text-muted">
+              {formatVoteCount(net)} / {formatVoteCount(threshold)} net
+            </span>
+          </div>
+          <Progress value={progress} tone="neutral" />
         </div>
-      </div>
-
-      <div>
-        <div className="mb-2 flex items-center justify-between text-xs text-[#6B7280]">
-          <span className="text-[#111827]">{Math.round(progress)}%</span>
-          <span>
-            {formatVoteCount(net)} / {formatVoteCount(threshold)} votes
-          </span>
-        </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
-          <div
-            className="h-full bg-[#3B82F6] transition-all duration-500"
-            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-          />
-        </div>
-      </div>
-    </CardShell>
+      }
+    />
   )
 }
 
-function PhaseTwoCard({ startup }: { startup: Startup }) {
+function RaisingRow({ startup }: { startup: Startup }) {
   const curve = startup.curve
   const progress = curve?.progress ?? 0
   const raised = curve?.pool_usdc ?? '0'
@@ -169,86 +122,72 @@ function PhaseTwoCard({ startup }: { startup: Startup }) {
   const price = curve?.current_price ?? '0'
 
   return (
-    <CardShell
+    <Row
       startup={startup}
       badge={
-        <span className="flex-shrink-0 rounded-full bg-[#8B5CF6]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#8B5CF6]">
-          Raising
-        </span>
+        <>
+          <Badge tone="accent">Raising</Badge>
+          {curve?.frozen && <Badge tone="warn">Trading paused</Badge>}
+        </>
       }
-    >
-      <div className="rounded-lg bg-[#8B5CF6]/5 p-3">
-        <div className="mb-2 flex items-center justify-between text-xs text-[#6B7280]">
-          <span className="font-semibold text-[#8B5CF6]">
-            {Math.round(progress)}% raised
-          </span>
-          <span>
-            {formatUsd(raised)} / {formatUsd(target)}
-          </span>
+      middle={
+        <div>
+          <div className="num mb-2 flex items-baseline justify-between gap-2 text-[13px]">
+            <span className="font-semibold text-accent">{Math.round(progress)}% raised</span>
+            <span className="truncate text-muted">
+              {formatUsd(raised)} / {formatUsd(target)}
+            </span>
+          </div>
+          <Progress value={progress} tone="accent" className="h-2" />
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
-          <div
-            className="h-full bg-[#8B5CF6] transition-all duration-500"
-            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-          />
+      }
+      right={
+        <div className="md:text-right">
+          <p className="text-[13px] text-muted">Token price</p>
+          <p className="num text-[15px] font-semibold">${formatPrice(price)}</p>
         </div>
-      </div>
-      <div className="flex items-center justify-between text-xs text-[#6B7280]">
-        <span>Current token price</span>
-        <span className="font-medium text-[#111827]">${formatPrice(price)}</span>
-      </div>
-      {curve?.frozen && (
-        <p className="text-xs font-medium text-[#B45309]">Trading temporarily halted</p>
-      )}
-    </CardShell>
+      }
+    />
   )
 }
 
-function PhaseThreeCard({ startup }: { startup: Startup }) {
+function CompletedRow({ startup }: { startup: Startup }) {
   const curve = startup.curve
   const raised = curve?.pool_usdc ?? curve?.capital_target ?? '0'
 
   return (
-    <CardShell
+    <Row
       startup={startup}
-      badge={
-        <span className="flex-shrink-0 rounded-full bg-[#10B981]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#10B981]">
-          Completed
-        </span>
+      badge={<Badge tone="yes">Raise complete</Badge>}
+      middle={
+        <div>
+          <p className="text-[13px] text-muted">Raised</p>
+          <p className="num text-[15px] font-semibold text-yes">{formatUsd(raised)}</p>
+        </div>
       }
-    >
-      <div className="rounded-lg bg-[#10B981]/5 p-3">
-        <p className="text-xs text-[#6B7280]">Raise completed</p>
-        <p className="mt-1 text-lg font-semibold text-[#10B981]">{formatUsd(raised)}</p>
-      </div>
-      <p className="text-xs text-[#6B7280]">
-        The raise is finished. The on-chain token is being prepared for issuance.
-      </p>
-    </CardShell>
+      right={<p className="text-[13px] leading-snug text-muted md:text-right">Token is being prepared for issuance</p>}
+    />
   )
 }
 
-function StartupCard({ startup }: { startup: Startup }) {
-  if (startup.phase === 2) return <PhaseTwoCard startup={startup} />
-  if (startup.phase === 3) return <PhaseThreeCard startup={startup} />
-  return <PhaseOneCard startup={startup} />
+function StartupRow({ startup }: { startup: Startup }) {
+  if (startup.phase === 2) return <RaisingRow startup={startup} />
+  if (startup.phase === 3) return <CompletedRow startup={startup} />
+  return <VotingRow startup={startup} />
 }
 
-function SkeletonCard() {
+function SkeletonRow() {
   return (
-    <div className="flex flex-col rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-start gap-3">
-        <div className="h-11 w-11 flex-shrink-0 animate-pulse rounded-lg bg-[#E5E7EB]" />
+    <div className="grid gap-4 px-5 py-5 md:grid-cols-[minmax(0,1fr)_260px_170px] md:items-center md:gap-8">
+      <div className="flex items-start gap-3.5">
+        <Skeleton className="h-11 w-11 rounded-lg" />
         <div className="flex-1 space-y-2">
-          <div className="h-4 w-2/3 animate-pulse rounded bg-[#E5E7EB]" />
-          <div className="h-3 w-full animate-pulse rounded bg-[#E5E7EB]" />
-          <div className="h-3 w-5/6 animate-pulse rounded bg-[#E5E7EB]" />
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-3 w-4/5" />
         </div>
       </div>
-      <div className="mt-auto space-y-4">
-        <div className="h-2 w-full animate-pulse rounded-full bg-[#E5E7EB]" />
-        <div className="h-2 w-full animate-pulse rounded-full bg-[#E5E7EB]" />
-      </div>
+      <Skeleton className="h-2 w-full" />
+      <Skeleton className="h-2 w-full" />
     </div>
   )
 }
@@ -348,74 +287,54 @@ export default function HomePage() {
   }, [authState, authenticated, getAccessToken])
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] px-4 py-10 text-[#111827] sm:py-14">
-      <div className="mx-auto max-w-[1200px]">
-        <div className="mb-10 text-center sm:mb-14">
-          <h1 className="mb-4 text-3xl font-bold tracking-tight text-[#111827] sm:text-4xl md:text-5xl">
-            Startup Sentiment
-          </h1>
-          <p className="mx-auto max-w-2xl text-base leading-relaxed text-[#6B7280] sm:text-lg">
-            You get free daily voting tokens. Back the startups you believe in or reject the ones
-            you don&apos;t. Startups that reach their vote threshold move on to raise capital.
-          </p>
-        </div>
+    <div className="mx-auto w-full max-w-page px-4 pb-20 pt-10 sm:px-6 sm:pt-16">
+      <header className="max-w-2xl">
+        <h1 className="text-[34px] font-semibold leading-[1.1] tracking-[-0.025em] sm:text-[44px]">
+          Vote on startups. The ones the crowd backs go on to raise.
+        </h1>
+        <p className="mt-4 max-w-xl text-base leading-relaxed text-muted">
+          You get free voting tokens every day. Vote yes on startups you believe in and no on the
+          ones you don&apos;t. A startup that reaches its net vote threshold opens a USDC raise.
+        </p>
+      </header>
 
-        {error && (
-          <div className="mb-8 rounded-xl border border-[#E5E7EB] bg-white p-6 text-center shadow-sm">
-            <p className="text-sm text-[#EF4444]">{error}</p>
-          </div>
-        )}
-
-        <div className="mb-8 flex flex-wrap gap-2 sm:mb-10">
-          {(
-            [
-              { key: 'voting', label: 'Voting' },
-              { key: 'raising', label: 'Raising' },
-              { key: 'completed', label: 'Completed' },
-              { key: 'all', label: 'All' },
-            ] as { key: TabKey; label: string }[]
-          ).map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setTab(key)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                tab === key
-                  ? 'bg-[#111827] text-white'
-                  : 'bg-white text-[#6B7280] hover:text-[#111827] border border-[#E5E7EB]'
-              }`}
-            >
-              {label}
-              <span
-                className={`ml-2 rounded-full px-1.5 py-0.5 text-xs ${
-                  tab === key ? 'bg-white/20 text-white' : 'bg-[#F3F4F6] text-[#6B7280]'
-                }`}
-              >
-                {counts[key]}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {[...Array(9)].map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
-        ) : filteredStartups.length === 0 ? (
-          <div className="rounded-xl border border-[#E5E7EB] bg-white py-16 text-center shadow-sm">
-            <p className="text-lg font-medium text-[#111827]">{emptyCopy[tab].title}</p>
-            <p className="mt-2 text-sm text-[#6B7280]">{emptyCopy[tab].body}</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredStartups.map((startup) => (
-              <StartupCard key={startup.id} startup={startup} />
-            ))}
-          </div>
+      <div className="mb-4 mt-10 flex flex-wrap items-center justify-between gap-3">
+        <Segmented<TabKey>
+          value={tab}
+          onChange={setTab}
+          options={[
+            { key: 'voting', label: 'Voting', count: counts.voting },
+            { key: 'raising', label: 'Raising', count: counts.raising },
+            { key: 'completed', label: 'Completed', count: counts.completed },
+            { key: 'all', label: 'All', count: counts.all },
+          ]}
+        />
+        {tab === 'voting' && !loading && filteredStartups.length > 0 && (
+          <p className="hidden text-[13px] text-muted md:block">Net votes are yes minus no</p>
         )}
       </div>
+
+      {error && (
+        <Notice tone="no" className="mb-4">
+          {error}
+        </Notice>
+      )}
+
+      {loading ? (
+        <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+          {[...Array(6)].map((_, i) => (
+            <SkeletonRow key={i} />
+          ))}
+        </div>
+      ) : filteredStartups.length === 0 ? (
+        <EmptyState title={emptyCopy[tab].title} description={emptyCopy[tab].body} />
+      ) : (
+        <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+          {filteredStartups.map((startup) => (
+            <StartupRow key={startup.id} startup={startup} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

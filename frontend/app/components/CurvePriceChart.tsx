@@ -96,12 +96,12 @@ export function CurvePriceChart({
       const chart = createChart(containerRef.current, {
         autoSize: true,
         layout: {
-          background: { type: ColorType.Solid, color: '#ffffff' },
-          textColor: '#111827',
+          background: { type: ColorType.Solid, color: '#FFFFFF' },
+          textColor: '#686C78',
         },
         grid: {
-          vertLines: { color: '#E5E7EB' },
-          horzLines: { color: '#E5E7EB' },
+          vertLines: { color: '#EFF0F2' },
+          horzLines: { color: '#EFF0F2' },
         },
         crosshair: {
           mode: CrosshairMode.Normal,
@@ -118,7 +118,7 @@ export function CurvePriceChart({
           timeVisible: true,
           secondsVisible: false,
           rightOffset: 0,
-          borderColor: '#E5E7EB',
+          borderColor: '#E4E5E9',
         },
         handleScroll: false,
         handleScale: false,
@@ -131,12 +131,12 @@ export function CurvePriceChart({
       console.log('[CurvePriceChart] autoscaleMax', autoscaleMax)
 
       const priceSeries = chart.addSeries(CandlestickSeries, {
-        upColor: '#10B981',
-        downColor: '#EF4444',
-        borderUpColor: '#10B981',
-        borderDownColor: '#EF4444',
-        wickUpColor: '#10B981',
-        wickDownColor: '#EF4444',
+        upColor: '#13795B',
+        downColor: '#C2412D',
+        borderUpColor: '#13795B',
+        borderDownColor: '#C2412D',
+        wickUpColor: '#13795B',
+        wickDownColor: '#C2412D',
         priceFormat: {
           type: 'custom',
           minMove: 0.000000000001,
@@ -167,7 +167,7 @@ export function CurvePriceChart({
       let poolSeries
       if (poolData.length === 2) {
         poolSeries = chart.addSeries(LineSeries, {
-          color: '#F59E0B',
+          color: '#9A620A',
           lineStyle: LineStyle.Dashed,
           lineWidth: 2,
           priceFormat: {
@@ -189,7 +189,7 @@ export function CurvePriceChart({
           {
             time: (poolData[1].time as number) as UTCTimestamp,
             position: 'aboveBar',
-            color: '#F59E0B',
+            color: '#9A620A',
             shape: 'circle',
             text: 'Pool open',
             size: 1,
@@ -237,7 +237,7 @@ export function CurvePriceChart({
           {
             time: lastTradeTime as UTCTimestamp,
             position: 'aboveBar',
-            color: '#10B981',
+            color: '#13795B',
             shape: 'circle',
             text: 'Graduation',
             size: 1,
@@ -267,8 +267,8 @@ export function CurvePriceChart({
     <div className={`relative w-full ${heightClassName}`}>
       {readout && (
         <div className="pointer-events-none absolute left-2 top-2 z-10 flex items-baseline gap-3 text-xs">
-          <span className="text-[#6B7280]">{readout.time}</span>
-          <span className="font-medium text-[#111827]">{readout.price}</span>
+          <span className="text-muted">{readout.time}</span>
+          <span className="font-medium text-ink">{readout.price}</span>
         </div>
       )}
       <div ref={containerRef} className="h-full w-full" />

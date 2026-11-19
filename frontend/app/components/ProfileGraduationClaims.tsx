@@ -51,7 +51,7 @@ export function ProfileGraduationClaims() {
     return (
       <div className="space-y-4">
         {[1, 2].map((i) => (
-          <div key={i} className="h-32 animate-pulse rounded-xl bg-[#E5E7EB]" />
+          <div key={i} className="h-32 animate-pulse rounded-xl bg-subtle" />
         ))}
       </div>
     )
@@ -59,17 +59,17 @@ export function ProfileGraduationClaims() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-        <p className="text-sm text-[#EF4444]">{error}</p>
+      <div className="rounded-xl border border-line bg-surface p-5">
+        <p className="text-sm text-no">{error}</p>
       </div>
     )
   }
 
   if (!holdings || holdings.length === 0) {
     return (
-      <div className="rounded-xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
-        <h3 className="text-lg font-semibold text-[#111827]">No token claims</h3>
-        <p className="mt-1 text-sm text-[#6B7280]">
+      <div className="rounded-xl border border-line bg-surface p-8 text-center">
+        <h3 className="text-lg font-semibold text-ink">No token claims</h3>
+        <p className="mt-1 text-sm text-muted">
           When a startup you voted for completes its graduation, the tokens you are owed will appear
           here.
         </p>

@@ -61,22 +61,22 @@ export function AdminGraduationSections({
 
   return (
     <>
-      <section className="mb-8 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-        <h2 className="mb-1 text-lg font-semibold text-[#111827]">Graduations</h2>
-        <p className="mb-4 text-sm text-[#6B7280]">
+      <section className="mb-8 rounded-xl border border-line bg-surface p-5">
+        <h2 className="mb-1 text-lg font-semibold text-ink">Graduations</h2>
+        <p className="mb-4 text-sm text-muted">
           Every graduated startup and its current state. Graduations that are not complete and have
           not been updated in over an hour are stuck and need review.
         </p>
 
         {stuck.length > 0 && (
-          <div className="mb-4 rounded-lg border border-[#F59E0B]/30 bg-[#FEF3C7] p-3 text-sm text-[#92400E]">
+          <div className="mb-4 rounded-lg border border-warn/25 bg-warn-soft p-3 text-sm text-warn">
             <p className="font-semibold">
               {stuck.length} stuck graduation{stuck.length === 1 ? '' : 's'}
             </p>
             <ul className="mt-1 list-disc space-y-1 pl-4">
               {stuck.map((g) => (
                 <li key={g.id}>
-                  <span className="font-medium text-[#111827]">{g.startup_name}</span>{' '}
+                  <span className="font-medium text-ink">{g.startup_name}</span>{' '}
                   <span className="font-semibold">
                     {g.status}, {formatAge(g.updated_at)}
                   </span>
@@ -88,46 +88,46 @@ export function AdminGraduationSections({
         )}
 
         {loading ? (
-          <p className="text-sm text-[#6B7280]">Loading graduations...</p>
+          <p className="text-sm text-muted">Loading graduations...</p>
         ) : graduations.length === 0 ? (
-          <p className="text-sm text-[#6B7280]">No graduations found.</p>
+          <p className="text-sm text-muted">No graduations found.</p>
         ) : (
           <div className="-mx-5 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="bg-[#F9FAFB] text-[#6B7280]">
+              <thead className="bg-canvas text-muted">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Startup</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Token</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Status</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Halted reason</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Created</th>
+                  <th className="px-4 py-3 text-xs font-medium">Startup</th>
+                  <th className="px-4 py-3 text-xs font-medium">Token</th>
+                  <th className="px-4 py-3 text-xs font-medium">Status</th>
+                  <th className="px-4 py-3 text-xs font-medium">Halted reason</th>
+                  <th className="px-4 py-3 text-xs font-medium">Created</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E5E7EB]">
+              <tbody className="divide-y divide-line">
                 {graduations.map((g) => (
                   <tr
                     key={g.id}
                     className={`${
                       isStuck(g)
-                        ? 'bg-[#FEF3C7]'
-                        : 'hover:bg-[#F9FAFB]'
+                        ? 'bg-warn-soft'
+                        : 'hover:bg-canvas'
                     }`}
                   >
                     <td className="px-4 py-3">
-                      <div className="font-medium text-[#111827]">{g.startup_name}</div>
-                      <div className="text-xs text-[#6B7280]">{g.startup_slug}</div>
+                      <div className="font-medium text-ink">{g.startup_name}</div>
+                      <div className="text-xs text-muted">{g.startup_slug}</div>
                     </td>
-                    <td className="px-4 py-3 text-[#111827]">
+                    <td className="px-4 py-3 text-ink">
                       {g.token_name ?? '—'}
                       {g.token_symbol ? (
-                        <span className="ml-1 text-xs text-[#6B7280]">({g.token_symbol})</span>
+                        <span className="ml-1 text-xs text-muted">({g.token_symbol})</span>
                       ) : null}
                     </td>
-                    <td className="px-4 py-3 text-[#111827]">{g.status}</td>
-                    <td className="max-w-[300px] whitespace-normal px-4 py-3 text-[#B45309]">
+                    <td className="px-4 py-3 text-ink">{g.status}</td>
+                    <td className="max-w-[300px] whitespace-normal px-4 py-3 text-warn">
                       {g.halted_reason ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-[#6B7280]">{formatDate(g.created_at)}</td>
+                    <td className="px-4 py-3 text-muted">{formatDate(g.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -136,90 +136,90 @@ export function AdminGraduationSections({
         )}
       </section>
 
-      <section className="mb-8 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-        <h2 className="mb-1 text-lg font-semibold text-[#111827]">Escrow reconciliation</h2>
-        <p className="mb-4 text-sm text-[#6B7280]">
+      <section className="mb-8 rounded-xl border border-line bg-surface p-5">
+        <h2 className="mb-1 text-lg font-semibold text-ink">Escrow reconciliation</h2>
+        <p className="mb-4 text-sm text-muted">
           Expected escrow, what is still owed to holders, and the counts that feed the comparison.{' '}
-          <span className="font-medium text-[#B45309]">
+          <span className="font-medium text-warn">
             When comparable is false, the figure cannot be interpreted — a holder is mid-claim and
             the escrow may have moved with no record yet.
           </span>
         </p>
 
         {loading ? (
-          <p className="text-sm text-[#6B7280]">Loading escrow reconciliation...</p>
+          <p className="text-sm text-muted">Loading escrow reconciliation...</p>
         ) : graduations.length === 0 ? (
-          <p className="text-sm text-[#6B7280]">No graduations found.</p>
+          <p className="text-sm text-muted">No graduations found.</p>
         ) : (
           <div className="-mx-5 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="bg-[#F9FAFB] text-[#6B7280]">
+              <thead className="bg-canvas text-muted">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Startup</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">
+                  <th className="px-4 py-3 text-xs font-medium">Startup</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium">
                     Escrow expected
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">
+                  <th className="px-4 py-3 text-right text-xs font-medium">
                     Still owed
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">
+                  <th className="px-4 py-3 text-right text-xs font-medium">
                     Claimable
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">Failed</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide">
+                  <th className="px-4 py-3 text-right text-xs font-medium">Failed</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium">
                     Awaiting wallet
                   </th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide">Comparable?</th>
+                  <th className="px-4 py-3 text-xs font-medium">Comparable?</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E5E7EB]">
+              <tbody className="divide-y divide-line">
                 {graduations.map((g) => (
                   <tr
                     key={g.id}
                     className={`${
-                      g.comparable === false ? 'bg-[#FEF3C7]' : 'hover:bg-[#F9FAFB]'
+                      g.comparable === false ? 'bg-warn-soft' : 'hover:bg-canvas'
                     }`}
                   >
                     <td className="px-4 py-3">
-                      <div className="font-medium text-[#111827]">{g.startup_name}</div>
-                      <div className="text-xs text-[#6B7280]">{g.startup_slug}</div>
+                      <div className="font-medium text-ink">{g.startup_name}</div>
+                      <div className="text-xs text-muted">{g.startup_slug}</div>
                     </td>
-                    <td className="px-4 py-3 text-right text-[#111827]">
+                    <td className="px-4 py-3 text-right text-ink">
                       {g.comparable === false ? (
-                        <span className="text-[#B45309]">Cannot interpret</span>
+                        <span className="text-warn">Cannot interpret</span>
                       ) : g.escrow_expected ? (
                         formatTokenAmount(g.escrow_expected, 6)
                       ) : (
                         '—'
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right text-[#111827]">
+                    <td className="px-4 py-3 text-right text-ink">
                       {g.comparable === false ? (
-                        <span className="text-[#B45309]">Cannot interpret</span>
+                        <span className="text-warn">Cannot interpret</span>
                       ) : g.still_owed ? (
                         formatTokenAmount(g.still_owed, 6)
                       ) : (
                         '—'
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right text-[#111827]">
+                    <td className="px-4 py-3 text-right text-ink">
                       {g.holder_counts.claimable.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-right text-[#111827]">
+                    <td className="px-4 py-3 text-right text-ink">
                       {g.holder_counts.failed.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-right text-[#111827]">
+                    <td className="px-4 py-3 text-right text-ink">
                       {g.holder_counts.awaiting_wallet.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-[#111827]">
+                    <td className="px-4 py-3 text-ink">
                       {g.comparable === null ? (
                         '—'
                       ) : g.comparable ? (
-                        <span className="inline-flex rounded bg-[#10B981]/10 px-2 py-0.5 text-xs font-semibold text-[#10B981]">
+                        <span className="inline-flex rounded bg-yes-soft px-2 py-0.5 text-xs font-semibold text-yes">
                           Yes
                         </span>
                       ) : (
-                        <span className="inline-flex rounded bg-[#F59E0B]/10 px-2 py-0.5 text-xs font-semibold text-[#B45309]">
+                        <span className="inline-flex rounded bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn">
                           No — mid-claim
                         </span>
                       )}

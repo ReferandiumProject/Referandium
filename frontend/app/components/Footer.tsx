@@ -1,40 +1,42 @@
-import Link from 'next/link';
+import Link from 'next/link'
+import { Brand } from './ui'
 
-const linkStyle: React.CSSProperties = {
-  color: '#3B82F6', fontSize: '14px', textDecoration: 'none',
-};
+const links = [
+  { href: '/how-it-works', label: 'How it works' },
+  { href: '/about', label: 'About' },
+  { href: '/docs', label: 'Docs' },
+]
 
 export default function Footer() {
   return (
-    <footer style={{ backgroundColor: '#F9FAFB', borderTop: '1px solid #E5E7EB', padding: '48px 24px' }}>
-      <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-
-        {/* Row 1 */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
-          {/* Logo */}
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-            <div style={{ width: '28px', height: '28px', backgroundColor: '#3B82F6', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: 'white', fontWeight: 700, fontSize: '14px' }}>R</span>
-            </div>
-            <span style={{ fontWeight: 700, fontSize: '16px', color: '#111827' }}>Referandium</span>
+    <footer className="border-t border-line">
+      <div className="mx-auto flex max-w-page flex-col gap-6 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div>
+          <Link href="/" aria-label="Referandium home">
+            <Brand />
           </Link>
-
-          {/* Links */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <Link href="/markets" style={linkStyle}>Markets</Link>
-            <Link href="/docs" style={linkStyle}>Docs</Link>
-            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" style={linkStyle}>Twitter</a>
-            <a href="https://github.com/ReferandiumProject/Referandium" target="_blank" rel="noopener noreferrer" style={linkStyle}>GitHub</a>
-          </div>
+          <p className="mt-2 text-[13px] text-muted">
+            Startups validated by the crowd, funded on Solana.
+          </p>
         </div>
 
-        {/* Row 2 */}
-        <div style={{ marginTop: '32px', borderTop: '1px solid #E5E7EB', paddingTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <span style={{ fontSize: '13px', color: '#6B7280' }}>© 2026 Referandium. Built on Solana.</span>
-          <span style={{ fontSize: '13px', color: '#6B7280' }}>Referandium — a USDC prediction market on Solana.</span>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          {links.map((l) => (
+            <Link key={l.href} href={l.href} className="text-muted transition-colors hover:text-ink">
+              {l.label}
+            </Link>
+          ))}
+          <a
+            href="https://github.com/ReferandiumProject/Referandium"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted transition-colors hover:text-ink"
+          >
+            GitHub
+          </a>
+          <span className="text-faint">© 2026 Referandium</span>
         </div>
-
       </div>
     </footer>
-  );
+  )
 }

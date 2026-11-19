@@ -77,13 +77,13 @@ export function GraduationClaimCard({
   }
 
   const cardClass =
-    'w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm'
+    'w-full min-w-0 rounded-xl border border-line bg-white p-5'
 
   const startupLink = showStartupLink && holding.startup_slug && (
     <div className="mb-2">
       <Link
         href={`/startup/${holding.startup_slug}`}
-        className="text-sm font-semibold text-[#3B82F6] hover:underline"
+        className="text-sm font-semibold text-accent hover:underline"
       >
         {holding.startup_name} →
       </Link>
@@ -94,11 +94,11 @@ export function GraduationClaimCard({
     return (
       <div className={cardClass}>
         {startupLink}
-        <p className="mb-1 text-sm text-[#6B7280]">Your tokens</p>
-        <p className="text-2xl font-semibold text-[#111827]">
+        <p className="mb-1 text-sm text-muted">Your tokens</p>
+        <p className="text-2xl font-semibold text-ink">
           {amount} {tokenLabel}
         </p>
-        <p className="mt-2 text-sm text-[#10B981]">
+        <p className="mt-2 text-sm text-yes">
           Claim completed — sent to {shortAddress(holding.wallet_address)}
         </p>
         {holding.signature && (
@@ -106,7 +106,7 @@ export function GraduationClaimCard({
             href={explorerLink(holding.signature)}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#3B82F6] hover:underline"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline"
           >
             View transaction
           </a>
@@ -121,7 +121,7 @@ export function GraduationClaimCard({
     return (
       <div className={cardClass}>
         {startupLink}
-        <div className="rounded-lg border border-[#F59E0B]/30 bg-[#F59E0B]/10 p-3 text-sm text-[#B45309]">
+        <div className="rounded-lg border border-warn/25 bg-warn-soft p-3 text-sm text-warn">
           <p className="">
             This share was below the smallest amount that can exist on-chain, so it could not be
             sent as a token. It went into the startup&apos;s liquidity pool instead.
@@ -130,9 +130,9 @@ export function GraduationClaimCard({
             You did nothing wrong, and your other tokens are unaffected.
           </p>
         </div>
-        <p className="mt-4 text-sm text-[#6B7280]">
+        <p className="mt-4 text-sm text-muted">
           Your share:{' '}
-          <span className="font-semibold text-[#111827]">
+          <span className="font-semibold text-ink">
             {dustAmount} {tokenLabel}
           </span>
         </p>
@@ -144,11 +144,11 @@ export function GraduationClaimCard({
     return (
       <div className={cardClass}>
         {startupLink}
-        <p className="mb-1 text-sm text-[#6B7280]">Your tokens</p>
-        <p className="text-2xl font-semibold text-[#111827]">
+        <p className="mb-1 text-sm text-muted">Your tokens</p>
+        <p className="text-2xl font-semibold text-ink">
           {amount} {tokenLabel}
         </p>
-        <p className="mt-3 text-sm text-[#3B82F6]">
+        <p className="mt-3 text-sm text-accent">
           Claim submitted. The platform is covering the transaction fee and the token account rent.
           You do not need to do anything else.
         </p>
@@ -160,18 +160,18 @@ export function GraduationClaimCard({
     return (
       <div className={cardClass}>
         {startupLink}
-        <p className="mb-1 text-sm text-[#6B7280]">Your tokens</p>
-        <p className="text-2xl font-semibold text-[#111827]">
+        <p className="mb-1 text-sm text-muted">Your tokens</p>
+        <p className="text-2xl font-semibold text-ink">
           {amount} {tokenLabel}
         </p>
         <div className="mt-3 space-y-2 text-sm">
-          <p className="text-[#111827]">
+          <p className="text-ink">
             You still own these tokens — they are held in escrow and nothing has been lost. The
             transfer did not go through and we will try again automatically. No action is needed from
             you.
           </p>
           {holding.error && (
-            <p className="text-[#6B7280]">
+            <p className="text-muted">
               Reason: {holding.error}
             </p>
           )}
@@ -184,13 +184,13 @@ export function GraduationClaimCard({
     return (
       <div className={cardClass}>
         {startupLink}
-        <p className="mb-1 text-sm text-[#6B7280]">Your tokens</p>
-        <p className="text-2xl font-semibold text-[#111827]">
+        <p className="mb-1 text-sm text-muted">Your tokens</p>
+        <p className="text-2xl font-semibold text-ink">
           {amount} {tokenLabel}
         </p>
-        <div className="mt-3 rounded-lg border border-[#F59E0B]/30 bg-[#F59E0B]/10 p-3 text-sm text-[#B45309]">
+        <div className="mt-3 rounded-lg border border-warn/25 bg-warn-soft p-3 text-sm text-warn">
           <p className="">⚠️ You are still owed these tokens.</p>
-          <p className="mt-1.5 ">
+          <p className="mt-1.5">
             A wallet will be created for you the next time you sign in, and they will be sent there
             automatically. You do not need to pay a fee or approve anything.
           </p>
@@ -204,24 +204,24 @@ export function GraduationClaimCard({
   return (
     <div className={cardClass}>
       {startupLink}
-      <p className="mb-1 text-sm text-[#6B7280]">Your tokens</p>
-      <p className="text-2xl font-semibold text-[#111827]">
+      <p className="mb-1 text-sm text-muted">Your tokens</p>
+      <p className="text-2xl font-semibold text-ink">
         {amount} {tokenLabel}
       </p>
-      <p className="mt-1 text-xs text-[#6B7280]">
+      <p className="mt-1 text-xs text-muted">
         Destination: {shortAddress(holding.wallet_address)}
       </p>
       {localError && (
-        <p className="mt-3 text-sm text-[#EF4444]">{localError}</p>
+        <p className="mt-3 text-sm text-no">{localError}</p>
       )}
       <button
         onClick={handleClaim}
         disabled={submitting}
-        className="mt-4 w-full rounded-lg bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-4 w-full rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting ? 'Claiming…' : 'Claim tokens'}
       </button>
-      <p className="mt-2 text-center text-xs text-[#6B7280]">
+      <p className="mt-2 text-center text-xs text-muted">
         The platform pays the fee; nothing is deducted from your share.
       </p>
     </div>

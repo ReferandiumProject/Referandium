@@ -156,7 +156,7 @@ function Avatar({ name, src }: { name: string; src: string | null }) {
   }
 
   return (
-    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#3B82F6] text-sm font-bold text-white">
+    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-ink text-sm font-bold text-white">
       {getInitials(name)}
     </div>
   )
@@ -167,12 +167,12 @@ const STAGE_OPTIONS = ['Idea', 'Pre-seed', 'Seed', 'Series A', 'Series B+', 'Gro
 function PhaseBadge({ phase }: { phase: number }) {
   const labels: Record<number, string> = { 1: 'Validating', 2: 'Raising', 3: 'Completed' }
   const colors: Record<number, string> = {
-    1: 'bg-[#3B82F6]/10 text-[#3B82F6]',
-    2: 'bg-[#F59E0B]/10 text-[#B45309]',
-    3: 'bg-[#10B981]/10 text-[#10B981]',
+    1: 'bg-accent-soft text-accent',
+    2: 'bg-warn-soft text-warn',
+    3: 'bg-yes-soft text-yes',
   }
   return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${colors[phase] ?? 'bg-[#E5E7EB] text-[#6B7280]'}`}>
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${colors[phase] ?? 'bg-subtle text-muted'}`}>
       {labels[phase] ?? `Phase ${phase}`}
     </span>
   )
@@ -183,20 +183,20 @@ function MyStartupStats({ startup }: { startup: MyStartup }) {
     return (
       <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
         <div>
-          <p className="text-xs text-[#6B7280]">Distinct voters</p>
-          <p className="font-semibold text-[#111827]">{formatVoteCount(startup.founder_stats.active_voters)}</p>
+          <p className="text-xs text-muted">Distinct voters</p>
+          <p className="font-semibold text-ink">{formatVoteCount(startup.founder_stats.active_voters)}</p>
         </div>
         <div>
-          <p className="text-xs text-[#6B7280]">Lifetime voters</p>
-          <p className="font-semibold text-[#111827]">{formatVoteCount(startup.founder_stats.lifetime_voters)}</p>
+          <p className="text-xs text-muted">Lifetime voters</p>
+          <p className="font-semibold text-ink">{formatVoteCount(startup.founder_stats.lifetime_voters)}</p>
         </div>
         <div>
-          <p className="text-xs text-[#6B7280]">Yes votes</p>
-          <p className="font-medium text-[#111827]">{formatVoteCount(startup.total_yes_votes)}</p>
+          <p className="text-xs text-muted">Yes votes</p>
+          <p className="font-medium text-ink">{formatVoteCount(startup.total_yes_votes)}</p>
         </div>
         <div>
-          <p className="text-xs text-[#6B7280]">No votes</p>
-          <p className="font-medium text-[#111827]">{formatVoteCount(startup.total_no_votes)}</p>
+          <p className="text-xs text-muted">No votes</p>
+          <p className="font-medium text-ink">{formatVoteCount(startup.total_no_votes)}</p>
         </div>
       </div>
     )
@@ -205,30 +205,30 @@ function MyStartupStats({ startup }: { startup: MyStartup }) {
   if (startup.phase === 2 && startup.curve) {
     return (
       <>
-        <div className="mt-3 flex items-center justify-between text-xs text-[#6B7280]">
+        <div className="mt-3 flex items-center justify-between text-xs text-muted">
           <span>Raised</span>
           <span>
             {formatUsd(startup.curve.pool_usdc)} / {formatUsd(startup.curve.capital_target)}
           </span>
         </div>
-        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-subtle">
           <div
-            className="h-full bg-[#3B82F6]"
+            className="h-full bg-ink"
             style={{ width: `${Math.min(100, Math.max(0, startup.curve.progress))}%` }}
           />
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
           <div>
-            <p className="text-xs text-[#6B7280]">Distinct holders</p>
-            <p className="font-semibold text-[#111827]">{formatVoteCount(startup.founder_stats.token_holders)}</p>
+            <p className="text-xs text-muted">Distinct holders</p>
+            <p className="font-semibold text-ink">{formatVoteCount(startup.founder_stats.token_holders)}</p>
           </div>
           <div>
-            <p className="text-xs text-[#6B7280]">Trades</p>
-            <p className="font-medium text-[#111827]">{formatVoteCount(startup.founder_stats.trade_count)}</p>
+            <p className="text-xs text-muted">Trades</p>
+            <p className="font-medium text-ink">{formatVoteCount(startup.founder_stats.trade_count)}</p>
           </div>
           <div>
-            <p className="text-xs text-[#6B7280]">Platform fees generated</p>
-            <p className="font-medium text-[#111827]">{formatUsd(startup.founder_stats.platform_fees_generated)}</p>
+            <p className="text-xs text-muted">Platform fees generated</p>
+            <p className="font-medium text-ink">{formatUsd(startup.founder_stats.platform_fees_generated)}</p>
           </div>
         </div>
       </>
@@ -239,18 +239,18 @@ function MyStartupStats({ startup }: { startup: MyStartup }) {
   return (
     <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
       <div>
-        <p className="text-xs text-[#6B7280]">Final amount raised</p>
-        <p className="font-semibold text-[#111827]">
+        <p className="text-xs text-muted">Final amount raised</p>
+        <p className="font-semibold text-ink">
           {startup.curve ? formatUsd(startup.curve.pool_usdc) : '—'}
         </p>
       </div>
       <div>
-        <p className="text-xs text-[#6B7280]">Distinct holders</p>
-        <p className="font-medium text-[#111827]">{formatVoteCount(startup.founder_stats.token_holders)}</p>
+        <p className="text-xs text-muted">Distinct holders</p>
+        <p className="font-medium text-ink">{formatVoteCount(startup.founder_stats.token_holders)}</p>
       </div>
       <div>
-        <p className="text-xs text-[#6B7280]">Platform fees generated</p>
-        <p className="font-medium text-[#111827]">{formatUsd(startup.founder_stats.platform_fees_generated)}</p>
+        <p className="text-xs text-muted">Platform fees generated</p>
+        <p className="font-medium text-ink">{formatUsd(startup.founder_stats.platform_fees_generated)}</p>
       </div>
     </div>
   )
@@ -276,59 +276,59 @@ function MyStartupEditForm({
   onLogoFileSelect: (file: File | null) => void
 }) {
   return (
-    <div className="mt-4 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+    <div className="mt-4 rounded-lg border border-line bg-canvas p-4">
       {error && (
-        <div className="mb-3 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 p-2 text-xs text-[#EF4444]">
+        <div className="mb-3 rounded-lg border border-no/25 bg-no-soft p-2 text-xs text-no">
           {error}
         </div>
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="sm:col-span-2">
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Description
           </span>
           <textarea
             value={form.description}
             onChange={(e) => onChange({ description: e.target.value })}
             rows={3}
-            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
           />
         </label>
         <label className="sm:col-span-2">
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Pitch
           </span>
           <textarea
             value={form.pitch}
             onChange={(e) => onChange({ pitch: e.target.value })}
             rows={3}
-            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
           />
         </label>
         <label>
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Website
           </span>
           <input
             type="text"
             value={form.website}
             onChange={(e) => onChange({ website: e.target.value })}
-            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
           />
         </label>
         <label>
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Twitter
           </span>
           <input
             type="text"
             value={form.twitter}
             onChange={(e) => onChange({ twitter: e.target.value })}
-            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
           />
         </label>
         <label className="sm:col-span-2">
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Logo
           </span>
           {form.logo_url && !selectedLogoFile && (
@@ -344,21 +344,21 @@ function MyStartupEditForm({
                   onChange({ logo_url: '' })
                   onLogoFileSelect(null)
                 }}
-                className="text-xs font-semibold text-[#EF4444] hover:text-red-700"
+                className="text-xs font-semibold text-no hover:text-no"
               >
                 Remove
               </button>
             </div>
           )}
           {selectedLogoFile && (
-            <div className="mb-2 flex items-center gap-2 text-xs text-[#6B7280]">
-              <span className="rounded bg-[#DBEAFE] px-2 py-1 text-[#1E40AF]">
+            <div className="mb-2 flex items-center gap-2 text-xs text-muted">
+              <span className="rounded bg-accent-soft px-2 py-1 text-accent">
                 {selectedLogoFile.name}
               </span>
               <button
                 type="button"
                 onClick={() => onLogoFileSelect(null)}
-                className="text-[#EF4444] hover:text-red-700"
+                className="text-no hover:text-no"
               >
                 Remove
               </button>
@@ -368,17 +368,17 @@ function MyStartupEditForm({
             type="file"
             accept="image/png,image/jpeg,image/webp"
             onChange={(e) => onLogoFileSelect(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-[#111827] file:mr-3 file:rounded-lg file:border-0 file:bg-[#3B82F6] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-blue-600"
+            className="block w-full text-sm text-ink file:mr-3 file:rounded-lg file:border-0 file:bg-ink file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-ink-soft"
           />
         </label>
         <label>
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Stage
           </span>
           <select
             value={form.stage}
             onChange={(e) => onChange({ stage: e.target.value })}
-            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
           >
             <option value="">—</option>
             {STAGE_OPTIONS.map((s) => (
@@ -394,7 +394,7 @@ function MyStartupEditForm({
           type="button"
           onClick={onSave}
           disabled={saving}
-          className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save changes'}
         </button>
@@ -402,7 +402,7 @@ function MyStartupEditForm({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="rounded-lg border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#6B7280] transition-colors hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold text-muted transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
         >
           Cancel
         </button>
@@ -857,15 +857,15 @@ export default function ProfilePage() {
 
   if (!authenticated) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-4">
-        <div className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
-          <h1 className="mb-2 text-3xl font-semibold text-[#111827]">Profile</h1>
-          <p className="mb-6 text-sm text-[#6B7280]">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4">
+        <div className="w-full max-w-md rounded-xl border border-line bg-surface p-8 text-center">
+          <h1 className="mb-2 text-3xl font-semibold text-ink">Profile</h1>
+          <p className="mb-6 text-sm text-muted">
             Sign in to view your balance, voting power, and token holdings.
           </p>
           <button
             onClick={() => login()}
-            className="rounded-lg bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
+            className="rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink-soft"
           >
             Sign In
           </button>
@@ -875,25 +875,25 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F9FAFB] px-4 pb-24 pt-6 text-[#111827] sm:pt-8">
+    <main className="min-h-screen bg-canvas px-4 pb-24 pt-6 text-ink sm:pt-8">
       <div className="mx-auto max-w-5xl">
         {loading && (
-          <p className="mb-4 text-sm text-[#6B7280]">Loading profile...</p>
+          <p className="mb-4 text-sm text-muted">Loading profile...</p>
         )}
         {error && (
-          <div className="mb-4 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
+          <div className="mb-4 rounded-lg border border-no/25 bg-no-soft p-3 text-sm text-no">
             {error}
           </div>
         )}
-        <div className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-3 shadow-sm" role="tablist" aria-label="Profile tabs">
+        <div className="mb-6 rounded-xl border border-line bg-surface p-3" role="tablist" aria-label="Profile tabs">
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setActiveTab('account')}
               aria-selected={activeTab === 'account'}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
                 activeTab === 'account'
-                  ? 'bg-[#3B82F6] text-white'
-                  : 'text-[#6B7280] hover:bg-[#F9FAFB]'
+                  ? 'bg-ink text-white'
+                  : 'text-muted hover:bg-canvas'
               }`}
             >
               Account
@@ -908,8 +908,8 @@ export default function ProfilePage() {
               aria-selected={activeTab === 'activity'}
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
                 activeTab === 'activity'
-                  ? 'bg-[#3B82F6] text-white'
-                  : 'text-[#6B7280] hover:bg-[#F9FAFB]'
+                  ? 'bg-ink text-white'
+                  : 'text-muted hover:bg-canvas'
               }`}
             >
               Activity
@@ -919,8 +919,8 @@ export default function ProfilePage() {
               aria-selected={activeTab === 'startups'}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
                 activeTab === 'startups'
-                  ? 'bg-[#3B82F6] text-white'
-                  : 'text-[#6B7280] hover:bg-[#F9FAFB]'
+                  ? 'bg-ink text-white'
+                  : 'text-muted hover:bg-canvas'
               }`}
             >
               My startups
@@ -935,8 +935,8 @@ export default function ProfilePage() {
               aria-selected={activeTab === 'claims'}
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
                 activeTab === 'claims'
-                  ? 'bg-[#3B82F6] text-white'
-                  : 'text-[#6B7280] hover:bg-[#F9FAFB]'
+                  ? 'bg-ink text-white'
+                  : 'text-muted hover:bg-canvas'
               }`}
             >
               Token claims
@@ -944,13 +944,13 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'account' ? '' : 'hidden'}`}>
+        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'account' ? '' : 'hidden'}`}>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-[#111827]">Account</h1>
-              <p className="mt-1 text-sm text-[#6B7280]">Your balance, credits, and investment packs</p>
+              <h1 className="text-2xl font-semibold text-ink">Account</h1>
+              <p className="mt-1 text-sm text-muted">Your balance, credits, and investment packs</p>
               {balance?.released && (balance.released.count > 0 || balance.released.usdc > 0) && (
-                <div className="mt-4 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-3 text-sm text-[#10B981]">
+                <div className="mt-4 rounded-lg border border-yes/25 bg-yes-soft p-3 text-sm text-yes">
                   Your funds have arrived: {formatUsd(balance.released.usdc)} from {balance.released.count} released investment pack{balance.released.count === 1 ? '' : 's'}.
                 </div>
               )}
@@ -962,7 +962,7 @@ export default function ProfilePage() {
                   setActiveTab('account')
                   setTimeout(() => document.getElementById('deposit')?.scrollIntoView({ behavior: 'smooth' }), 0)
                 }}
-                className="rounded-lg bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
+                className="rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink-soft"
               >
                 Deposit
               </button>
@@ -972,13 +972,13 @@ export default function ProfilePage() {
                   setActiveTab('account')
                   setTimeout(() => document.getElementById('withdraw')?.scrollIntoView({ behavior: 'smooth' }), 0)
                 }}
-                className="rounded-lg border border-[#3B82F6] bg-white px-5 py-2.5 text-sm font-semibold text-[#3B82F6] transition-colors hover:bg-[#F9FAFB]"
+                className="rounded-lg border border-accent bg-surface px-5 py-2.5 text-sm font-semibold text-accent transition-colors hover:bg-canvas"
               >
                 Withdraw
               </button>
               <Link
                 href="/buy"
-                className="rounded-lg border border-[#3B82F6] bg-white px-5 py-2.5 text-center text-sm font-semibold text-[#3B82F6] transition-colors hover:bg-[#F9FAFB]"
+                className="rounded-lg border border-accent bg-surface px-5 py-2.5 text-center text-sm font-semibold text-accent transition-colors hover:bg-canvas"
               >
                 Buy packs
               </Link>
@@ -986,24 +986,24 @@ export default function ProfilePage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Available USDC</p>
-              <p className="mt-1 text-2xl font-semibold text-[#111827]">{formatUsd(balance?.available_usdc)}</p>
-              <p className="mt-1 text-xs text-[#6B7280]">Real money deposited on the platform. Withdrawable.</p>
+            <div className="rounded-lg border border-line bg-canvas p-4">
+              <p className="text-xs font-medium text-muted">Available USDC</p>
+              <p className="mt-1 text-2xl font-semibold text-ink">{formatUsd(balance?.available_usdc)}</p>
+              <p className="mt-1 text-xs text-muted">Real money deposited on the platform. Withdrawable.</p>
             </div>
-            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Locked USDC</p>
-              <p className="mt-1 text-2xl font-semibold text-[#111827]">{formatUsd(balance?.locked_usdc)}</p>
-              <p className="mt-1 text-xs text-[#6B7280]">Held for pending votes and investment packs.</p>
+            <div className="rounded-lg border border-line bg-canvas p-4">
+              <p className="text-xs font-medium text-muted">Locked USDC</p>
+              <p className="mt-1 text-2xl font-semibold text-ink">{formatUsd(balance?.locked_usdc)}</p>
+              <p className="mt-1 text-xs text-muted">Held for pending votes and investment packs.</p>
             </div>
-            <div className="rounded-lg border border-[#F59E0B] bg-[#FFFBEB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#92400E]">Listing credits</p>
-              <p className="mt-1 text-2xl font-semibold text-[#92400E]">
+            <div className="rounded-lg border border-warn bg-warn-soft p-4">
+              <p className="text-xs font-medium text-warn">Listing credits</p>
+              <p className="mt-1 text-2xl font-semibold text-warn">
                 {listingCreditsLoading ? '—' : formatVoteCount(listingCredits ?? 0)}
               </p>
-              <p className="mt-1 text-xs text-[#92400E]">
+              <p className="mt-1 text-xs text-warn">
                 Credits never expire and are spent when listing a startup.
-                <Link href="/buy" className="ml-1 font-semibold text-[#B45309] hover:text-[#92400E]">
+                <Link href="/buy" className="ml-1 font-semibold text-warn hover:text-warn">
                   Buy more
                 </Link>
               </p>
@@ -1012,17 +1012,17 @@ export default function ProfilePage() {
         </section>
 
         <div className={activeTab === 'account' ? '' : 'hidden'}>
-          <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-            <h2 className="mb-1 text-lg font-semibold text-[#111827]">Server signing</h2>
-            <p className="mb-4 text-sm text-[#6B7280]">
+          <section className="mb-6 rounded-xl border border-line bg-surface p-5">
+            <h2 className="mb-1 text-lg font-semibold text-ink">Server signing</h2>
+            <p className="mb-4 text-sm text-muted">
               Grant the backend a session signer so it can complete transactions from this embedded wallet.
             </p>
             {delegationMessage && (
               <div
                 className={`mb-4 rounded-lg border p-3 text-sm ${
                   delegationMessage.type === 'error'
-                    ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
-                    : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
+                    ? 'border-no/25 bg-no-soft text-no'
+                    : 'border-yes/25 bg-yes-soft text-yes'
                 }`}
               >
                 {delegationMessage.text}
@@ -1032,7 +1032,7 @@ export default function ProfilePage() {
               type="button"
               onClick={handleEnableServerSigning}
               disabled={delegating || !depositAddress}
-              className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
             >
               {delegating ? 'Enabling...' : 'Enable server signing'}
             </button>
@@ -1040,26 +1040,26 @@ export default function ProfilePage() {
           <WalletLinkingSection />
         </div>
 
-        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'account' ? '' : 'hidden'}`}>
+        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'account' ? '' : 'hidden'}`}>
           <div className="mb-4 flex flex-col gap-1">
-            <h2 className="text-lg font-semibold text-[#111827]">Pending investment packs</h2>
-            <p className="text-sm text-[#6B7280]">
+            <h2 className="text-lg font-semibold text-ink">Pending investment packs</h2>
+            <p className="text-sm text-muted">
               Money you&apos;ve paid that is still settling. Funds become spendable on the date shown.
             </p>
           </div>
           {pendingPacks === null ? (
-            <p className="text-sm text-[#6B7280]">Loading pending packs...</p>
+            <p className="text-sm text-muted">Loading pending packs...</p>
           ) : pendingPacks.length === 0 ? (
-            <p className="text-sm text-[#6B7280]">No investment packs currently pending.</p>
+            <p className="text-sm text-muted">No investment packs currently pending.</p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {pendingPacks.map((pack) => (
                 <div
                   key={pack.id}
-                  className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4"
+                  className="rounded-lg border border-line bg-canvas p-4"
                 >
-                  <p className="text-sm font-semibold text-[#111827]">{formatUsd(pack.usdc_granted)}</p>
-                  <p className="mt-1 text-xs text-[#6B7280]">
+                  <p className="text-sm font-semibold text-ink">{formatUsd(pack.usdc_granted)}</p>
+                  <p className="mt-1 text-xs text-muted">
                     Available {new Date(pack.release_after).toLocaleDateString(undefined, {
                       year: 'numeric',
                       month: 'short',
@@ -1072,53 +1072,53 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'activity' ? '' : 'hidden'}`}>
-          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Voting power</h2>
-          <p className="mb-4 text-sm text-[#6B7280]">
+        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'activity' ? '' : 'hidden'}`}>
+          <h2 className="mb-1 text-lg font-semibold text-ink">Voting power</h2>
+          <p className="mb-4 text-sm text-muted">
             Votes are free tokens, not USDC. The daily grant resets each day if unused,
             while the pool holds votes you previously withdrew and never expires.
           </p>
           {voteState ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Today&apos;s grant</p>
-                <p className="mt-1 text-2xl font-semibold text-[#111827]">
+              <div className="rounded-lg border border-line bg-canvas p-4">
+                <p className="text-xs font-medium text-muted">Today&apos;s grant</p>
+                <p className="mt-1 text-2xl font-semibold text-ink">
                   {formatVoteCount(voteState.balance.remaining_today)}
-                  <span className="ml-1 text-sm font-normal text-[#6B7280]">
+                  <span className="ml-1 text-sm font-normal text-muted">
                     / {formatVoteCount(voteState.balance.granted_today)}
                   </span>
                 </p>
-                <p className="mt-1 text-xs text-[#6B7280]">
+                <p className="mt-1 text-xs text-muted">
                   100 free tokens added each day. Use them or lose them by end of day.
                 </p>
               </div>
-              <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Pool balance</p>
-                <p className="mt-1 text-2xl font-semibold text-[#111827]">
+              <div className="rounded-lg border border-line bg-canvas p-4">
+                <p className="text-xs font-medium text-muted">Pool balance</p>
+                <p className="mt-1 text-2xl font-semibold text-ink">
                   {formatVoteCount(voteState.balance.pool_balance)}
                 </p>
-                <p className="mt-1 text-xs text-[#6B7280]">
+                <p className="mt-1 text-xs text-muted">
                   Votes withdrawn from startups. They never expire and can be redeployed any time.
                 </p>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-[#6B7280]">Loading votes...</p>
+            <p className="text-sm text-muted">Loading votes...</p>
           )}
         </section>
 
-        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'activity' ? '' : 'hidden'}`}>
-          <h2 className="mb-4 text-lg font-semibold text-[#111827]">Active votes</h2>
+        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'activity' ? '' : 'hidden'}`}>
+          <h2 className="mb-4 text-lg font-semibold text-ink">Active votes</h2>
           {voteState === null ? (
-            <p className="text-sm text-[#6B7280]">Loading active votes...</p>
+            <p className="text-sm text-muted">Loading active votes...</p>
           ) : voteState.active.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-6 text-center">
-              <p className="text-sm text-[#6B7280]">
+            <div className="rounded-lg border border-dashed border-line bg-canvas p-6 text-center">
+              <p className="text-sm text-muted">
                 You are not currently backing any startups.
               </p>
               <Link
                 href="/"
-                className="mt-3 inline-block text-sm font-semibold text-[#3B82F6] hover:text-blue-700"
+                className="mt-3 inline-block text-sm font-semibold text-accent hover:text-accent-hover"
               >
                 Browse startups to start voting
               </Link>
@@ -1129,29 +1129,29 @@ export default function ProfilePage() {
                 <Link
                   key={pos.startup_id}
                   href={`/startup/${pos.slug}`}
-                  className="flex flex-col gap-4 rounded-lg border border-[#E5E7EB] p-4 transition-colors hover:bg-[#F9FAFB] sm:flex-row sm:items-center"
+                  className="flex flex-col gap-4 rounded-lg border border-line p-4 transition-colors hover:bg-canvas sm:flex-row sm:items-center"
                 >
                   <Avatar name={pos.name} src={pos.logo_url} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="truncate font-medium text-[#111827]">{pos.name}</p>
+                      <p className="truncate font-medium text-ink">{pos.name}</p>
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold  ${
                           pos.direction === 'yes'
-                            ? 'bg-[#10B981]/10 text-[#10B981]'
-                            : 'bg-[#EF4444]/10 text-[#EF4444]'
+                            ? 'bg-yes-soft text-yes'
+                            : 'bg-no-soft text-no'
                         }`}
                       >
                         {pos.direction}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-[#6B7280]">
+                    <p className="mt-1 text-xs text-muted">
                       {formatVoteCount(pos.votes)} votes · net {formatVoteCount(pos.net)} /{' '}
                       {formatVoteCount(pos.vote_threshold)}
                     </p>
-                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-subtle">
                       <div
-                        className="h-full bg-[#3B82F6]"
+                        className="h-full bg-ink"
                         style={{ width: `${Math.min(100, Math.max(0, pos.progress))}%` }}
                       />
                     </div>
@@ -1162,22 +1162,22 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'activity' ? '' : 'hidden'}`}>
+        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'activity' ? '' : 'hidden'}`}>
           <div className="mb-4 flex flex-col gap-1">
-            <h2 className="text-lg font-semibold text-[#111827]">Token holdings</h2>
-            <p className="text-sm text-[#6B7280]">
+            <h2 className="text-lg font-semibold text-ink">Token holdings</h2>
+            <p className="text-sm text-muted">
               Startup tokens you bought with real money. These are positions in active or completed raises, not voting tokens.
             </p>
           </div>
 
           {holdings === null || holdingsLoading ? (
-            <p className="text-sm text-[#6B7280]">Loading token holdings...</p>
+            <p className="text-sm text-muted">Loading token holdings...</p>
           ) : holdings.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-6 text-center">
-              <p className="text-sm text-[#6B7280]">You don&apos;t hold any startup tokens yet.</p>
+            <div className="rounded-lg border border-dashed border-line bg-canvas p-6 text-center">
+              <p className="text-sm text-muted">You don&apos;t hold any startup tokens yet.</p>
               <Link
                 href="/"
-                className="mt-3 inline-block text-sm font-semibold text-[#3B82F6] hover:text-blue-700"
+                className="mt-3 inline-block text-sm font-semibold text-accent hover:text-accent-hover"
               >
                 Browse startups
               </Link>
@@ -1218,59 +1218,59 @@ export default function ProfilePage() {
                   <Link
                     key={h.startup_id}
                     href={`/startup/${h.slug}`}
-                    className="flex flex-col gap-4 rounded-lg border border-[#E5E7EB] p-4 transition-colors hover:bg-[#F9FAFB] sm:flex-row sm:items-start"
+                    className="flex flex-col gap-4 rounded-lg border border-line p-4 transition-colors hover:bg-canvas sm:flex-row sm:items-start"
                   >
                     <Avatar name={h.name} src={h.logo_url} />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate font-medium text-[#111827]">{h.name}</p>
+                        <p className="truncate font-medium text-ink">{h.name}</p>
                         {h.graduated && (
-                          <span className="inline-flex rounded-full bg-[#10B981]/10 px-2 py-0.5 text-xs font-semibold text-[#10B981]">
+                          <span className="inline-flex rounded-full bg-yes-soft px-2 py-0.5 text-xs font-semibold text-yes">
                             Raise completed
                           </span>
                         )}
                         {h.frozen && (
-                          <span className="inline-flex rounded-full bg-[#F59E0B]/10 px-2 py-0.5 text-xs font-semibold text-[#B45309]">
+                          <span className="inline-flex rounded-full bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn">
                             Halted
                           </span>
                         )}
                       </div>
 
                       {h.graduated && (
-                        <p className="mt-1 text-xs text-[#10B981]">
+                        <p className="mt-1 text-xs text-yes">
                           The raise completed and the on-chain token is being prepared.
                         </p>
                       )}
                       {h.frozen && !h.graduated && (
-                        <p className="mt-1 text-xs text-[#B45309]">
+                        <p className="mt-1 text-xs text-warn">
                           Trading is halted. Selling is still possible.
                         </p>
                       )}
 
                       <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                         <div>
-                          <p className="text-xs text-[#6B7280]">Tokens</p>
-                          <p className="font-medium text-[#111827]">{formatTokenAmount(h.tokens)}</p>
+                          <p className="text-xs text-muted">Tokens</p>
+                          <p className="font-medium text-ink">{formatTokenAmount(h.tokens)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-[#6B7280]">Current price</p>
-                          <p className="font-medium text-[#111827]">${formatPrice(h.current_price)}</p>
+                          <p className="text-xs text-muted">Current price</p>
+                          <p className="font-medium text-ink">${formatPrice(h.current_price)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-[#6B7280]">Cost basis</p>
-                          <p className="font-medium text-[#111827]">{formatUsd(h.cost_basis)}</p>
+                          <p className="text-xs text-muted">Cost basis</p>
+                          <p className="font-medium text-ink">{formatUsd(h.cost_basis)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-[#6B7280]">Estimated value</p>
-                          <p className="font-medium text-[#111827]">{formatUsd(h.spot_value_estimate)}</p>
+                          <p className="text-xs text-muted">Estimated value</p>
+                          <p className="font-medium text-ink">{formatUsd(h.spot_value_estimate)}</p>
                         </div>
                       </div>
 
                       <div className="mt-3 flex items-center gap-2 text-sm">
-                        <span className="text-xs text-[#6B7280]">vs cost basis:</span>
+                        <span className="text-xs text-muted">vs cost basis:</span>
                         <span
                           className={`font-semibold ${
-                            isGain ? 'text-[#10B981]' : isLoss ? 'text-[#EF4444]' : 'text-[#6B7280]'
+                            isGain ? 'text-yes' : isLoss ? 'text-no' : 'text-muted'
                           }`}
                         >
                           {gainLossFailed
@@ -1280,7 +1280,7 @@ export default function ProfilePage() {
                         {!gainLossFailed && !cost.isZero() && (
                           <span
                             className={`text-xs ${
-                              isGain ? 'text-[#10B981]' : isLoss ? 'text-[#EF4444]' : 'text-[#6B7280]'
+                              isGain ? 'text-yes' : isLoss ? 'text-no' : 'text-muted'
                             }`}
                           >
                             ({isGain ? '+' : ''}
@@ -1289,18 +1289,18 @@ export default function ProfilePage() {
                         )}
                       </div>
 
-                      <p className="mt-2 text-xs italic text-[#9CA3AF]">
+                      <p className="mt-2 text-xs italic text-faint">
                         Estimated value is not a cash-out amount. Selling moves the price down the curve, so a large holding may realise less.
                       </p>
 
                       <div className="mt-3">
-                        <div className="flex items-center justify-between text-xs text-[#6B7280]">
+                        <div className="flex items-center justify-between text-xs text-muted">
                           <span>Raise progress</span>
                           <span>{Math.round(h.progress * 100)}%</span>
                         </div>
-                        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+                        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-subtle">
                           <div
-                            className="h-full bg-[#3B82F6]"
+                            className="h-full bg-ink"
                             style={{ width: `${Math.min(100, Math.max(0, h.progress * 100))}%` }}
                           />
                         </div>
@@ -1313,31 +1313,31 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'startups' ? '' : 'hidden'}`}>
+        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'startups' ? '' : 'hidden'}`}>
           <div className="mb-4 flex flex-col gap-1">
-            <h2 className="text-lg font-semibold text-[#111827]">My startups</h2>
-            <p className="text-sm text-[#6B7280]">
+            <h2 className="text-lg font-semibold text-ink">My startups</h2>
+            <p className="text-sm text-muted">
               Startups you&apos;ve listed. Name, slug, vote threshold, and capital target cannot be
               changed here — see each field&apos;s note below for why.
             </p>
           </div>
 
           {myStartupsError && (
-            <div className="mb-4 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
+            <div className="mb-4 rounded-lg border border-no/25 bg-no-soft p-3 text-sm text-no">
               {myStartupsError}
             </div>
           )}
 
           {myStartups === null ? (
-            <p className="text-sm text-[#6B7280]">Loading your startups...</p>
+            <p className="text-sm text-muted">Loading your startups...</p>
           ) : myStartups.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-6 text-center">
-              <p className="text-sm text-[#6B7280]">
+            <div className="rounded-lg border border-dashed border-line bg-canvas p-6 text-center">
+              <p className="text-sm text-muted">
                 This is where startups you list will appear. Start building your founder page to get votes and raise capital.
               </p>
               <Link
                 href="/list"
-                className="mt-3 inline-block text-sm font-semibold text-[#3B82F6] hover:text-blue-700"
+                className="mt-3 inline-block text-sm font-semibold text-accent hover:text-accent-hover"
               >
                 List a startup
               </Link>
@@ -1345,16 +1345,16 @@ export default function ProfilePage() {
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {myStartups.map((s) => (
-                <div key={s.id} className="rounded-lg border border-[#E5E7EB] p-4">
+                <div key={s.id} className="rounded-lg border border-line p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate font-medium text-[#111827]">{s.name}</p>
+                        <p className="truncate font-medium text-ink">{s.name}</p>
                         <PhaseBadge phase={s.phase} />
                       </div>
                       <Link
                         href={`/startup/${s.slug}`}
-                        className="mt-1 inline-block text-xs font-semibold text-[#3B82F6] hover:text-blue-700"
+                        className="mt-1 inline-block text-xs font-semibold text-accent hover:text-accent-hover"
                       >
                         View public page →
                       </Link>
@@ -1366,21 +1366,21 @@ export default function ProfilePage() {
                       <button
                         type="button"
                         onClick={() => startEditingStartup(s)}
-                        className="rounded-lg border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB]"
+                        className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-canvas"
                       >
                         Edit
                       </button>
                     )}
                   </div>
 
-                  <div className="mt-4 grid grid-cols-1 gap-2 rounded-lg bg-[#F9FAFB] p-3 text-xs text-[#6B7280] sm:grid-cols-2">
+                  <div className="mt-4 grid grid-cols-1 gap-2 rounded-lg bg-canvas p-3 text-xs text-muted sm:grid-cols-2">
                     <p>
-                      <span className="font-medium text-[#111827]">Name & slug fixed:</span> the
+                      <span className="font-medium text-ink">Name & slug fixed:</span> the
                       slug is the public URL people have already shared, and renaming mid-raise
                       would let a startup become something other than what backers evaluated.
                     </p>
                     <p>
-                      <span className="font-medium text-[#111827]">Threshold & target fixed:</span>{' '}
+                      <span className="font-medium text-ink">Threshold & target fixed:</span>{' '}
                       lowering your own threshold would bypass the validation it represents, and
                       the capital target sets the curve&apos;s virtual reserve, so changing it
                       after a raise opens would alter the terms people already bought under. Only
@@ -1406,42 +1406,42 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'activity' ? '' : 'hidden'}`}>
-          <h2 className="mb-1 text-lg font-semibold text-[#111827]">Past votes</h2>
-          <p className="mb-4 text-sm text-[#6B7280]">
+        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'activity' ? '' : 'hidden'}`}>
+          <h2 className="mb-1 text-lg font-semibold text-ink">Past votes</h2>
+          <p className="mb-4 text-sm text-muted">
             Startups you backed that reached their vote threshold and moved on to raising capital.
             Those votes were consumed as part of the community validation.
           </p>
           {voteState === null ? (
-            <p className="text-sm text-[#6B7280]">Loading past votes...</p>
+            <p className="text-sm text-muted">Loading past votes...</p>
           ) : voteState.burned.length === 0 ? (
-            <p className="text-sm text-[#6B7280]">No startups have crossed the threshold with your support yet.</p>
+            <p className="text-sm text-muted">No startups have crossed the threshold with your support yet.</p>
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {voteState.burned.map((pos) => (
                 <Link
                   key={pos.startup_id}
                   href={`/startup/${pos.slug}`}
-                  className="flex flex-col gap-4 rounded-lg border border-[#E5E7EB] p-4 transition-colors hover:bg-[#F9FAFB] sm:flex-row sm:items-center"
+                  className="flex flex-col gap-4 rounded-lg border border-line p-4 transition-colors hover:bg-canvas sm:flex-row sm:items-center"
                 >
                   <Avatar name={pos.name} src={pos.logo_url} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="truncate font-medium text-[#111827]">{pos.name}</p>
+                      <p className="truncate font-medium text-ink">{pos.name}</p>
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold  ${
                           pos.direction === 'yes'
-                            ? 'bg-[#10B981]/10 text-[#10B981]'
-                            : 'bg-[#EF4444]/10 text-[#EF4444]'
+                            ? 'bg-yes-soft text-yes'
+                            : 'bg-no-soft text-no'
                         }`}
                       >
                         {pos.direction}
                       </span>
-                      <span className="inline-flex rounded-full bg-[#10B981]/10 px-2 py-0.5 text-xs font-semibold text-[#10B981]">
+                      <span className="inline-flex rounded-full bg-yes-soft px-2 py-0.5 text-xs font-semibold text-yes">
                         Validated
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-[#6B7280]">
+                    <p className="mt-1 text-xs text-muted">
                       {formatVoteCount(pos.votes)} votes contributed · threshold reached
                     </p>
                   </div>
@@ -1451,17 +1451,17 @@ export default function ProfilePage() {
           )}
         </section>
 
-        <section id="deposit" className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'account' ? '' : 'hidden'}`}>
-          <h2 className="mb-4 text-lg font-semibold text-[#111827]">Deposit</h2>
-          <div className="mb-4 inline-flex rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-1">
+        <section id="deposit" className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'account' ? '' : 'hidden'}`}>
+          <h2 className="mb-4 text-lg font-semibold text-ink">Deposit</h2>
+          <div className="mb-4 inline-flex rounded-lg border border-line bg-canvas p-1">
             {(['devnet', 'embedded', 'card'] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setDepositMode(m)}
                 className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
                   depositMode === m
-                    ? 'bg-white text-[#111827] shadow-sm'
-                    : 'text-[#6B7280] hover:text-[#111827]'
+                    ? 'bg-surface text-ink '
+                    : 'text-muted hover:text-ink'
                 }`}
               >
                 {depositLabels[m]}
@@ -1475,8 +1475,8 @@ export default function ProfilePage() {
                 <div
                   className={`mb-4 rounded-lg border p-3 text-sm ${
                     devnetMessage.type === 'error'
-                      ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
-                      : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
+                      ? 'border-no/25 bg-no-soft text-no'
+                      : 'border-yes/25 bg-yes-soft text-yes'
                   }`}
                 >
                   {devnetMessage.text}
@@ -1490,12 +1490,12 @@ export default function ProfilePage() {
                   onChange={(e) => setDepositAmount(e.target.value)}
                   placeholder="Amount USDC"
                   disabled={devnetLoading}
-                  className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none focus:border-accent sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
                 />
                 <button
                   type="submit"
                   disabled={devnetLoading}
-                  className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {devnetLoading ? 'Depositing...' : 'Deposit Devnet'}
                 </button>
@@ -1509,8 +1509,8 @@ export default function ProfilePage() {
                 <div
                   className={`mb-4 rounded-lg border p-3 text-sm ${
                     cardMessage.type === 'error'
-                      ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
-                      : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
+                      ? 'border-no/25 bg-no-soft text-no'
+                      : 'border-yes/25 bg-yes-soft text-yes'
                   }`}
                 >
                   {cardMessage.text}
@@ -1524,7 +1524,7 @@ export default function ProfilePage() {
                   onChange={(e) => setCardAmount(e.target.value)}
                   placeholder="Amount USDC (optional)"
                   disabled={cardLoading}
-                  className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none focus:border-accent sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
                 />
                 <button
                   onClick={async () => {
@@ -1551,26 +1551,26 @@ export default function ProfilePage() {
                     }
                   }}
                   disabled={!dbUser?.wallet_address || cardLoading}
-                  className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {cardLoading ? 'Opening...' : 'Buy USDC with Card'}
                 </button>
               </div>
-              <p className="text-xs text-[#6B7280]">
+              <p className="text-xs text-muted">
                 Funds go to your embedded Solana wallet. After they arrive, use the Wallet Deposit flow to credit your platform balance.
               </p>
             </div>
           )}
         </section>
 
-        <section id="withdraw" className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'account' ? '' : 'hidden'}`}>
-          <h2 className="mb-4 text-lg font-semibold text-[#111827]">Withdraw</h2>
+        <section id="withdraw" className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'account' ? '' : 'hidden'}`}>
+          <h2 className="mb-4 text-lg font-semibold text-ink">Withdraw</h2>
           {withdrawMessage && (
             <div
               className={`mb-4 rounded-lg border p-3 text-sm ${
                 withdrawMessage.type === 'error'
-                  ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
-                  : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
+                  ? 'border-no/25 bg-no-soft text-no'
+                  : 'border-yes/25 bg-yes-soft text-yes'
               }`}
             >
               {withdrawMessage.text}
@@ -1584,7 +1584,7 @@ export default function ProfilePage() {
               onChange={(e) => setWithdrawAmount(e.target.value)}
               placeholder="Amount USDC"
               disabled={withdrawLoading}
-              className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none focus:border-accent sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
             />
             <input
               type="text"
@@ -1592,22 +1592,22 @@ export default function ProfilePage() {
               onChange={(e) => setWithdrawWallet(e.target.value)}
               placeholder="Destination wallet address"
               disabled={withdrawLoading}
-              className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:flex-1 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none focus:border-accent sm:flex-1 disabled:cursor-not-allowed disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={withdrawLoading}
-              className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
             >
               {withdrawLoading ? 'Withdrawing...' : 'Withdraw'}
             </button>
           </form>
         </section>
 
-        <section className={`mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm ${activeTab === 'claims' ? '' : 'hidden'}`}>
+        <section className={`mb-6 rounded-xl border border-line bg-surface p-5  ${activeTab === 'claims' ? '' : 'hidden'}`}>
           <div className="mb-4 flex flex-col gap-1">
-            <h2 className="text-lg font-semibold text-[#111827]">Token claims</h2>
-            <p className="text-sm text-[#6B7280]">
+            <h2 className="text-lg font-semibold text-ink">Token claims</h2>
+            <p className="text-sm text-muted">
               Tokens you are owed from graduated startups. The platform pays the fee; you do not need gas or wallet approval.
             </p>
           </div>

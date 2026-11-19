@@ -12,6 +12,7 @@ import { Decimal } from '@/lib/decimal'
 import { formatUsd, formatTokenAmount, formatPrice, formatVoteCount } from '@/lib/format'
 import { CurvePriceChart } from '@/app/components/CurvePriceChart'
 import type { CurveOHLCPoint } from '@/lib/curve-time-series'
+import { Badge, Button, Card, Logo, Notice, Progress, Skeleton, SplitBar, buttonClass, cx, inputClass } from '@/app/components/ui'
 
 type CurveState = {
   startup_id: string
@@ -60,15 +61,6 @@ type Balance = {
   total_spendable: number
 }
 
-function getInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-}
-
 function decimalIsZero(s: string): boolean {
   try {
     return Decimal.parse(s).isZero()
@@ -115,64 +107,41 @@ function computeBuyPresets(cap: Decimal): Decimal[] {
 // using the exact source string rather than a multiplication result.
 const PERCENT_RATIOS = { 25: '0.25', 50: '0.5', 75: '0.75' } as const
 
-function Avatar({ name, src }: { name: string; src: string | null }) {
-  if (src) {
-    return (
-      <img
-        src={src}
-        alt={name}
-        className="h-16 w-16 flex-shrink-0 rounded-xl object-cover sm:h-20 sm:w-20"
-      />
-    )
-  }
-
-  return (
-    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-[#3B82F6] text-xl font-bold text-white sm:h-20 sm:w-20">
-      {getInitials(name)}
-    </div>
-  )
-}
-
-function SentimentBar({ yes, no }: { yes: number; no: number }) {
+function Tally({ yes, no }: { yes: number; no: number }) {
   const total = yes + no
-  const yesPct = total > 0 ? (yes / total) * 100 : 0
-  const noPct = total > 0 ? 100 - yesPct : 0
-
+  const yesPct = total > 0 ? Math.round((yes / total) * 100) : 0
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between text-sm font-medium">
-        <span className="text-[#10B981]">YES {formatVoteCount(yes)}</span>
-        <span className="text-[#EF4444]">NO {formatVoteCount(no)}</span>
+      <div className="mb-3 flex items-end justify-between gap-4">
+        <div>
+          <p className="text-[13px] text-muted">Yes</p>
+          <p className="num text-[28px] font-semibold leading-none tracking-tight text-yes">{formatVoteCount(yes)}</p>
+        </div>
+        <p className="num pb-0.5 text-[13px] text-muted">
+          {total > 0 ? `${yesPct}% yes of ${formatVoteCount(total)} votes` : 'No votes yet'}
+        </p>
+        <div className="text-right">
+          <p className="text-[13px] text-muted">No</p>
+          <p className="num text-[28px] font-semibold leading-none tracking-tight text-no">{formatVoteCount(no)}</p>
+        </div>
       </div>
-      <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
-        {total > 0 ? (
-          <div className="flex h-full w-full">
-            <div className="h-full bg-[#10B981]" style={{ width: `${yesPct}%` }} />
-            <div className="h-full bg-[#EF4444]" style={{ width: `${noPct}%` }} />
-          </div>
-        ) : (
-          <div className="h-full w-full bg-[#E5E7EB]" />
-        )}
-      </div>
+      <SplitBar yes={yes} no={no} className="h-3" />
     </div>
   )
 }
 
-function ProgressBar({ progress, net, threshold }: { progress: number; net: number; threshold: number }) {
+function ThresholdProgress({ progress, net, threshold }: { progress: number; net: number; threshold: number }) {
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between text-sm text-[#6B7280]">
-        <span className="font-medium text-[#111827]">{Math.round(progress)}%</span>
-        <span>
-          {formatVoteCount(net)} / {formatVoteCount(threshold)} votes
+      <div className="num mb-2 flex items-baseline justify-between gap-3 text-sm">
+        <span className="text-muted">
+          <span className="font-semibold text-ink">{Math.round(progress)}%</span> to the raise threshold
+        </span>
+        <span className="text-muted">
+          {formatVoteCount(net)} / {formatVoteCount(threshold)} net votes
         </span>
       </div>
-      <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
-        <div
-          className="h-full bg-[#3B82F6] transition-all duration-500"
-          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-        />
-      </div>
+      <Progress value={progress} tone="neutral" />
     </div>
   )
 }
@@ -188,18 +157,13 @@ function RaiseProgressBar({
 }) {
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between text-sm text-[#6B7280]">
-        <span className="font-medium text-[#111827]">{Math.round(progress)}%</span>
-        <span>
-          {formatUsd(raised)} / {formatUsd(target)}
+      <div className="num mb-2 flex items-baseline justify-between gap-3 text-sm">
+        <span className="text-[22px] font-semibold tracking-tight text-ink">{formatUsd(raised)}</span>
+        <span className="text-muted">
+          {Math.round(progress)}% of {formatUsd(target)}
         </span>
       </div>
-      <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
-        <div
-          className="h-full bg-[#3B82F6] transition-all duration-500"
-          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-        />
-      </div>
+      <Progress value={progress} tone="accent" className="h-2" />
     </div>
   )
 }
@@ -229,54 +193,51 @@ function VotePanel({
 
   if (!authenticated) {
     return (
-      <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-        <h3 className="mb-2 text-lg font-semibold text-[#111827]">Have a say?</h3>
-        <p className="mb-4 text-sm text-[#6B7280]">
-          Sign in to get free daily voting tokens and support or reject this startup.
+      <Card className="p-5">
+        <h3 className="text-[15px] font-semibold">Vote on this startup</h3>
+        <p className="mt-1 text-sm text-muted">
+          Sign in to get free daily voting tokens and vote yes or no.
         </p>
-        <button
-          onClick={() => login()}
-          className="rounded-lg bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
-        >
-          Sign In
-        </button>
-      </div>
+        <Button onClick={() => login()} className="mt-4 w-full">
+          Sign in to vote
+        </Button>
+      </Card>
     )
   }
 
   if (startup.phase !== 1) {
     return (
-      <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-        <h3 className="mb-2 text-lg font-semibold text-[#111827]">Voting is closed</h3>
-        <p className="text-sm text-[#6B7280]">
+      <Card className="p-5">
+        <h3 className="text-[15px] font-semibold">Voting is closed</h3>
+        <p className="mt-1 text-sm text-muted">
           This startup passed community validation and has moved on to raising capital.
         </p>
-      </div>
+      </Card>
     )
   }
 
   if (authenticated && isOwner) {
     return (
-      <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-        <h3 className="mb-2 text-lg font-semibold text-[#111827]">Your listing</h3>
-        <p className="text-sm text-[#6B7280]">
-          You cannot vote on your own startup. This rule exists so founders do not influence the validation of their own listings.
+      <Card className="p-5">
+        <h3 className="text-[15px] font-semibold">This is your listing</h3>
+        <p className="mt-1 text-sm text-muted">
+          Founders can&apos;t vote on their own startup, so validation stays with the community.
         </p>
-      </div>
+      </Card>
     )
   }
 
   return (
-    <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+    <Card className="p-5">
       {success && (
-        <div className="mb-4 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-3 text-sm text-[#10B981]">
+        <Notice tone="yes" className="mb-4">
           {success}
-        </div>
+        </Notice>
       )}
       {error && (
-        <div className="mb-4 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
+        <Notice tone="no" className="mb-4">
           {error}
-        </div>
+        </Notice>
       )}
 
       {!startup.user_position ? (
@@ -295,7 +256,7 @@ function VotePanel({
           loading={loading}
         />
       )}
-    </div>
+    </Card>
   )
 }
 
@@ -323,61 +284,60 @@ function NewPositionForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      <h3 className="mb-1 text-lg font-semibold text-[#111827]">Cast your votes</h3>
-      <p className="mb-5 text-sm text-[#6B7280]">
-        You get 100 free voting tokens each day. Unused tokens expire at the end of the day. Any
-        votes you withdrew from other startups sit in your pool and can be redeployed here.
+      <h3 className="text-[15px] font-semibold">Cast your vote</h3>
+      <p className="mt-1 text-sm leading-relaxed text-muted">
+        You get 100 free voting tokens a day; unused ones expire at midnight. Votes you withdraw
+        from other startups stay in your pool and can be used here.
       </p>
 
-      <div className="mb-4 grid grid-cols-2 gap-3">
+      <div className="mt-5 grid grid-cols-2 gap-1 rounded-lg bg-subtle p-1" role="radiogroup" aria-label="Vote direction">
         <button
           type="button"
+          role="radio"
+          aria-checked={direction === 'yes'}
           onClick={() => setDirection('yes')}
-          className={`rounded-lg border px-4 py-3 text-sm font-semibold transition-colors ${
-            direction === 'yes'
-              ? 'border-[#10B981] bg-[#10B981]/10 text-[#10B981]'
-              : 'border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F9FAFB]'
-          }`}
+          className={cx(
+            'h-10 rounded-md text-sm font-semibold transition-colors',
+            direction === 'yes' ? 'bg-yes text-white' : 'text-muted hover:text-ink',
+          )}
         >
-          Support (YES)
+          Yes, back it
         </button>
         <button
           type="button"
+          role="radio"
+          aria-checked={direction === 'no'}
           onClick={() => setDirection('no')}
-          className={`rounded-lg border px-4 py-3 text-sm font-semibold transition-colors ${
-            direction === 'no'
-              ? 'border-[#EF4444] bg-[#EF4444]/10 text-[#EF4444]'
-              : 'border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F9FAFB]'
-          }`}
+          className={cx(
+            'h-10 rounded-md text-sm font-semibold transition-colors',
+            direction === 'no' ? 'bg-no text-white' : 'text-muted hover:text-ink',
+          )}
         >
-          Reject (NO)
+          No, reject it
         </button>
       </div>
 
-      <div className="mb-4">
-        <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
-          Votes to deploy
-        </label>
-        <input
-          type="number"
-          min={1}
-          max={totalSpendable}
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="0"
-          className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition-colors focus:border-[#3B82F6]"
-        />
-        <p className="mt-1.5 text-xs text-[#6B7280]">
-          Available: {formatVoteCount(totalSpendable)} votes
-        </p>
-      </div>
+      <label htmlFor="vote-amount" className="mb-1.5 mt-4 flex items-baseline justify-between text-sm font-medium">
+        Votes
+        <span className="num text-[13px] font-normal text-muted">{formatVoteCount(totalSpendable)} available</span>
+      </label>
+      <input
+        id="vote-amount"
+        type="number"
+        min={1}
+        max={totalSpendable}
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        placeholder="0"
+        className={cx(inputClass, 'num h-11 text-lg font-semibold')}
+      />
 
       <button
         type="submit"
         disabled={loading || !amount || Number(amount) <= 0 || Number(amount) > totalSpendable}
-        className="w-full rounded-lg bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+        className={buttonClass(direction === 'yes' ? 'yes' : 'no', 'lg', 'mt-4 w-full')}
       >
-        {loading ? 'Submitting...' : direction === 'yes' ? 'Vote YES' : 'Vote NO'}
+        {loading ? 'Submitting…' : direction === 'yes' ? 'Vote yes' : 'Vote no'}
       </button>
     </form>
   )
@@ -425,115 +385,88 @@ function ExistingPositionForm({
 
   return (
     <div>
-      <div className="mb-5 flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-[#111827]">Your position</h3>
-          <p className="text-sm text-[#6B7280]">
-            You have deployed {formatVoteCount(position.votes)} votes to{' '}
-            <span className={isYes ? 'text-[#10B981]' : 'text-[#EF4444]'}>
-              {isYes ? 'YES' : 'NO'}
-            </span>
+          <h3 className="text-[15px] font-semibold">Your vote</h3>
+          <p className="mt-1 text-sm text-muted">
+            <span className="num font-semibold text-ink">{formatVoteCount(position.votes)}</span> votes on{' '}
+            <span className={cx('font-semibold', isYes ? 'text-yes' : 'text-no')}>{isYes ? 'yes' : 'no'}</span>
           </p>
         </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${
-            isYes
-              ? 'bg-[#10B981]/10 text-[#10B981]'
-              : 'bg-[#EF4444]/10 text-[#EF4444]'
-          }`}
-        >
-          {isYes ? 'Supporting' : 'Rejecting'}
-        </span>
+        <Badge tone={isYes ? 'yes' : 'no'}>{isYes ? 'Backing' : 'Rejecting'}</Badge>
       </div>
 
       {mode === null ? (
-        <div className="flex flex-col gap-2.5">
-          <button
-            onClick={() => setMode('add')}
-            className="w-full rounded-lg bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
-          >
-            Add more votes ({isYes ? 'YES' : 'NO'})
-          </button>
-          <button
-            onClick={() => onFlip()}
-            disabled={loading}
-            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Change my mind
-          </button>
-          <button
-            onClick={() => setMode('withdraw')}
-            className="w-full rounded-lg border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-semibold text-[#6B7280] transition-colors hover:bg-[#F9FAFB]"
-          >
-            Withdraw votes
-          </button>
+        <div className="mt-5 grid gap-2">
+          <Button onClick={() => setMode('add')} variant={isYes ? 'yes' : 'no'} size="lg" className="w-full">
+            Add {isYes ? 'yes' : 'no'} votes
+          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={() => onFlip()} disabled={loading} variant="secondary">
+              Switch to {isYes ? 'no' : 'yes'}
+            </Button>
+            <Button onClick={() => setMode('withdraw')} variant="secondary">
+              Withdraw votes
+            </Button>
+          </div>
         </div>
       ) : mode === 'add' ? (
-        <form onSubmit={handleAdd}>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
-            Additional {isYes ? 'YES' : 'NO'} votes
+        <form onSubmit={handleAdd} className="mt-5">
+          <label htmlFor="vote-add" className="mb-1.5 flex items-baseline justify-between text-sm font-medium">
+            More {isYes ? 'yes' : 'no'} votes
+            <span className="num text-[13px] font-normal text-muted">{formatVoteCount(totalSpendable)} available</span>
           </label>
           <input
+            id="vote-add"
             type="number"
             min={1}
             max={totalSpendable}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
-            className="mb-3 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition-colors focus:border-[#3B82F6]"
+            className={cx(inputClass, 'num h-11 text-lg font-semibold')}
           />
-          <p className="mb-4 text-xs text-[#6B7280]">
-            Available: {formatVoteCount(totalSpendable)} votes
-          </p>
-          <div className="flex gap-2">
+          <div className="mt-4 flex gap-2">
             <button
               type="submit"
               disabled={loading || !amount || Number(amount) <= 0 || Number(amount) > totalSpendable}
-              className="flex-1 rounded-lg bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className={buttonClass(isYes ? 'yes' : 'no', 'lg', 'flex-1')}
             >
-              {loading ? 'Adding...' : 'Add votes'}
+              {loading ? 'Adding…' : 'Add votes'}
             </button>
-            <button
-              type="button"
-              onClick={() => { setMode(null); setAmount('') }}
-              className="rounded-lg border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-semibold text-[#6B7280] transition-colors hover:bg-[#F9FAFB]"
-            >
+            <Button variant="ghost" size="lg" onClick={() => { setMode(null); setAmount('') }}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       ) : (
-        <form onSubmit={handleWithdraw}>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+        <form onSubmit={handleWithdraw} className="mt-5">
+          <label htmlFor="vote-withdraw" className="mb-1.5 flex items-baseline justify-between text-sm font-medium">
             Votes to withdraw
+            <span className="num text-[13px] font-normal text-muted">{formatVoteCount(position.votes)} on this startup</span>
           </label>
           <input
+            id="vote-withdraw"
             type="number"
             min={1}
             max={position.votes}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
-            className="mb-3 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition-colors focus:border-[#3B82F6]"
+            className={cx(inputClass, 'num h-11 text-lg font-semibold')}
           />
-          <p className="mb-4 text-xs text-[#6B7280]">
-            Deployed: {formatVoteCount(position.votes)} votes
-          </p>
-          <div className="flex gap-2">
+          <p className="mt-1.5 text-[13px] text-muted">Withdrawn votes go back to your pool.</p>
+          <div className="mt-4 flex gap-2">
             <button
               type="submit"
               disabled={loading || !amount || Number(amount) <= 0 || Number(amount) > position.votes}
-              className="flex-1 rounded-lg bg-[#EF4444] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className={buttonClass('primary', 'lg', 'flex-1')}
             >
-              {loading ? 'Withdrawing...' : 'Withdraw'}
+              {loading ? 'Withdrawing…' : 'Withdraw'}
             </button>
-            <button
-              type="button"
-              onClick={() => { setMode(null); setAmount('') }}
-              className="rounded-lg border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-semibold text-[#6B7280] transition-colors hover:bg-[#F9FAFB]"
-            >
+            <Button variant="ghost" size="lg" onClick={() => { setMode(null); setAmount('') }}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -740,47 +673,50 @@ function CurvePanel({
     setSellAmount('')
   }
 
+  const pillClass =
+    'h-7 flex-1 rounded-md border border-line bg-surface px-2 text-[13px] font-medium text-ink-soft transition-colors hover:border-line-strong hover:text-ink disabled:cursor-not-allowed disabled:opacity-45'
+
   return (
-    <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+    <Card className="p-5">
       {success && (
-        <div className="mb-4 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-3 text-sm text-[#10B981]">
+        <Notice tone="yes" className="mb-4">
           {success}
-        </div>
+        </Notice>
       )}
       {error && (
-        <div className="mb-4 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
+        <Notice tone="no" className="mb-4">
           {error.includes('Insufficient balance') || error.includes('No balance')
             ? `${error} Deposit more USDC to continue.`
             : error}
-        </div>
+        </Notice>
       )}
 
-      <div className="mb-6">
-        <h3 className="mb-1 text-lg font-semibold text-[#111827]">Capital raise</h3>
-        <p className="mb-4 text-sm text-[#6B7280]">
-          Back this startup before the raise closes. Tokens track this raise on a bonding curve.
+      <div>
+        <h3 className="text-[15px] font-semibold">Capital raise</h3>
+        <p className="mt-1 text-sm text-muted">
+          Buy tokens on a bonding curve until the raise reaches its target.
         </p>
-        <RaiseProgressBar
-          progress={curve.progress}
-          raised={curve.pool_usdc}
-          target={curve.capital_target}
-        />
+        <div className="mt-4">
+          <RaiseProgressBar
+            progress={curve.progress}
+            raised={curve.pool_usdc}
+            target={curve.capital_target}
+          />
+        </div>
         <div className="mt-3 flex items-center justify-between text-sm">
-          <span className="text-[#6B7280]">
-            {curve.graduated ? 'Final raise price' : 'Current token price'}
+          <span className="text-muted">
+            {curve.graduated ? 'Final raise price' : 'Token price'}
           </span>
-          <span className="font-medium text-[#111827]">
-            ${formatPrice(curve.current_price)}
-          </span>
+          <span className="num font-medium text-ink">${formatPrice(curve.current_price)}</span>
         </div>
         {curve.graduated && curve.pool_address && (
-          <div className="mt-2 flex items-center justify-end gap-1 text-xs text-[#6B7280]">
-            <span>Final bonding-curve price.</span>
+          <div className="mt-1 flex items-center justify-between text-[13px] text-muted">
+            <span>Final bonding-curve price</span>
             <a
               href={solanaPoolExplorerLink(curve.pool_address)!}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-[#3B82F6] hover:underline"
+              className="font-medium text-accent hover:underline"
             >
               View Raydium pool
             </a>
@@ -789,78 +725,62 @@ function CurvePanel({
       </div>
 
       {hasHolding && curve.user_holding && (
-        <div className="mb-4 rounded-lg bg-[#F9FAFB] p-3 text-sm">
+        <div className="mt-4 rounded-lg bg-canvas px-3 py-2.5 text-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[#6B7280]">Your holding</span>
-            <span className="font-medium text-[#111827]">
-              {formatTokenAmount(curve.user_holding.tokens)} tokens
-            </span>
+            <span className="text-muted">You hold</span>
+            <span className="num font-medium text-ink">{formatTokenAmount(curve.user_holding.tokens)} tokens</span>
           </div>
-          <div className="mt-1 flex items-center justify-between text-xs text-[#6B7280]">
+          <div className="mt-1 flex items-center justify-between text-[13px] text-muted">
             <span>Cost basis</span>
-            <span>{formatUsd(curve.user_holding.cost_basis)}</span>
+            <span className="num">{formatUsd(curve.user_holding.cost_basis)}</span>
           </div>
         </div>
       )}
 
       {authenticated === false && (
-        <div className="rounded-lg bg-[#F9FAFB] p-4 text-center">
-          <p className="mb-3 text-sm text-[#6B7280]">
-            Sign in to participate in this capital raise.
-          </p>
-          <button
-            onClick={() => login()}
-            className="rounded-lg bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
-          >
-            Sign In
-          </button>
-        </div>
+        <Button onClick={() => login()} size="lg" className="mt-5 w-full">
+          Sign in to buy tokens
+        </Button>
       )}
 
       {curve.graduated && (
-        <div className="rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-4 text-sm text-[#10B981]">
-          <p className="font-semibold">Raise completed</p>
-          <p className="mt-1">
-            {graduationStatusMessage(
-              curve.graduation_status,
-              curve.pool_usdc,
-              curve.capital_target
-            )}
-          </p>
-        </div>
+        <Notice tone="yes" title="Raise complete" className="mt-5">
+          {graduationStatusMessage(curve.graduation_status, curve.pool_usdc, curve.capital_target)}
+        </Notice>
       )}
 
       {authenticated && !curve.graduated && curve.frozen && (
-        <div className="mb-4 rounded-lg border border-[#F59E0B]/30 bg-[#F59E0B]/10 p-3 text-sm text-[#B45309]">
-          Trading is temporarily halted. New purchases are paused, but existing holders can still
-          exit.
-        </div>
+        <Notice tone="warn" className="mt-5">
+          Trading is paused. New purchases are on hold, but holders can still sell.
+        </Notice>
       )}
 
       {authenticated && !curve.graduated && (
-        <>
-          <div className="mb-4 flex gap-2">
+        <div className="mt-5 border-t border-line pt-5">
+          <div className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-subtle p-1" role="tablist">
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'buy'}
               onClick={() => setMode('buy')}
               disabled={curve.frozen}
-              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
-                mode === 'buy'
-                  ? 'bg-[#3B82F6] text-white'
-                  : 'border border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F9FAFB]'
-              } disabled:cursor-not-allowed disabled:opacity-50`}
+              className={cx(
+                'h-8 rounded-md text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45',
+                mode === 'buy' ? 'bg-surface text-ink shadow-[0_1px_2px_rgb(0_0_0/0.06)]' : 'text-muted hover:text-ink',
+              )}
             >
               Buy
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'sell'}
               onClick={() => setMode('sell')}
               disabled={!hasHolding}
-              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
-                mode === 'sell'
-                  ? 'bg-[#3B82F6] text-white'
-                  : 'border border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F9FAFB]'
-              } disabled:cursor-not-allowed disabled:opacity-50`}
+              className={cx(
+                'h-8 rounded-md text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45',
+                mode === 'sell' ? 'bg-surface text-ink shadow-[0_1px_2px_rgb(0_0_0/0.06)]' : 'text-muted hover:text-ink',
+              )}
             >
               Sell
             </button>
@@ -868,63 +788,65 @@ function CurvePanel({
 
           {mode === 'buy' ? (
             <form onSubmit={onSubmitBuy}>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
-                USDC to spend
+              <label htmlFor="buy-amount" className="mb-1.5 flex items-baseline justify-between text-sm font-medium">
+                You pay
+                {curve.available_usdc && (
+                  <span className="num text-[13px] font-normal text-muted">
+                    {formatUsd(curve.available_usdc)} available
+                  </span>
+                )}
               </label>
-              <div className="relative mb-3">
-                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-2xl font-semibold text-[#9CA3AF]">
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl font-semibold text-faint">
                   $
                 </span>
                 <input
+                  id="buy-amount"
                   type="text"
                   inputMode="decimal"
                   value={buyAmount}
                   onChange={(e) => handleBuyChange(e.target.value)}
                   placeholder="0.00"
                   disabled={loading || curve.frozen}
-                  className="w-full rounded-lg border border-[#E5E7EB] bg-white py-3 pl-8 pr-3 text-2xl font-semibold text-[#111827] outline-none transition-colors focus:border-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
+                  className={cx(inputClass, 'num h-12 pl-7 text-xl font-semibold')}
                 />
               </div>
-              {buyPresets.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-2">
+              {(buyPresets.length > 0 || hasAvailableBalance) && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
                   {buyPresets.map((preset) => (
                     <button
                       key={preset.toString()}
                       type="button"
                       disabled={loading || curve.frozen}
                       onClick={() => handleBuyChange(preset.toString())}
-                      className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-1.5 text-xs font-semibold text-[#111827] transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
+                      className={pillClass}
                     >
                       ${preset.toString()}
                     </button>
                   ))}
+                  {hasAvailableBalance &&
+                    ([25, 50, 100] as const).map((pct) => (
+                      <button
+                        key={pct}
+                        type="button"
+                        disabled={loading || curve.frozen}
+                        onClick={() => fillBuyPercent(pct)}
+                        className={pillClass}
+                      >
+                        {pct === 100 ? 'Max' : `${pct}%`}
+                      </button>
+                    ))}
                 </div>
-              )}
-              {hasAvailableBalance && (
-                <div className="mb-3 flex gap-2">
-                  {([25, 50, 100] as const).map((pct) => (
-                    <button
-                      key={pct}
-                      type="button"
-                      disabled={loading || curve.frozen}
-                      onClick={() => fillBuyPercent(pct)}
-                      className="flex-1 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-1.5 text-xs font-semibold text-[#6B7280] transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {pct === 100 ? 'Max' : `${pct}%`}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {curve.available_usdc && (
-                <p className="mb-3 text-xs text-[#6B7280]">
-                  Available: {formatUsd(curve.available_usdc)}
-                </p>
               )}
               {buyEstimate && (
-                <div className="mb-4 rounded-lg bg-[#F9FAFB] p-3 text-xs text-[#6B7280]">
+                <div className="mt-4 space-y-1 text-[13px]">
                   <div className="flex justify-between">
-                    <span>Fee (1%)</span>
-                    <span className="font-medium text-[#111827]">
+                    <span className="text-muted">You receive about</span>
+                    <span className="num font-medium text-ink">{formatTokenAmount(buyEstimate.toString())} tokens</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">Fee (1%)</span>
+                    <span className="num text-ink">
                       {formatUsd(
                         Decimal.parse(buyAmount || '0')
                           .mul(Decimal.parse('0.01'))
@@ -932,15 +854,8 @@ function CurvePanel({
                       )}
                     </span>
                   </div>
-                  <div className="mt-1 flex justify-between">
-                    <span>Estimated tokens received</span>
-                    <span className="font-medium text-[#111827]">
-                      {formatTokenAmount(buyEstimate.toString())}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-[10px] leading-tight">
-                    The 1% fee is taken from the amount you enter. Spending 100 USDC puts 99 USDC
-                    into the raise.
+                  <p className="pt-1 text-xs leading-snug text-faint">
+                    The fee comes out of the amount you enter: spending 100 USDC puts 99 USDC into the raise.
                   </p>
                 </div>
               )}
@@ -955,54 +870,53 @@ function CurvePanel({
                     ? Decimal.parse(buyAmount).gt(Decimal.parse(curve.available_usdc))
                     : true)
                 }
-                className="w-full rounded-lg bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className={buttonClass('accent', 'lg', 'mt-4 w-full')}
               >
-                {loading ? 'Processing...' : 'Buy tokens'}
+                {loading ? 'Processing…' : 'Buy tokens'}
               </button>
             </form>
           ) : (
             <form onSubmit={onSubmitSell}>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">
-                Tokens to sell
+              <label htmlFor="sell-amount" className="mb-1.5 flex items-baseline justify-between text-sm font-medium">
+                You sell
+                {hasHolding && curve.user_holding && (
+                  <span className="num text-[13px] font-normal text-muted">
+                    {formatTokenAmount(curve.user_holding.tokens)} held
+                  </span>
+                )}
               </label>
               <input
+                id="sell-amount"
                 type="text"
                 inputMode="decimal"
                 value={sellAmount}
                 onChange={(e) => handleSellChange(e.target.value)}
                 placeholder="0"
                 disabled={loading}
-                className="mb-3 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-3 text-2xl font-semibold text-[#111827] outline-none transition-colors focus:border-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
+                className={cx(inputClass, 'num h-12 text-xl font-semibold')}
               />
-              <div className="mb-3 flex gap-2">
+              <div className="mt-2 flex gap-1.5">
                 {([25, 50, 75, 100] as const).map((pct) => (
                   <button
                     key={pct}
                     type="button"
                     disabled={loading || !hasHolding}
                     onClick={() => fillSellPercent(pct)}
-                    className="flex-1 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-1.5 text-xs font-semibold text-[#6B7280] transition-colors hover:border-[#3B82F6] hover:text-[#3B82F6] disabled:cursor-not-allowed disabled:opacity-50"
+                    className={pillClass}
                   >
                     {pct === 100 ? 'Max' : `${pct}%`}
                   </button>
                 ))}
               </div>
-              {hasHolding && curve.user_holding && (
-                <p className="mb-3 text-xs text-[#6B7280]">
-                  Available: {formatTokenAmount(curve.user_holding.tokens)}
-                </p>
-              )}
               {sellEstimate && (
-                <div className="mb-4 rounded-lg bg-[#F9FAFB] p-3 text-xs text-[#6B7280]">
+                <div className="mt-4 space-y-1 text-[13px]">
                   <div className="flex justify-between">
-                    <span>Estimated USDC back</span>
-                    <span className="font-medium text-[#111827]">
-                      {formatUsd(sellEstimate.toString())}
-                    </span>
+                    <span className="text-muted">You receive about</span>
+                    <span className="num font-medium text-ink">{formatUsd(sellEstimate.toString())}</span>
                   </div>
-                  <div className="mt-1 flex justify-between">
-                    <span>Fee (1%)</span>
-                    <span className="font-medium text-[#111827]">
+                  <div className="flex justify-between">
+                    <span className="text-muted">Fee (1%)</span>
+                    <span className="num text-ink">
                       {formatUsd(
                         Decimal.parse(sellAmount || '0')
                           .mul(Decimal.parse(curve.current_price))
@@ -1023,15 +937,15 @@ function CurvePanel({
                     ? Decimal.parse(sellAmount).gt(Decimal.parse(curve.user_holding.tokens))
                     : true)
                 }
-                className="w-full rounded-lg bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className={buttonClass('primary', 'lg', 'mt-4 w-full')}
               >
-                {loading ? 'Processing...' : 'Sell tokens'}
+                {loading ? 'Processing…' : 'Sell tokens'}
               </button>
             </form>
           )}
-        </>
+        </div>
       )}
-    </div>
+    </Card>
   )
 }
 
@@ -1371,14 +1285,18 @@ export default function StartupDetailPage() {
 
   if (startupLoading) {
     return (
-      <div className="min-h-screen bg-[#F9FAFB] px-4 py-10">
-        <div className="mx-auto max-w-[1200px]">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <div className="h-32 animate-pulse rounded-xl bg-[#E5E7EB]" />
-            </div>
-            <div className="h-64 animate-pulse rounded-xl bg-[#E5E7EB]" />
+      <div className="mx-auto w-full max-w-page px-4 pb-20 pt-8 sm:px-6 sm:pt-10">
+        <Skeleton className="mb-8 h-4 w-28" />
+        <div className="mb-10 flex items-center gap-4">
+          <Skeleton className="h-14 w-14 rounded-xl" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-7 w-1/3" />
+            <Skeleton className="h-4 w-1/2" />
           </div>
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <Skeleton className="h-48 rounded-xl" />
+          <Skeleton className="h-72 rounded-xl" />
         </div>
       </div>
     )
@@ -1386,133 +1304,126 @@ export default function StartupDetailPage() {
 
   if (startupError) {
     return (
-      <div className="min-h-screen bg-[#F9FAFB] px-4 py-10">
-        <div className="mx-auto max-w-[1200px]">
-          <div className="rounded-xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
-            <h1 className="mb-2 text-xl font-semibold text-[#111827]">Startup not found</h1>
-            <p className="mb-6 text-sm text-[#6B7280]">
-              We couldn&apos;t find a startup called <span className="font-medium">{slug}</span>.
-            </p>
-            <Link
-              href="/"
-              className="rounded-lg bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
-            >
-              Back to startups
-            </Link>
-          </div>
-        </div>
+      <div className="mx-auto w-full max-w-xl px-4 py-24 text-center sm:px-6">
+        <h1 className="text-xl font-semibold">Startup not found</h1>
+        <p className="mt-2 text-sm text-muted">
+          There is no startup at <span className="font-medium text-ink">/{slug}</span>. It may have been removed or renamed.
+        </p>
+        <Link href="/" className={buttonClass('primary', 'md', 'mt-6')}>
+          Browse startups
+        </Link>
       </div>
     )
   }
 
   if (!startup) return null
 
+  const phaseBadge =
+    startup.phase === 1 ? (
+      <Badge>Voting</Badge>
+    ) : startup.phase === 2 ? (
+      <Badge tone="accent">Raising</Badge>
+    ) : (
+      <Badge tone="yes">Raise complete</Badge>
+    )
+
   return (
-    <div className="min-h-screen bg-[#F9FAFB] px-4 py-10 text-[#111827]">
-      {startup.phase !== 1 && (
-        <div className="mx-auto mb-6 max-w-[1200px] rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-          <h3 className="mb-1 text-lg font-semibold text-[#111827]">Price history</h3>
-          <p className="mb-4 text-sm text-[#6B7280]">
-            Hourly OHLC candles of every trade on the bonding curve.
-          </p>
-          {curveTradesLoading ? (
-            <div className="h-80 animate-pulse rounded-lg bg-[#E5E7EB]" />
-          ) : curveTradesError ? (
-            <div className="text-sm text-[#EF4444]">{curveTradesError}</div>
-          ) : curveTrades ? (
-            <CurvePriceChart
-              {...curveTrades}
-              opening_pool_price={graduationReport?.opening_pool_price}
-            />
-          ) : (
-            <div className="text-sm text-[#6B7280]">No price history available.</div>
+    <div className="mx-auto w-full max-w-page px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
+      <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-ink">
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+          <path d="M8.5 3 4.5 7l4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        All startups
+      </Link>
+
+      <header className="mt-6 flex items-start gap-4 sm:gap-5">
+        <Logo name={startup.name} src={startup.logo_url} size={60} className="rounded-xl" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.02em] sm:text-[32px]">{startup.name}</h1>
+            {phaseBadge}
+          </div>
+          {startup.description && (
+            <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-muted">{startup.description}</p>
           )}
         </div>
-      )}
+      </header>
 
-      <div className="mx-auto max-w-[1200px]">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
-              <div className="mb-6 flex items-start gap-4 sm:gap-6">
-                <Avatar name={startup.name} src={startup.logo_url} />
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-2xl font-bold tracking-tight text-[#111827] sm:text-3xl">
-                    {startup.name}
-                  </h1>
-                  {startup.user_position && (
-                    <span
-                      className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold uppercase ${
-                        startup.user_position.direction === 'yes'
-                          ? 'bg-[#10B981]/10 text-[#10B981]'
-                          : 'bg-[#EF4444]/10 text-[#EF4444]'
-                      }`}
-                    >
-                      You · {startup.user_position.direction === 'yes' ? 'YES' : 'NO'} ·{' '}
-                      {startup.user_position.votes}
-                    </span>
-                  )}
-                </div>
+      <div className="mt-8 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-6">
+          {thresholdNotice && (
+            <Notice tone="yes">
+              <div className="flex items-start justify-between gap-4">
+                <p>{thresholdNotice.message}</p>
+                <button type="button" onClick={() => setThresholdNotice(null)} className="shrink-0 font-medium hover:underline">
+                  Dismiss
+                </button>
               </div>
+            </Notice>
+          )}
 
-              <p className="mb-8 text-base leading-relaxed text-[#6B7280]">
-                {startup.description}
-              </p>
+          {graduatedNotice && (
+            <Notice tone="yes">
+              <div className="flex items-start justify-between gap-4">
+                <p>{graduatedNotice}</p>
+                <button type="button" onClick={() => setGraduatedNotice(null)} className="shrink-0 font-medium hover:underline">
+                  Dismiss
+                </button>
+              </div>
+            </Notice>
+          )}
 
-              <div className="space-y-6">
-                <SentimentBar yes={startup.total_yes_votes} no={startup.total_no_votes} />
-                {startup.phase === 1 && (
-                  <ProgressBar
-                    progress={startup.progress}
-                    net={startup.net}
-                    threshold={startup.vote_threshold}
+          {startup.phase !== 1 && (
+            <Card>
+              <div className="border-b border-line px-5 py-4">
+                <h2 className="text-[15px] font-semibold">Price history</h2>
+                <p className="mt-0.5 text-[13px] text-muted">Hourly candles of every trade on the bonding curve</p>
+              </div>
+              <div className="p-3 sm:p-5">
+                {curveTradesLoading ? (
+                  <Skeleton className="h-80 rounded-lg" />
+                ) : curveTradesError ? (
+                  <Notice tone="no">{curveTradesError}</Notice>
+                ) : curveTrades ? (
+                  <CurvePriceChart
+                    {...curveTrades}
+                    opening_pool_price={graduationReport?.opening_pool_price}
                   />
+                ) : (
+                  <p className="py-10 text-center text-sm text-muted">No trades yet.</p>
                 )}
               </div>
+            </Card>
+          )}
 
-              {thresholdNotice && (
-                <div className="mt-8 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-4 text-sm text-[#10B981]">
-                  <div className="flex items-start justify-between gap-4">
-                    <p>{thresholdNotice.message}</p>
-                    <button
-                      type="button"
-                      onClick={() => setThresholdNotice(null)}
-                      className="shrink-0 font-semibold hover:underline"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {graduatedNotice && (
-                <div className="mt-8 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-4 text-sm text-[#10B981]">
-                  <div className="flex items-start justify-between gap-4">
-                    <p>{graduatedNotice}</p>
-                    <button
-                      type="button"
-                      onClick={() => setGraduatedNotice(null)}
-                      className="shrink-0 font-semibold hover:underline"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {startup.phase !== 1 && (
-                <div className="mt-8 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-sm text-[#6B7280]">
-                  <h4 className="mb-1 font-semibold text-[#111827]">Community vote history</h4>
-                  <p>
-                    This startup reached its community threshold and has moved on to raising capital.
-                    The vote results above show how it got here.
-                  </p>
-                </div>
+          <Card className="p-5 sm:p-6">
+            <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-[15px] font-semibold">Community vote</h2>
+              {startup.user_position && (
+                <Badge tone={startup.user_position.direction === 'yes' ? 'yes' : 'no'}>
+                  You voted {startup.user_position.direction === 'yes' ? 'yes' : 'no'} with{' '}
+                  {formatVoteCount(startup.user_position.votes)}
+                </Badge>
               )}
             </div>
-          </div>
+            <Tally yes={startup.total_yes_votes} no={startup.total_no_votes} />
+            {startup.phase === 1 ? (
+              <div className="mt-6 border-t border-line pt-5">
+                <ThresholdProgress
+                  progress={startup.progress}
+                  net={startup.net}
+                  threshold={startup.vote_threshold}
+                />
+              </div>
+            ) : (
+              <p className="mt-5 border-t border-line pt-4 text-sm text-muted">
+                Voting closed when this startup reached its threshold. These are the final results.
+              </p>
+            )}
+          </Card>
+        </div>
 
-          <div className="lg:col-span-1">
+        <aside className="min-w-0 lg:sticky lg:top-20">
             {startup.phase === 1 ? (
               <VotePanel
                 startup={startup}
@@ -1544,39 +1455,29 @@ export default function StartupDetailPage() {
               />
             ) : startup.phase === 3 ? (
               graduationReportLoading ? (
-                <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-                  <div className="space-y-3">
-                    <div className="h-4 animate-pulse rounded bg-[#E5E7EB]" />
-                    <div className="h-24 animate-pulse rounded bg-[#E5E7EB]" />
-                    <div className="h-10 animate-pulse rounded bg-[#E5E7EB]" />
-                  </div>
-                </div>
+                <Card className="space-y-3 p-5">
+                  <Skeleton className="h-4" />
+                  <Skeleton className="h-24" />
+                  <Skeleton className="h-10" />
+                </Card>
               ) : graduationReport ? (
                 <GraduationReport
                   report={graduationReport}
                   startupName={startup.name}
                 />
               ) : (
-                <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-                  <div className="text-sm text-[#EF4444]">
-                    {graduationReportError || 'Could not load graduation report.'}
-                  </div>
-                </div>
+                <Notice tone="no">{graduationReportError || 'Could not load graduation report.'}</Notice>
               )
             ) : curveLoading || curveError ? (
-              <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-                {curveLoading ? (
-                  <div className="space-y-3">
-                    <div className="h-4 animate-pulse rounded bg-[#E5E7EB]" />
-                    <div className="h-24 animate-pulse rounded bg-[#E5E7EB]" />
-                    <div className="h-10 animate-pulse rounded bg-[#E5E7EB]" />
-                  </div>
-                ) : (
-                  <div className="text-sm text-[#EF4444]">
-                    {curveError || 'Could not load capital raise data.'}
-                  </div>
-                )}
-              </div>
+              curveLoading ? (
+                <Card className="space-y-3 p-5">
+                  <Skeleton className="h-4" />
+                  <Skeleton className="h-24" />
+                  <Skeleton className="h-10" />
+                </Card>
+              ) : (
+                <Notice tone="no">{curveError || 'Could not load capital raise data.'}</Notice>
+              )
             ) : curve ? (
               <CurvePanel
                 curve={curve}
@@ -1592,15 +1493,14 @@ export default function StartupDetailPage() {
               />
             ) : null}
             {(graduationReport || curve?.graduated) && (
-              <div className="mt-6">
+              <div className="mt-4">
                 <StartupGraduationClaim
                   startupId={startup.id}
                   graduated
                 />
               </div>
             )}
-          </div>
-        </div>
+        </aside>
       </div>
     </div>
   )

@@ -103,7 +103,7 @@ function ExternalLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="font-medium text-[#3B82F6] hover:underline"
+      className="font-medium text-accent hover:underline"
     >
       {children}
     </a>
@@ -131,33 +131,33 @@ export function GraduationReport({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 p-4 text-sm text-[#10B981]">
+      <div className="rounded-lg border border-yes/25 bg-yes-soft p-4 text-sm text-yes">
         <p className="font-semibold">
           {report.status === 'complete' ? 'Graduation complete' : 'Graduation in progress'}
         </p>
         <p className="mt-1">{statusMessage(report.status)}</p>
       </div>
 
-      <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-        <h3 className="mb-1 text-lg font-semibold text-[#111827]">Raise outcome</h3>
-        <p className="mb-4 text-sm text-[#6B7280]">
+      <div className="rounded-xl border border-line bg-surface p-6">
+        <h3 className="mb-1 text-lg font-semibold text-ink">Raise outcome</h3>
+        <p className="mb-4 text-sm text-muted">
           {report.pool_address
             ? `${startupName} completed its capital raise and moved to a Raydium liquidity pool.`
             : 'The capital raise is complete. The Raydium liquidity pool will be created once this phase finishes.'}
         </p>
 
         <div className="mb-4">
-          <div className="mb-2 flex items-center justify-between text-xs text-[#6B7280]">
-            <span className="font-semibold text-[#10B981]">
+          <div className="mb-2 flex items-center justify-between text-xs text-muted">
+            <span className="font-semibold text-yes">
               {Math.round(progress)}% raised
             </span>
             <span>
               {formatUsd(report.pool_usdc, 6)} / {formatUsd(report.capital_target, 6)}
             </span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-subtle">
             <div
-              className="h-full bg-[#10B981]"
+              className="h-full bg-yes"
               style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
             />
           </div>
@@ -165,27 +165,27 @@ export function GraduationReport({
 
         <div className="mt-3 space-y-2 text-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[#6B7280]">Final raise price</span>
-            <span className="font-medium text-[#111827]">
+            <span className="text-muted">Final raise price</span>
+            <span className="font-medium text-ink">
               ${formatPrice(report.final_price, 12)}
             </span>
           </div>
           {report.pool_address && (
             <>
               <div className="flex items-center justify-between">
-                <span className="text-[#6B7280]">Opening pool price</span>
-                <span className="font-medium text-[#111827]">
+                <span className="text-muted">Opening pool price</span>
+                <span className="font-medium text-ink">
                   ${report.opening_pool_price ? formatPrice(report.opening_pool_price, 12) : '—'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[#6B7280]">Current price</span>
+                <span className="text-muted">Current price</span>
                 {report.pool_price ? (
-                  <span className="font-medium text-[#111827]">
+                  <span className="font-medium text-ink">
                     ${formatPrice(report.pool_price, 12)}
                   </span>
                 ) : (
-                  <span className="text-[#6B7280]">Unavailable</span>
+                  <span className="text-muted">Unavailable</span>
                 )}
               </div>
             </>
@@ -193,7 +193,7 @@ export function GraduationReport({
         </div>
 
         {report.pool_address && report.opening_pool_price && report.final_price && (
-          <p className="mt-3 text-xs leading-relaxed text-[#6B7280]">
+          <p className="mt-3 text-xs leading-relaxed text-muted">
             The drop from the final curve price to the opening pool price is structural: part of
             the raise went to the founder, so the pool starts with fewer USDC behind each token
             ({priceDropPercent(report.final_price, report.opening_pool_price)} on this startup).
@@ -202,7 +202,7 @@ export function GraduationReport({
         )}
 
         {report.pool_address && (
-          <div className="mt-2 text-right text-xs text-[#6B7280]">
+          <div className="mt-2 text-right text-xs text-muted">
             Final bonding-curve price.{' '}
             <ExternalLink href={solanaAddressExplorerLink(report.pool_address)}>
               View Raydium pool
@@ -211,37 +211,37 @@ export function GraduationReport({
         )}
       </div>
 
-      <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-        <h3 className="mb-1 text-lg font-semibold text-[#111827]">Token at a glance</h3>
-        <p className="mb-4 text-sm text-[#6B7280]">
+      <div className="rounded-xl border border-line bg-surface p-6">
+        <h3 className="mb-1 text-lg font-semibold text-ink">Token at a glance</h3>
+        <p className="mb-4 text-sm text-muted">
           {report.token_name || startupName}{' '}
           {report.token_symbol ? `(${report.token_symbol})` : ''}
         </p>
 
         <div className="mb-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+          <p className="text-xs font-medium text-muted">
             Total supply
           </p>
-          <p className="text-2xl font-semibold text-[#111827]">
+          <p className="text-2xl font-semibold text-ink">
             {formatTokenAmount(report.total_supply)} {tokenLabel}
           </p>
         </div>
 
         <div className="space-y-2 text-sm">
-          <div className="flex items-center justify-between rounded-lg bg-[#F9FAFB] p-3">
-            <span className="text-[#6B7280]">To holders</span>
-            <span className="font-medium text-[#111827]">
+          <div className="flex items-center justify-between rounded-lg bg-canvas p-3">
+            <span className="text-muted">To holders</span>
+            <span className="font-medium text-ink">
               {formatTokenAmount(report.tokens_to_holders)} {tokenLabel}
             </span>
           </div>
-          <div className="flex items-center justify-between rounded-lg bg-[#F9FAFB] p-3">
-            <span className="text-[#6B7280]">Allocated to liquidity pool</span>
-            <span className="font-medium text-[#111827]">
+          <div className="flex items-center justify-between rounded-lg bg-canvas p-3">
+            <span className="text-muted">Allocated to liquidity pool</span>
+            <span className="font-medium text-ink">
               {formatTokenAmount(report.tokens_to_lp)} {tokenLabel}
             </span>
           </div>
           {Number(report.dust_to_lp) > 0 && (
-            <p className="text-xs text-[#9CA3AF]">
+            <p className="text-xs text-faint">
               * {formatTokenAmount(report.dust_to_lp, 6)} {tokenLabel} were below the smallest
               on-chain unit and were added to the LP as dust.
             </p>
@@ -250,7 +250,7 @@ export function GraduationReport({
 
         {report.mint_address && (
           <div className="mt-4 text-sm">
-            <span className="text-[#6B7280]">Mint: </span>
+            <span className="text-muted">Mint: </span>
             <ExternalLink href={solanaAddressExplorerLink(report.mint_address)}>
               {report.mint_address.slice(0, 6)}…{report.mint_address.slice(-6)}
             </ExternalLink>
@@ -258,8 +258,8 @@ export function GraduationReport({
         )}
 
         {report.founder_payout_signature && (
-          <div className="mt-6 rounded-lg border-l-4 border-[#3B82F6] bg-[#EFF6FF] p-4">
-            <p className="text-[#111827]">
+          <div className="mt-6 rounded-lg border-l-4 border-accent bg-accent-soft p-4">
+            <p className="text-ink">
               <span className="font-semibold">
                 The founder received {formatUsdc(report.founder_usdc)} USDC.
               </span>{' '}
@@ -269,7 +269,7 @@ export function GraduationReport({
         )}
 
         {report.total_holders > 0 && (
-          <p className="mt-4 text-sm text-[#6B7280]">
+          <p className="mt-4 text-sm text-muted">
             {holderDistributionMessage(
               report.total_holders,
               report.claimed_count,
@@ -280,15 +280,15 @@ export function GraduationReport({
       </div>
 
       {(report.lp_burn_signature || report.authority_revoke_signature) && (
-        <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[#6B7280]">
+        <div className="rounded-xl border border-line bg-surface p-6">
+          <h3 className="mb-4 text-sm font-semibold text-muted">
             Verifiable trust claims
           </h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {report.lp_burn_signature && (
-              <div className="rounded-lg border border-[#10B981]/30 bg-[#10B981]/5 p-4 text-sm">
-                <p className="font-semibold text-[#10B981]">LP tokens burned</p>
-                <p className="mt-1 text-[#6B7280]">
+              <div className="rounded-lg border border-yes/25 bg-yes-soft p-4 text-sm">
+                <p className="font-semibold text-yes">LP tokens burned</p>
+                <p className="mt-1 text-muted">
                   The platform burned its liquidity-provider tokens. No one can withdraw this
                   liquidity.
                 </p>
@@ -300,9 +300,9 @@ export function GraduationReport({
               </div>
             )}
             {report.authority_revoke_signature && (
-              <div className="rounded-lg border border-[#10B981]/30 bg-[#10B981]/5 p-4 text-sm">
-                <p className="font-semibold text-[#10B981]">Mint authority revoked</p>
-                <p className="mt-1 text-[#6B7280]">
+              <div className="rounded-lg border border-yes/25 bg-yes-soft p-4 text-sm">
+                <p className="font-semibold text-yes">Mint authority revoked</p>
+                <p className="mt-1 text-muted">
                   The token&apos;s mint authority has been revoked. No more tokens can ever be
                   created.
                 </p>

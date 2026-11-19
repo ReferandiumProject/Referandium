@@ -106,9 +106,9 @@ export default function WalletLinkingSection() {
   }
 
   return (
-    <section className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold text-[#111827]">Linked wallets</h2>
-      <p className="mb-4 text-sm text-[#6B7280]">
+    <section className="mb-6 rounded-xl border border-line bg-surface p-5">
+      <h2 className="mb-4 text-lg font-semibold text-ink">Linked wallets</h2>
+      <p className="mb-4 text-sm text-muted">
         Connect an external Solana wallet so deposits from it are credited to your account.
       </p>
 
@@ -119,14 +119,14 @@ export default function WalletLinkingSection() {
       ) : (
         <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
           <div className="text-sm">
-            <span className="font-medium text-[#111827]">Selected wallet:</span>{' '}
-            <span className="font-mono text-[#6B7280]">{publicKey?.toBase58()}</span>
+            <span className="font-medium text-ink">Selected wallet:</span>{' '}
+            <span className="font-mono text-muted">{publicKey?.toBase58()}</span>
           </div>
           <button
             type="button"
             onClick={handleLink}
             disabled={loading}
-            className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+            className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:opacity-50"
           >
             {loading ? 'Linking...' : 'Sign and link this wallet'}
           </button>
@@ -137,8 +137,8 @@ export default function WalletLinkingSection() {
         <div
           className={`mb-4 rounded-lg border p-3 text-sm ${
             message.type === 'error'
-              ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
-              : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
+              ? 'border-no/25 bg-no-soft text-no'
+              : 'border-yes/25 bg-yes-soft text-yes'
           }`}
         >
           {message.text}
@@ -146,15 +146,15 @@ export default function WalletLinkingSection() {
       )}
 
       {fetching ? (
-        <p className="text-sm text-[#6B7280]">Loading linked wallets...</p>
+        <p className="text-sm text-muted">Loading linked wallets...</p>
       ) : linkedWallets.length === 0 ? (
-        <p className="text-sm text-[#6B7280]">No linked wallets yet.</p>
+        <p className="text-sm text-muted">No linked wallets yet.</p>
       ) : (
-        <ul className="divide-y divide-[#E5E7EB]">
+        <ul className="divide-y divide-line">
           {linkedWallets.map((w) => (
             <li key={w.address} className="flex items-center justify-between py-3">
-              <span className="font-mono text-sm text-[#111827]">{w.address}</span>
-              <span className="text-xs text-[#6B7280]">
+              <span className="font-mono text-sm text-ink">{w.address}</span>
+              <span className="text-xs text-muted">
                 {new Date(w.created_at).toLocaleDateString()}
               </span>
             </li>

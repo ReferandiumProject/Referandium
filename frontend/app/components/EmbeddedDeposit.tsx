@@ -210,19 +210,19 @@ export default function EmbeddedDeposit({ onSuccess }: { onSuccess?: () => void 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <p className="text-sm text-[#6B7280]">
-          <span className="font-medium text-[#111827]">Embedded wallet:</span>{' '}
+        <p className="text-sm text-muted">
+          <span className="font-medium text-ink">Embedded wallet:</span>{' '}
           <span className="font-mono break-all">{custodialAddress ?? 'Loading...'}</span>
         </p>
-        <p className="text-sm text-[#6B7280]">
-          <span className="font-medium text-[#111827]">USDC balance:</span>{' '}
+        <p className="text-sm text-muted">
+          <span className="font-medium text-ink">USDC balance:</span>{' '}
           {balance === null
             ? 'Loading...'
             : `${balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC`}
         </p>
       </div>
 
-      <p className="text-xs text-[#6B7280]">
+      <p className="text-xs text-muted">
         Send USDC (Solana) to the address above. Then enter the amount to deposit here. A flat{' '}
         {NETWORK_FEE_USDC} USDC network fee is withheld. The minimum deposit is{' '}
         {MINIMUM_DEPOSIT_USDC.toFixed(2)} USDC.
@@ -236,12 +236,12 @@ export default function EmbeddedDeposit({ onSuccess }: { onSuccess?: () => void 
           onChange={(e) => setAmount(e.target.value)}
           placeholder="Amount USDC"
           disabled={loading}
-          className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] outline-none focus:border-[#3B82F6] sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none focus:border-accent sm:w-48 disabled:cursor-not-allowed disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={!canSubmit}
-          className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? 'Depositing...' : 'Deposit from embedded wallet'}
         </button>
@@ -251,8 +251,8 @@ export default function EmbeddedDeposit({ onSuccess }: { onSuccess?: () => void 
         <div
           className={`rounded-lg border p-3 text-sm ${
             message.type === 'error'
-              ? 'border-[#EF4444]/30 bg-[#EF4444]/10 text-[#EF4444]'
-              : 'border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]'
+              ? 'border-no/25 bg-no-soft text-no'
+              : 'border-yes/25 bg-yes-soft text-yes'
           }`}
         >
           {message.text}
@@ -260,7 +260,7 @@ export default function EmbeddedDeposit({ onSuccess }: { onSuccess?: () => void 
       )}
 
       {Number.isFinite(amountNumber) && amountNumber >= 0 && (
-        <p className="text-xs text-[#6B7280]">
+        <p className="text-xs text-muted">
           {amountNumber >= NETWORK_FEE_USDC
             ? `${amountNumber.toFixed(2)} USDC will be sent. ${netUsdc.toFixed(2)} USDC will be credited to your platform balance.`
             : 'Amount too small to cover the network fee.'}
