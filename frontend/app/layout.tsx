@@ -21,7 +21,8 @@ const mono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: 'Referandium | Startup Sentiment',
-  description: 'Back early-stage startups with community votes.',
+  description:
+    'Back early-stage startups with community votes. Archived test project: no longer in development, and all data is test data.',
 }
 
 export default function RootLayout({

@@ -28,10 +28,27 @@ export default function AboutPage() {
           that same community back them on a bonding curve until they graduate as real, on-chain
           tokens.
         </p>
-        <p className="mt-5 text-sm text-muted">
-          This is a test version running on a test network. Balances are not real money.
-        </p>
       </header>
+
+      <section
+        id="status"
+        className="mb-12 scroll-mt-24 rounded-2xl border border-warn/25 bg-warn-soft p-5 sm:p-6"
+      >
+        <h2 className="text-lg font-semibold text-warn">Project status: no longer in development</h2>
+        <div className="mt-3 max-w-[62ch] space-y-3 text-[15px] leading-relaxed text-ink-soft">
+          <p>
+            Referandium is not being developed any further. The site has been left as it was at the
+            end of its test stage, so you can still look around and see how the product was meant to
+            work.
+          </p>
+          <p>
+            Everything here runs on Solana devnet, a test network. The startups, votes, balances,
+            prices and trades you see are test data created during development. They are not real
+            companies, and no real money is involved.
+          </p>
+          <p>Features may stop working at any time, and no new versions are planned.</p>
+        </div>
+      </section>
 
       <Section title="How it works">
         <p>Anyone can list a startup for a flat fee; there is no approval gate.</p>
