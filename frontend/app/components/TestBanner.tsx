@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { StatusLink } from './ProjectStatus'
 
 // Site-wide project-status notice. Always shown: the project is no longer
 // developed, and every visitor needs to know the data here is not real.
@@ -9,9 +9,9 @@ export default function TestBanner() {
       <strong className="font-semibold text-white">This project is no longer being developed.</strong>{' '}
       It was left at its test stage: the startups, votes and balances here are test data, not real
       companies or real money.{' '}
-      <Link href="/about#status" className="whitespace-nowrap font-medium text-white underline decoration-white/40 underline-offset-2 hover:decoration-white">
+      <StatusLink className="whitespace-nowrap font-medium text-white underline decoration-white/40 underline-offset-2 hover:decoration-white">
         Read more
-      </Link>
+      </StatusLink>
     </div>
   )
 }

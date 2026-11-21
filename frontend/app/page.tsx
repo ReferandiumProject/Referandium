@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePrivy } from '@privy-io/react-auth'
 import { formatUsd, formatPrice, formatVoteCount } from '@/lib/format'
+import { StatusLink } from './components/ProjectStatus'
 import { Badge, CountUp, EmptyState, LiveDot, Logo, Notice, Progress, Segmented, Skeleton, SplitBar, buttonClass } from './components/ui'
 
 type UserPosition = {
@@ -386,13 +387,10 @@ export default function HomePage() {
     <div className="mx-auto w-full max-w-page px-4 pb-24 pt-10 sm:px-6 sm:pt-20">
       <header className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-16">
         <div className="stagger">
-          <Link
-            href="/about#status"
-            className="inline-flex items-center gap-2 rounded-full border border-warn/25 bg-warn-soft px-3 py-1 text-[13px] font-medium text-warn transition-colors hover:border-warn/50"
-          >
+          <StatusLink className="inline-flex items-center gap-2 rounded-full border border-warn/25 bg-warn-soft px-3 py-1 text-[13px] font-medium text-warn transition-colors hover:border-warn/50">
             <span className="h-1.5 w-1.5 rounded-full bg-warn" />
             Archived test project, not in active development
-          </Link>
+          </StatusLink>
           <h1 className="mt-5 text-[40px] font-bold leading-[1.02] tracking-[-0.035em] sm:text-[56px] lg:text-[64px]">
             The crowd decides which startups get funded.
           </h1>

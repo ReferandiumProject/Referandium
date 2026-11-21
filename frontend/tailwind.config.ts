@@ -105,6 +105,11 @@ const config: Config = {
           '40%': { transform: 'scale(1.08)' },
           '100%': { transform: 'scale(1)' },
         },
+        'status-flash': {
+          '0%': { boxShadow: '0 0 0 0 rgb(184 110 0 / 0)' },
+          '25%': { boxShadow: '0 0 0 6px rgb(184 110 0 / 0.35)' },
+          '100%': { boxShadow: '0 0 0 14px rgb(184 110 0 / 0)' },
+        },
         marquee: {
           '0%': { transform: 'translateX(0)' },
           '100%': { transform: 'translateX(-50%)' },
@@ -121,6 +126,7 @@ const config: Config = {
         'drift-alt': 'drift-alt 17s ease-in-out infinite',
         pop: 'pop 0.4s cubic-bezier(0.2, 0.7, 0.2, 1)',
         marquee: 'marquee 40s linear infinite',
+        'status-flash': 'status-flash 1.4s ease-out 2',
       },
     },
   },

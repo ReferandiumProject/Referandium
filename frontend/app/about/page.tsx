@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { StatusSection } from '../components/ProjectStatus'
 
 export const metadata: Metadata = {
   title: 'About | Referandium',
@@ -30,11 +31,8 @@ export default function AboutPage() {
         </p>
       </header>
 
-      <section
-        id="status"
-        className="mb-12 scroll-mt-24 rounded-2xl border border-warn/25 bg-warn-soft p-5 sm:p-6"
-      >
-        <h2 className="text-lg font-semibold text-warn">Project status: no longer in development</h2>
+      <StatusSection className="relative mb-12 scroll-mt-24 rounded-2xl border border-warn/25 bg-warn-soft p-5 outline-none sm:p-6">
+        <h2 id="status-title" className="text-lg font-semibold text-warn">Project status: no longer in development</h2>
         <div className="mt-3 max-w-[62ch] space-y-3 text-[15px] leading-relaxed text-ink-soft">
           <p>
             Referandium is not being developed any further. The site has been left as it was at the
@@ -48,7 +46,7 @@ export default function AboutPage() {
           </p>
           <p>Features may stop working at any time, and no new versions are planned.</p>
         </div>
-      </section>
+      </StatusSection>
 
       <Section title="How it works">
         <p>Anyone can list a startup for a flat fee; there is no approval gate.</p>
